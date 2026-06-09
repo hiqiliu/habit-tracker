@@ -1,0 +1,1995 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+    <title>习惯追踪与待办管理</title>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="习惯追踪">
+    <meta name="theme-color" content="#6366f1">
+    <meta name="mobile-web-app-capable" content="yes">
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#6366f1',
+                        secondary: '#8b5cf6',
+                        success: '#22c55e',
+                        warning: '#f59e0b',
+                        danger: '#ef4444',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Noto Sans SC', sans-serif; }
+        .fade-in { animation: fadeIn 0.3s ease-in; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .calendar-day { transition: all 0.2s; }
+        .calendar-day:hover { transform: scale(1.05); }
+        .habit-check { transition: all 0.3s; }
+        .habit-check:checked + div { background: linear-gradient(135deg, #6366f1, #8b5cf6); }
+        .streak-flame { animation: flicker 1.5s infinite alternate; }
+        @keyframes flicker { 0% { opacity: 1; } 100% { opacity: 0.7; } }
+        .progress-ring { transform: rotate(-90deg); }
+        .glass { background: rgba(255,255,255,0.1); backdrop-filter: blur(10px); }
+        .dark .glass { background: rgba(30,30,30,0.5); }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        .dark ::-webkit-scrollbar-thumb { background: #475569; }
+    </style>
+</head>
+<body class="bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-200 transition-colors duration-300">
+    <div class="min-h-screen flex">
+        <!-- Sidebar -->
+        <aside class="w-64 bg-white dark:bg-gray-800 shadow-lg hidden md:flex flex-col">
+            <div class="p-6 border-b dark:border-gray-700">
+                <h1 class="text-2xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+                    <i class="fas fa-seedling mr-2"></i>习惯追踪
+                </h1>
+            </div>
+            <nav class="flex-1 p-4 space-y-2">
+                <button onclick="showView('dashboard')" id="nav-dashboard" class="nav-btn w-full flex items-center px-4 py-3 rounded-xl bg-primary text-white transition-all">
+                    <i class="fas fa-home w-6"></i><span>总览</span>
+                </button>
+                <button onclick="showView('items')" id="nav-items" class="nav-btn w-full flex items-center px-4 py-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-all">
+                    <i class="fas fa-tasks w-6"></i><span>事项管理</span>
+                </button>
+                <button onclick="showView('calendar')" id="nav-calendar" class="nav-btn w-full flex items-center px-4 py-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-all">
+                    <i class="fas fa-calendar-alt w-6"></i><span>日历视图</span>
+                </button>
+                <button onclick="showView('schedule')" id="nav-schedule" class="nav-btn w-full flex items-center px-4 py-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-all">
+                    <i class="fas fa-dumbbell w-6"></i><span>举铁课表</span>
+                </button>
+                <button onclick="showView('stats')" id="nav-stats" class="nav-btn w-full flex items-center px-4 py-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-all">
+                    <i class="fas fa-chart-pie w-6"></i><span>统计分析</span>
+                </button>
+            </nav>
+            <div class="p-4 border-t dark:border-gray-700 space-y-2">
+                <button onclick="exportData()" class="w-full flex items-center px-4 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-sm transition-all">
+                    <i class="fas fa-download w-6"></i><span>导出数据</span>
+                </button>
+                <button onclick="importData()" class="w-full flex items-center px-4 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-sm transition-all">
+                    <i class="fas fa-upload w-6"></i><span>导入数据</span>
+                </button>
+                <button onclick="toggleTheme()" class="w-full flex items-center px-4 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-sm transition-all">
+                    <i class="fas fa-moon w-6 dark:hidden"></i><i class="fas fa-sun w-6 hidden dark:inline"></i>
+                    <span class="dark:hidden">深色模式</span><span class="hidden dark:inline">浅色模式</span>
+                </button>
+            </div>
+        </aside>
+
+        <!-- Mobile Header -->
+        <div class="md:hidden fixed top-0 left-0 right-0 bg-white dark:bg-gray-800 shadow-md z-50 px-4 py-3 flex justify-between items-center">
+            <h1 class="text-lg font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+                <i class="fas fa-seedling mr-1"></i>习惯追踪
+            </h1>
+            <button onclick="toggleMobileMenu()" class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700">
+                <i class="fas fa-bars text-xl"></i>
+            </button>
+        </div>
+
+        <!-- Mobile Menu -->
+        <div id="mobile-menu" class="hidden fixed inset-0 bg-black/50 z-40 md:hidden" onclick="toggleMobileMenu()">
+            <div class="absolute right-0 top-0 bottom-0 w-64 bg-white dark:bg-gray-800 shadow-xl p-4 space-y-2" onclick="event.stopPropagation()">
+                <button onclick="showView('dashboard'); toggleMobileMenu()" class="w-full flex items-center px-4 py-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700">
+                    <i class="fas fa-home w-6"></i><span>总览</span>
+                </button>
+                <button onclick="showView('items'); toggleMobileMenu()" class="w-full flex items-center px-4 py-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700">
+                    <i class="fas fa-tasks w-6"></i><span>事项管理</span>
+                </button>
+                <button onclick="showView('calendar'); toggleMobileMenu()" class="w-full flex items-center px-4 py-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700">
+                    <i class="fas fa-calendar-alt w-6"></i><span>日历视图</span>
+                </button>
+                <button onclick="showView('schedule'); toggleMobileMenu()" class="w-full flex items-center px-4 py-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700">
+                    <i class="fas fa-dumbbell w-6"></i><span>举铁课表</span>
+                </button>
+                <button onclick="showView('stats'); toggleMobileMenu()" class="w-full flex items-center px-4 py-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700">
+                    <i class="fas fa-chart-pie w-6"></i><span>统计分析</span>
+                </button>
+                <hr class="dark:border-gray-700">
+                <button onclick="exportData()" class="w-full flex items-center px-4 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-sm">
+                    <i class="fas fa-download w-6"></i><span>导出数据</span>
+                </button>
+                <button onclick="importData()" class="w-full flex items-center px-4 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-sm">
+                    <i class="fas fa-upload w-6"></i><span>导入数据</span>
+                </button>
+                <button onclick="toggleTheme()" class="w-full flex items-center px-4 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-sm">
+                    <i class="fas fa-moon w-6 dark:hidden"></i><i class="fas fa-sun w-6 hidden dark:inline"></i>
+                    <span class="dark:hidden">深色模式</span><span class="hidden dark:inline">浅色模式</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <main class="flex-1 p-4 md:p-8 mt-14 md:mt-0 overflow-auto">
+            <!-- Dashboard View -->
+            <div id="view-dashboard" class="view-section fade-in">
+                <div class="mb-6">
+                    <h2 class="text-3xl font-bold mb-2">你好！👋</h2>
+                    <p class="text-gray-500 dark:text-gray-400" id="dashboard-date"></p>
+                </div>
+
+                <!-- Quick Stats -->
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                    <div class="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-gray-500 dark:text-gray-400 text-sm">今日待办</span>
+                            <i class="fas fa-tasks text-primary"></i>
+                        </div>
+                        <div class="text-2xl font-bold" id="dash-todo-count">0</div>
+                        <div class="text-xs text-gray-400 mt-1"><span id="dash-todo-done">0</span> 已完成</div>
+                    </div>
+                    <div class="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-gray-500 dark:text-gray-400 text-sm">今日习惯</span>
+                            <i class="fas fa-fire text-warning"></i>
+                        </div>
+                        <div class="text-2xl font-bold" id="dash-habit-count">0</div>
+                        <div class="text-xs text-gray-400 mt-1"><span id="dash-habit-done">0</span> 已打卡</div>
+                    </div>
+                    <div class="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-gray-500 dark:text-gray-400 text-sm">最长连续</span>
+                            <i class="fas fa-trophy text-warning"></i>
+                        </div>
+                        <div class="text-2xl font-bold" id="dash-best-streak">0</div>
+                        <div class="text-xs text-gray-400 mt-1">天</div>
+                    </div>
+                    <div class="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-gray-500 dark:text-gray-400 text-sm">本周完成率</span>
+                            <i class="fas fa-percentage text-success"></i>
+                        </div>
+                        <div class="text-2xl font-bold" id="dash-week-rate">0%</div>
+                        <div class="text-xs text-gray-400 mt-1">平均</div>
+                    </div>
+                </div>
+
+                <!-- Today's Overview -->
+                <div class="grid md:grid-cols-3 gap-4">
+                    <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm">
+                        <h3 class="text-lg font-semibold mb-4 flex items-center">
+                            <i class="fas fa-sun text-warning mr-2"></i>今日待办
+                        </h3>
+                        <div id="dash-todo-list" class="space-y-2 max-h-64 overflow-auto">
+                            <p class="text-gray-400 text-center py-8">暂无待办事项</p>
+                        </div>
+                        <button onclick="openItemModal('todo')" class="mt-4 w-full py-2 rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-600 text-gray-500 hover:border-primary hover:text-primary transition-all">
+                            <i class="fas fa-plus mr-1"></i>添加待办
+                        </button>
+                    </div>
+                    <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm">
+                        <h3 class="text-lg font-semibold mb-4 flex items-center">
+                            <i class="fas fa-fire text-danger mr-2 streak-flame"></i>今日习惯打卡
+                        </h3>
+                        <div id="dash-habit-list" class="space-y-2 max-h-64 overflow-auto">
+                            <p class="text-gray-400 text-center py-8">暂无习惯项目</p>
+                        </div>
+                        <button onclick="openItemModal('habit')" class="mt-4 w-full py-2 rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-600 text-gray-500 hover:border-primary hover:text-primary transition-all">
+                            <i class="fas fa-plus mr-1"></i>添加习惯
+                        </button>
+                    </div>
+                    <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm">
+                        <h3 class="text-lg font-semibold mb-4 flex items-center">
+                            <i class="fas fa-clipboard-list text-primary mr-2"></i>今日记录
+                        </h3>
+                        <div id="dash-log-list" class="space-y-2 max-h-64 overflow-auto">
+                            <p class="text-gray-400 text-center py-8">暂无记录项目</p>
+                        </div>
+                        <button onclick="openItemModal('log')" class="mt-4 w-full py-2 rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-600 text-gray-500 hover:border-primary hover:text-primary transition-all">
+                            <i class="fas fa-plus mr-1"></i>添加记录
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Items View -->
+            <div id="view-items" class="view-section hidden fade-in">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold">事项管理</h2>
+                    <button onclick="openItemModal()" class="bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-xl transition-all">
+                        <i class="fas fa-plus mr-1"></i>新建事项
+                    </button>
+                </div>
+
+                <!-- Filters -->
+                <div class="flex gap-2 mb-4 overflow-auto pb-2">
+                    <button onclick="filterItems('all')" id="filter-all" class="filter-btn px-4 py-2 rounded-lg bg-primary text-white text-sm whitespace-nowrap">全部</button>
+                    <button onclick="filterItems('todo')" id="filter-todo" class="filter-btn px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-sm whitespace-nowrap">待办</button>
+                    <button onclick="filterItems('habit')" id="filter-habit" class="filter-btn px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-sm whitespace-nowrap">习惯</button>
+                    <button onclick="filterItems('log')" id="filter-log" class="filter-btn px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-sm whitespace-nowrap">记录</button>
+                    <button onclick="filterItems('today')" id="filter-today" class="filter-btn px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-sm whitespace-nowrap">今天</button>
+                    <button onclick="filterItems('completed')" id="filter-completed" class="filter-btn px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-sm whitespace-nowrap">已完成</button>
+                </div>
+
+                <!-- Projects -->
+                <div class="mb-4">
+                    <label class="text-sm text-gray-500 dark:text-gray-400 mb-2 block">项目筛选</label>
+                    <select id="project-filter" onchange="renderItems()" class="w-full md:w-64 px-4 py-2 rounded-xl border dark:border-gray-700 dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary">
+                        <option value="">所有项目</option>
+                    </select>
+                </div>
+
+                <div id="item-list" class="grid md:grid-cols-3 gap-4"></div>
+            </div>
+
+            <!-- Calendar View -->
+            <div id="view-calendar" class="view-section hidden fade-in">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold">日历视图</h2>
+                    <div class="flex gap-2">
+                        <button onclick="setCalendarView('week')" id="cal-view-week" class="px-4 py-2 rounded-lg bg-primary text-white text-sm">周</button>
+                        <button onclick="setCalendarView('month')" id="cal-view-month" class="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-sm">月</button>
+                        <button onclick="setCalendarView('year')" id="cal-view-year" class="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-sm">年</button>
+                    </div>
+                </div>
+
+                <div class="flex gap-2 mb-4 overflow-auto pb-2">
+                    <button onclick="setCalendarType('both')" id="cal-type-both" class="cal-type-btn px-3 py-1 rounded-lg bg-primary text-white text-xs">全部</button>
+                    <button onclick="setCalendarType('todo')" id="cal-type-todo" class="cal-type-btn px-3 py-1 rounded-lg bg-gray-200 dark:bg-gray-700 text-xs">待办</button>
+                    <button onclick="setCalendarType('habit')" id="cal-type-habit" class="cal-type-btn px-3 py-1 rounded-lg bg-gray-200 dark:bg-gray-700 text-xs">习惯</button>
+                    <button onclick="setCalendarType('log')" id="cal-type-log" class="cal-type-btn px-3 py-1 rounded-lg bg-gray-200 dark:bg-gray-700 text-xs">记录</button>
+                </div>
+
+                <div id="calendar-container" class="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm"></div>
+            </div>
+
+            <!-- Schedule View -->
+            <div id="view-schedule" class="view-section hidden fade-in">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold">举铁课表</h2>
+                    <button onclick="openScheduleSettings()" class="bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-xl transition-all">
+                        <i class="fas fa-cog mr-1"></i>设置
+                    </button>
+                </div>
+
+                <!-- Start Date & Progress -->
+                <div class="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm mb-6">
+                    <div class="flex flex-wrap items-center gap-4">
+                        <div>
+                            <label class="text-sm text-gray-500 dark:text-gray-400 block mb-1">开始日期</label>
+                            <input type="date" id="schedule-start-date" onchange="saveScheduleStartDate()" class="px-4 py-2 rounded-xl border dark:border-gray-700 dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary">
+                        </div>
+                        <div class="flex-1 min-w-[200px]">
+                            <div class="flex justify-between text-sm mb-1">
+                                <span class="text-gray-500 dark:text-gray-400">当前进度</span>
+                                <span id="schedule-progress-text" class="font-medium">第 1 周 / 12 周</span>
+                            </div>
+                            <div class="h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                                <div id="schedule-progress-bar" class="h-full bg-gradient-to-r from-primary to-secondary rounded-full transition-all" style="width: 0%"></div>
+                            </div>
+                        </div>
+                        <div id="schedule-today-status" class="text-sm font-medium text-primary"></div>
+                    </div>
+                </div>
+
+                <!-- Schedule Grid -->
+                <div id="schedule-grid" class="space-y-4"></div>
+            </div>
+
+            <!-- Stats View -->
+            <div id="view-stats" class="view-section hidden fade-in">
+                <h2 class="text-2xl font-bold mb-6">统计分析</h2>
+
+                <div class="grid lg:grid-cols-2 gap-6 mb-6">
+                    <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm">
+                        <h3 class="text-lg font-semibold mb-4">习惯完成趋势（近7天）</h3>
+                        <canvas id="habit-trend-chart" height="200"></canvas>
+                    </div>
+                    <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm">
+                        <h3 class="text-lg font-semibold mb-4">习惯完成率</h3>
+                        <canvas id="habit-pie-chart" height="200"></canvas>
+                    </div>
+                </div>
+
+                <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm mb-6">
+                    <h3 class="text-lg font-semibold mb-4">待办完成统计（近7天）</h3>
+                    <canvas id="todo-stats-chart" height="150"></canvas>
+                </div>
+
+                <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm">
+                    <h3 class="text-lg font-semibold mb-4">习惯排行榜</h3>
+                    <div id="habit-ranking" class="space-y-3"></div>
+                </div>
+
+                <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm mt-6">
+                    <h3 class="text-lg font-semibold mb-4">记录频率统计</h3>
+                    <canvas id="log-stats-chart" height="150"></canvas>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Item Modal -->
+    <div id="item-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 w-full max-w-md max-h-[90vh] overflow-auto">
+            <h3 class="text-xl font-bold mb-4" id="item-modal-title">新建事项</h3>
+            <input type="hidden" id="item-id">
+            <div class="space-y-4">
+                <!-- 事项类型选择 -->
+                <div>
+                    <label class="block text-sm text-gray-500 mb-1">事项类型</label>
+                    <div class="flex gap-2">
+                        <button onclick="setItemType('todo')" id="type-todo" class="flex-1 py-2 rounded-xl border text-sm transition-all">一次性待办</button>
+                        <button onclick="setItemType('habit')" id="type-habit" class="flex-1 py-2 rounded-xl border text-sm transition-all">循环习惯</button>
+                        <button onclick="setItemType('log')" id="type-log" class="flex-1 py-2 rounded-xl border text-sm transition-all">记录型</button>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm text-gray-500 mb-1">标题</label>
+                    <input type="text" id="item-title" class="w-full px-4 py-2 rounded-xl border dark:border-gray-700 dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-primary" placeholder="输入事项名称">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-500 mb-1">项目</label>
+                    <div class="flex gap-2">
+                        <select id="item-project" class="flex-1 px-4 py-2 rounded-xl border dark:border-gray-700 dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-primary">
+                            <option value="">默认</option>
+                        </select>
+                        <button onclick="addNewProject()" class="px-3 py-2 rounded-xl border dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 一次性待办专属 -->
+                <div id="todo-fields">
+                    <div>
+                        <label class="block text-sm text-gray-500 mb-1">截止日期</label>
+                        <input type="date" id="item-due" class="w-full px-4 py-2 rounded-xl border dark:border-gray-700 dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-primary">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-500 mb-1">优先级</label>
+                        <div class="flex gap-2">
+                            <button onclick="setPriority('low')" id="pri-low" class="flex-1 py-2 rounded-xl border text-sm transition-all">低</button>
+                            <button onclick="setPriority('medium')" id="pri-medium" class="flex-1 py-2 rounded-xl border bg-warning text-white text-sm transition-all">中</button>
+                            <button onclick="setPriority('high')" id="pri-high" class="flex-1 py-2 rounded-xl border text-sm transition-all">高</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 循环习惯专属 -->
+                <div id="habit-fields" class="hidden">
+                    <div>
+                        <label class="block text-sm text-gray-500 mb-1">图标</label>
+                        <div class="grid grid-cols-8 gap-2" id="habit-icons"></div>
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-500 mb-1">颜色</label>
+                        <div class="flex gap-2 flex-wrap" id="habit-colors">
+                            <button onclick="setHabitColor('#ef4444')" class="w-8 h-8 rounded-full bg-red-500 habit-color-btn ring-2 ring-offset-2 ring-primary"></button>
+                            <button onclick="setHabitColor('#f59e0b')" class="w-8 h-8 rounded-full bg-amber-500 habit-color-btn"></button>
+                            <button onclick="setHabitColor('#22c55e')" class="w-8 h-8 rounded-full bg-green-500 habit-color-btn"></button>
+                            <button onclick="setHabitColor('#3b82f6')" class="w-8 h-8 rounded-full bg-blue-500 habit-color-btn"></button>
+                            <button onclick="setHabitColor('#8b5cf6')" class="w-8 h-8 rounded-full bg-violet-500 habit-color-btn"></button>
+                            <button onclick="setHabitColor('#ec4899')" class="w-8 h-8 rounded-full bg-pink-500 habit-color-btn"></button>
+                            <button onclick="setHabitColor('#06b6d4')" class="w-8 h-8 rounded-full bg-cyan-500 habit-color-btn"></button>
+                            <button onclick="setHabitColor('#6366f1')" class="w-8 h-8 rounded-full bg-indigo-500 habit-color-btn"></button>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-500 mb-1">频率</label>
+                        <div class="flex gap-2">
+                            <button onclick="setFrequency('daily')" id="freq-daily" class="flex-1 py-2 rounded-xl border bg-primary text-white text-sm">每天</button>
+                            <button onclick="setFrequency('weekly')" id="freq-weekly" class="flex-1 py-2 rounded-xl border dark:border-gray-700 text-sm">每周</button>
+                        </div>
+                    </div>
+                    <div id="weekly-days" class="hidden">
+                        <label class="block text-sm text-gray-500 mb-1">选择日期</label>
+                        <div class="flex gap-1">
+                            <button onclick="toggleWeekDay(0)" class="week-day-btn flex-1 py-2 rounded-lg border dark:border-gray-700 text-xs" data-day="0">日</button>
+                            <button onclick="toggleWeekDay(1)" class="week-day-btn flex-1 py-2 rounded-lg border dark:border-gray-700 text-xs" data-day="1">一</button>
+                            <button onclick="toggleWeekDay(2)" class="week-day-btn flex-1 py-2 rounded-lg border dark:border-gray-700 text-xs" data-day="2">二</button>
+                            <button onclick="toggleWeekDay(3)" class="week-day-btn flex-1 py-2 rounded-lg border dark:border-gray-700 text-xs" data-day="3">三</button>
+                            <button onclick="toggleWeekDay(4)" class="week-day-btn flex-1 py-2 rounded-lg border dark:border-gray-700 text-xs" data-day="4">四</button>
+                            <button onclick="toggleWeekDay(5)" class="week-day-btn flex-1 py-2 rounded-lg border dark:border-gray-700 text-xs" data-day="5">五</button>
+                            <button onclick="toggleWeekDay(6)" class="week-day-btn flex-1 py-2 rounded-lg border dark:border-gray-700 text-xs" data-day="6">六</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 记录型专属 -->
+                <div id="log-fields" class="hidden">
+                    <div>
+                        <label class="block text-sm text-gray-500 mb-1">图标</label>
+                        <div class="grid grid-cols-8 gap-2" id="log-icons"></div>
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-500 mb-1">颜色</label>
+                        <div class="flex gap-2 flex-wrap" id="log-colors">
+                            <button onclick="setLogColor('#ef4444')" class="w-8 h-8 rounded-full bg-red-500 log-color-btn ring-2 ring-offset-2 ring-primary"></button>
+                            <button onclick="setLogColor('#f59e0b')" class="w-8 h-8 rounded-full bg-amber-500 log-color-btn"></button>
+                            <button onclick="setLogColor('#22c55e')" class="w-8 h-8 rounded-full bg-green-500 log-color-btn"></button>
+                            <button onclick="setLogColor('#3b82f6')" class="w-8 h-8 rounded-full bg-blue-500 log-color-btn"></button>
+                            <button onclick="setLogColor('#8b5cf6')" class="w-8 h-8 rounded-full bg-violet-500 log-color-btn"></button>
+                            <button onclick="setLogColor('#ec4899')" class="w-8 h-8 rounded-full bg-pink-500 log-color-btn"></button>
+                            <button onclick="setLogColor('#06b6d4')" class="w-8 h-8 rounded-full bg-cyan-500 log-color-btn"></button>
+                            <button onclick="setLogColor('#6366f1')" class="w-8 h-8 rounded-full bg-indigo-500 log-color-btn"></button>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm text-gray-500 mb-1">备注/目标</label>
+                    <textarea id="item-note" rows="3" class="w-full px-4 py-2 rounded-xl border dark:border-gray-700 dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-primary resize-none" placeholder="添加备注或目标..."></textarea>
+                </div>
+            </div>
+            <div class="flex gap-3 mt-6">
+                <button onclick="closeItemModal()" class="flex-1 py-2 rounded-xl border dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all">取消</button>
+                <button onclick="saveItem()" class="flex-1 py-2 rounded-xl bg-primary text-white hover:bg-primary/90 transition-all">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <input type="file" id="import-file" class="hidden" accept=".json" onchange="handleImport(event)">
+
+    <script>
+        // ==================== Data Management ====================
+        let items = JSON.parse(localStorage.getItem('ht_items') || '[]');
+        let projects = JSON.parse(localStorage.getItem('ht_projects') || '["个人","工作","学习","健康"]');
+        let currentView = 'dashboard';
+        let currentFilter = 'all';
+        let currentProjectFilter = '';
+        let calendarView = 'week';
+        let calendarType = 'both';
+        let currentPriority = 'medium';
+        let currentHabitColor = '#ef4444';
+        let currentHabitIcon = 'fa-star';
+        let currentFrequency = 'daily';
+        let currentItemType = 'todo';
+        let currentLogColor = '#ef4444';
+        let currentLogIcon = 'fa-star';
+        let selectedWeekDays = [];
+        let charts = {};
+        let scheduleData = JSON.parse(localStorage.getItem('ht_schedule') || '{}');
+        let scheduleChecks = JSON.parse(localStorage.getItem('ht_schedule_checks') || '[]');
+
+        const habitIcons = ['fa-star','fa-heart','fa-bolt','fa-fire','fa-trophy','fa-medal','fa-gem','fa-sun','fa-moon','fa-book','fa-dumbbell','fa-running','fa-bicycle','fa-swimmer','fa-music','fa-paint-brush','fa-code','fa-laptop','fa-coffee','fa-apple-alt','fa-carrot','fa-bed','fa-clock','fa-calendar-check'];
+
+        // ==================== Data Migration ====================
+        function migrateData() {
+            const oldTodos = JSON.parse(localStorage.getItem('ht_todos') || '[]');
+            const oldHabits = JSON.parse(localStorage.getItem('ht_habits') || '[]');
+            
+            if (oldTodos.length > 0 || oldHabits.length > 0) {
+                // Migrate todos
+                oldTodos.forEach(t => {
+                    items.push({
+                        id: t.id || generateId(),
+                        title: t.title,
+                        type: 'todo',
+                        project: t.project || '',
+                        due: t.due || '',
+                        priority: t.priority || 'medium',
+                        note: t.note || '',
+                        completed: t.completed || false,
+                        completedAt: t.completedAt || null,
+                        createdAt: t.createdAt || new Date().toISOString()
+                    });
+                });
+                
+                // Migrate habits
+                oldHabits.forEach(h => {
+                    items.push({
+                        id: h.id || generateId(),
+                        title: h.name,
+                        type: 'habit',
+                        project: '',
+                        icon: h.icon || 'fa-star',
+                        color: h.color || '#ef4444',
+                        frequency: h.frequency || 'daily',
+                        weekDays: h.weekDays || null,
+                        note: h.goal || '',
+                        checks: h.checks || [],
+                        createdAt: h.createdAt || new Date().toISOString()
+                    });
+                });
+                
+                saveData();
+                localStorage.removeItem('ht_todos');
+                localStorage.removeItem('ht_habits');
+            }
+        }
+
+        function saveData() {
+            localStorage.setItem('ht_items', JSON.stringify(items));
+            localStorage.setItem('ht_projects', JSON.stringify(projects));
+        }
+
+        function generateId() {
+            return Date.now().toString(36) + Math.random().toString(36).substr(2);
+        }
+
+        function getToday() {
+            return new Date().toISOString().split('T')[0];
+        }
+
+        // ==================== Theme ====================
+        function toggleTheme() {
+            document.documentElement.classList.toggle('dark');
+            localStorage.setItem('ht_dark', document.documentElement.classList.contains('dark'));
+        }
+
+        if (localStorage.getItem('ht_dark') === 'true') {
+            document.documentElement.classList.add('dark');
+        }
+
+        // ==================== Navigation ====================
+        function showView(view) {
+            document.querySelectorAll('.view-section').forEach(v => v.classList.add('hidden'));
+            document.getElementById('view-' + view).classList.remove('hidden');
+            document.querySelectorAll('.nav-btn').forEach(b => {
+                b.classList.remove('bg-primary', 'text-white');
+                b.classList.add('hover:bg-gray-100', 'dark:hover:bg-gray-700');
+            });
+            const activeBtn = document.getElementById('nav-' + view);
+            if (activeBtn) {
+                activeBtn.classList.add('bg-primary', 'text-white');
+                activeBtn.classList.remove('hover:bg-gray-100', 'dark:hover:bg-gray-700');
+            }
+            currentView = view;
+            if (view === 'dashboard') renderDashboard();
+            if (view === 'items') renderItems();
+            if (view === 'calendar') renderCalendar();
+            if (view === 'schedule') renderSchedule();
+            if (view === 'stats') renderStats();
+        }
+
+        function toggleMobileMenu() {
+            document.getElementById('mobile-menu').classList.toggle('hidden');
+        }
+
+        // ==================== Dashboard ====================
+        function renderDashboard() {
+            const today = getToday();
+            document.getElementById('dashboard-date').textContent = new Date().toLocaleDateString('zh-CN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+            const todayTodos = items.filter(i => i.type === 'todo' && i.due === today && !i.completed);
+            const doneTodos = items.filter(i => i.type === 'todo' && i.due === today && i.completed);
+            const totalTodos = todayTodos.length + doneTodos.length;
+            const todoRate = totalTodos > 0 ? Math.round(doneTodos.length / totalTodos * 100) : 0;
+            document.getElementById('dash-todo-count').textContent = totalTodos;
+            document.getElementById('dash-todo-done').textContent = doneTodos.length;
+
+            const todayHabits = getTodayHabits();
+            const doneHabits = todayHabits.filter(h => isHabitDone(h.id, today));
+            const habitRate = todayHabits.length > 0 ? Math.round(doneHabits.length / todayHabits.length * 100) : 0;
+            document.getElementById('dash-habit-count').textContent = todayHabits.length;
+            document.getElementById('dash-habit-done').textContent = doneHabits.length;
+
+            let bestStreak = 0;
+            items.filter(i => i.type === 'habit').forEach(h => {
+                const s = calculateStreak(h);
+                if (s > bestStreak) bestStreak = s;
+            });
+            document.getElementById('dash-best-streak').textContent = bestStreak;
+
+            const weekRate = calculateWeekRate();
+            document.getElementById('dash-week-rate').textContent = weekRate + '%';
+
+            // Render today's todos card
+            const todoList = document.getElementById('dash-todo-list');
+            let todoHtml = '';
+            if (totalTodos === 0) {
+                todoHtml = '<p class="text-gray-400 text-center py-6 text-sm">暂无待办</p>';
+            } else {
+                todoHtml = `
+                    <div class="mb-3">
+                        <div class="flex justify-between text-xs text-gray-500 mb-1">
+                            <span>完成进度</span>
+                            <span>${doneTodos.length}/${totalTodos}</span>
+                        </div>
+                        <div class="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                            <div class="h-full bg-primary rounded-full transition-all" style="width: ${todoRate}%"></div>
+                        </div>
+                    </div>
+                    <div class="space-y-2 max-h-48 overflow-auto">
+                        ${[...todayTodos, ...doneTodos].map(t => `
+                            <div class="flex items-center gap-2 p-2 rounded-lg ${t.completed ? 'bg-gray-100 dark:bg-gray-700/50' : 'bg-gray-50 dark:bg-gray-700/30'} transition-all">
+                                <input type="checkbox" ${t.completed ? 'checked' : ''} onchange="toggleItem('${t.id}')" class="w-4 h-4 rounded accent-primary">
+                                <span class="flex-1 text-sm ${t.completed ? 'line-through text-gray-400' : ''} truncate">${escapeHtml(t.title)}</span>
+                                ${t.priority === 'high' ? '<span class="text-[10px] bg-danger/10 text-danger px-1.5 py-0.5 rounded">高</span>' : t.priority === 'medium' ? '<span class="text-[10px] bg-warning/10 text-warning px-1.5 py-0.5 rounded">中</span>' : '<span class="text-[10px] bg-success/10 text-success px-1.5 py-0.5 rounded">低</span>'}
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            }
+            todoList.innerHTML = todoHtml;
+
+            // Render today's habits card
+            const habitList = document.getElementById('dash-habit-list');
+            let habitHtml = '';
+            if (todayHabits.length === 0) {
+                habitHtml = '<p class="text-gray-400 text-center py-6 text-sm">暂无习惯</p>';
+            } else {
+                habitHtml = `
+                    <div class="mb-3">
+                        <div class="flex justify-between text-xs text-gray-500 mb-1">
+                            <span>打卡进度</span>
+                            <span>${doneHabits.length}/${todayHabits.length}</span>
+                        </div>
+                        <div class="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                            <div class="h-full bg-warning rounded-full transition-all" style="width: ${habitRate}%"></div>
+                        </div>
+                    </div>
+                    <div class="space-y-2 max-h-48 overflow-auto">
+                        ${todayHabits.map(h => {
+                            const done = isHabitDone(h.id, today);
+                            const streak = calculateStreak(h);
+                            return `
+                                <div class="flex items-center gap-2 p-2 rounded-lg bg-gray-50 dark:bg-gray-700/30 transition-all">
+                                    <label class="relative cursor-pointer">
+                                        <input type="checkbox" ${done ? 'checked' : ''} onchange="toggleItem('${h.id}')" class="habit-check sr-only">
+                                        <div class="w-8 h-8 rounded-lg flex items-center justify-center text-sm transition-all ${done ? 'text-white' : 'bg-gray-200 dark:bg-gray-600'}" style="${done ? 'background: linear-gradient(135deg, #6366f1, #8b5cf6)' : ''}">
+                                            <i class="fas ${h.icon || 'fa-star'}"></i>
+                                        </div>
+                                    </label>
+                                    <div class="flex-1 min-w-0">
+                                        <div class="text-sm font-medium ${done ? 'line-through text-gray-400' : ''} truncate">${escapeHtml(h.title)}</div>
+                                    </div>
+                                    ${streak > 0 ? `<div class="flex items-center gap-0.5 text-warning text-xs"><i class="fas fa-fire ${streak > 0 ? 'streak-flame' : ''}"></i><span class="font-bold">${streak}</span></div>` : ''}
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                `;
+            }
+            habitList.innerHTML = habitHtml;
+
+            // Render today's log items card
+            const logItems = items.filter(i => i.type === 'log');
+            const logList = document.getElementById('dash-log-list');
+            let logHtml = '';
+            if (logItems.length === 0) {
+                logHtml = '<p class="text-gray-400 text-center py-6 text-sm">暂无记录</p>';
+            } else {
+                logHtml = `
+                    <div class="space-y-2 max-h-56 overflow-auto">
+                        ${logItems.map(item => {
+                            const todayCount = getTodayLogCount(item);
+                            const weekCount = getLogCountInRange(item, 7);
+                            const avg = getLogAvgFrequency(item);
+                            return `
+                                <div class="flex items-center gap-2 p-2 rounded-lg bg-gray-50 dark:bg-gray-700/30 transition-all">
+                                    <div class="w-8 h-8 rounded-lg flex items-center justify-center text-white text-sm" style="background: ${item.color}">
+                                        <i class="fas ${item.icon || 'fa-star'}"></i>
+                                    </div>
+                                    <div class="flex-1 min-w-0">
+                                        <div class="text-sm font-medium truncate">${escapeHtml(item.title)}</div>
+                                        <div class="text-[10px] text-gray-400">今日 ${todayCount} 次 · 本周 ${weekCount} 次 · 日均 ${avg}</div>
+                                    </div>
+                                    <button onclick="recordItem('${item.id}')" class="w-8 h-8 rounded-lg flex items-center justify-center text-white text-sm font-bold transition-all hover:scale-105 active:scale-95" style="background: ${item.color}">
+                                        +1
+                                    </button>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                `;
+            }
+            logList.innerHTML = logHtml;
+        }
+
+        // ==================== Items ====================
+        function renderItems() {
+            const projectFilter = document.getElementById('project-filter');
+            projectFilter.innerHTML = '<option value="">所有项目</option>' + projects.map(p => `<option value="${escapeHtml(p)}">${escapeHtml(p)}</option>`).join('');
+            projectFilter.value = currentProjectFilter;
+
+            let filtered = [...items];
+            const today = getToday();
+
+            if (currentFilter === 'todo') {
+                filtered = filtered.filter(i => i.type === 'todo');
+            } else if (currentFilter === 'habit') {
+                filtered = filtered.filter(i => i.type === 'habit');
+            } else if (currentFilter === 'log') {
+                filtered = filtered.filter(i => i.type === 'log');
+            } else if (currentFilter === 'today') {
+                filtered = filtered.filter(i => {
+                    if (i.type === 'todo') return i.due === today;
+                    if (i.type === 'habit') return getTodayHabits().some(h => h.id === i.id);
+                    if (i.type === 'log') return true;
+                    return false;
+                });
+            } else if (currentFilter === 'completed') {
+                filtered = filtered.filter(i => i.type === 'todo' && i.completed);
+            }
+
+            if (currentProjectFilter) {
+                filtered = filtered.filter(i => i.project === currentProjectFilter);
+            }
+
+            filtered.sort((a, b) => {
+                if (a.type !== b.type) {
+                    const order = { todo: 0, habit: 1, log: 2 };
+                    return (order[a.type] || 0) - (order[b.type] || 0);
+                }
+                if (a.type === 'todo' && b.type === 'todo') {
+                    if (a.completed !== b.completed) return a.completed ? 1 : -1;
+                    if (a.priority !== b.priority) {
+                        const p = { high: 0, medium: 1, low: 2 };
+                        return p[a.priority] - p[b.priority];
+                    }
+                }
+                return (a.due || '').localeCompare(b.due || '');
+            });
+
+            const container = document.getElementById('item-list');
+            if (filtered.length === 0) {
+                container.innerHTML = '<div class="text-center py-12 text-gray-400"><i class="fas fa-clipboard-list text-4xl mb-3"></i><p>暂无事项</p></div>';
+                return;
+            }
+
+            container.innerHTML = filtered.map(item => {
+                if (item.type === 'todo') {
+                    return `
+                        <div class="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm transition-all hover:shadow-md flex flex-col">
+                            <div class="flex items-start justify-between mb-3">
+                                <div class="flex items-center gap-2 flex-1 min-w-0">
+                                    <input type="checkbox" ${item.completed ? 'checked' : ''} onchange="toggleItem('${item.id}')" class="w-5 h-5 rounded accent-primary flex-shrink-0 mt-0.5">
+                                    <div class="font-medium ${item.completed ? 'line-through text-gray-400' : ''} truncate">${escapeHtml(item.title)}</div>
+                                </div>
+                                <div class="flex items-center gap-1 flex-shrink-0 ml-2">
+                                    ${item.priority === 'high' ? '<span class="w-3 h-3 rounded-full bg-danger"></span>' : item.priority === 'medium' ? '<span class="w-3 h-3 rounded-full bg-warning"></span>' : '<span class="w-3 h-3 rounded-full bg-success"></span>'}
+                                    <button onclick="editItem('${item.id}')" class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 hover:text-primary transition-all">
+                                        <i class="fas fa-edit text-sm"></i>
+                                    </button>
+                                    <button onclick="deleteItem('${item.id}')" class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 hover:text-danger transition-all">
+                                        <i class="fas fa-trash text-sm"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="flex flex-wrap gap-1.5 mt-auto text-xs text-gray-400">
+                                <span class="bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded">待办</span>
+                                ${item.project ? `<span class="bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded">${escapeHtml(item.project)}</span>` : ''}
+                                ${item.due ? `<span><i class="far fa-calendar mr-1"></i>${item.due}</span>` : ''}
+                                ${item.note ? `<span><i class="far fa-sticky-note mr-1"></i>有备注</span>` : ''}
+                            </div>
+                        </div>
+                    `;
+                } else if (item.type === 'habit') {
+                    const done = isHabitDone(item.id, today);
+                    const streak = calculateStreak(item);
+                    const weekProgress = getWeekProgress(item);
+                    return `
+                        <div class="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm transition-all hover:shadow-md flex flex-col">
+                            <div class="flex items-center justify-between mb-3">
+                                <div class="flex items-center gap-2">
+                                    <div class="w-10 h-10 rounded-xl flex items-center justify-center text-white text-lg" style="background: ${item.color}">
+                                        <i class="fas ${item.icon}"></i>
+                                    </div>
+                                    <div class="min-w-0">
+                                        <div class="font-semibold truncate">${escapeHtml(item.title)}</div>
+                                        <div class="text-xs text-gray-400 truncate">${item.note || ''}</div>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-1 flex-shrink-0 ml-1">
+                                    <button onclick="editItem('${item.id}')" class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 hover:text-primary transition-all">
+                                        <i class="fas fa-edit text-sm"></i>
+                                    </button>
+                                    <button onclick="deleteItem('${item.id}')" class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 hover:text-danger transition-all">
+                                        <i class="fas fa-trash text-sm"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="flex items-center justify-between mb-3">
+                                <label class="flex items-center gap-2 cursor-pointer">
+                                    <input type="checkbox" ${done ? 'checked' : ''} onchange="toggleItem('${item.id}')" class="habit-check sr-only">
+                                    <div class="w-12 h-7 rounded-full transition-all ${done ? 'bg-primary' : 'bg-gray-300 dark:bg-gray-600'} relative">
+                                        <div class="w-5 h-5 rounded-full bg-white absolute top-1 transition-all ${done ? 'left-6' : 'left-1'}"></div>
+                                    </div>
+                                    <span class="text-xs ${done ? 'text-primary font-medium' : 'text-gray-500'}">${done ? '已打卡' : '未打卡'}</span>
+                                </label>
+                                <div class="flex items-center gap-1 text-warning">
+                                    <i class="fas fa-fire ${streak > 0 ? 'streak-flame' : ''}"></i>
+                                    <span class="font-bold text-sm">${streak}</span>
+                                    <span class="text-xs text-gray-400">天</span>
+                                </div>
+                            </div>
+                            <div class="flex gap-1 mt-auto">
+                                ${weekProgress.map((p, i) => `
+                                    <div class="flex-1 h-2 rounded-full ${p ? 'bg-primary' : 'bg-gray-200 dark:bg-gray-700'}" title="${getWeekDayName(i)}"></div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `;
+                } else if (item.type === 'log') {
+                    const todayCount = getTodayLogCount(item);
+                    const totalCount = item.checks ? item.checks.length : 0;
+                    return `
+                        <div class="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm transition-all hover:shadow-md flex flex-col">
+                            <div class="flex items-center justify-between mb-3">
+                                <div class="flex items-center gap-2">
+                                    <div class="w-10 h-10 rounded-xl flex items-center justify-center text-white text-lg" style="background: ${item.color}">
+                                        <i class="fas ${item.icon}"></i>
+                                    </div>
+                                    <div class="min-w-0">
+                                        <div class="font-semibold truncate">${escapeHtml(item.title)}</div>
+                                        <div class="text-xs text-gray-400 truncate">${item.note || ''}</div>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-1 flex-shrink-0 ml-1">
+                                    <button onclick="editItem('${item.id}')" class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 hover:text-primary transition-all">
+                                        <i class="fas fa-edit text-sm"></i>
+                                    </button>
+                                    <button onclick="deleteItem('${item.id}')" class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 hover:text-danger transition-all">
+                                        <i class="fas fa-trash text-sm"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="flex items-center justify-between mt-auto">
+                                <div class="flex items-center gap-3">
+                                    <div class="text-center">
+                                        <div class="text-xl font-bold" style="color: ${item.color}">${todayCount}</div>
+                                        <div class="text-xs text-gray-400">今日</div>
+                                    </div>
+                                    <div class="text-center">
+                                        <div class="text-xl font-bold text-gray-600 dark:text-gray-300">${totalCount}</div>
+                                        <div class="text-xs text-gray-400">总计</div>
+                                    </div>
+                                </div>
+                                <button onclick="recordItem('${item.id}')" class="px-4 py-2 rounded-xl text-white font-bold text-base transition-all hover:scale-105 active:scale-95" style="background: ${item.color}">
+                                    +1
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }
+            }).join('');
+        }
+
+        function filterItems(filter) {
+            currentFilter = filter;
+            document.querySelectorAll('.filter-btn').forEach(b => {
+                b.classList.remove('bg-primary', 'text-white');
+                b.classList.add('bg-gray-200', 'dark:bg-gray-700');
+            });
+            document.getElementById('filter-' + filter).classList.add('bg-primary', 'text-white');
+            document.getElementById('filter-' + filter).classList.remove('bg-gray-200', 'dark:bg-gray-700');
+            renderItems();
+        }
+
+        // ==================== Item Modal ====================
+        function openItemModal(forceType = null, itemId = null) {
+            const modal = document.getElementById('item-modal');
+            const select = document.getElementById('item-project');
+            select.innerHTML = '<option value="">默认</option>' + projects.map(p => `<option value="${escapeHtml(p)}">${escapeHtml(p)}</option>`).join('');
+
+            // Setup habit icons
+            const iconContainer = document.getElementById('habit-icons');
+            iconContainer.innerHTML = habitIcons.map(icon => `
+                <button onclick="setHabitIcon('${icon}')" class="w-10 h-10 rounded-xl flex items-center justify-center text-lg transition-all ${currentHabitIcon === icon ? 'bg-primary text-white' : 'bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600'}">
+                    <i class="fas ${icon}"></i>
+                </button>
+            `).join('');
+
+            // Setup log icons
+            const logIconContainer = document.getElementById('log-icons');
+            logIconContainer.innerHTML = habitIcons.map(icon => `
+                <button onclick="setLogIcon('${icon}')" class="w-10 h-10 rounded-xl flex items-center justify-center text-lg transition-all ${currentLogIcon === icon ? 'bg-primary text-white' : 'bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600'}">
+                    <i class="fas ${icon}"></i>
+                </button>
+            `).join('');
+
+            if (itemId) {
+                const item = items.find(i => i.id === itemId);
+                document.getElementById('item-modal-title').textContent = '编辑事项';
+                document.getElementById('item-id').value = item.id;
+                document.getElementById('item-title').value = item.title;
+                document.getElementById('item-project').value = item.project || '';
+                document.getElementById('item-note').value = item.note || '';
+                
+                setItemType(item.type);
+                if (item.type === 'todo') {
+                    document.getElementById('item-due').value = item.due || '';
+                    setPriority(item.priority || 'medium');
+                } else if (item.type === 'habit') {
+                    setHabitColor(item.color);
+                    setHabitIcon(item.icon);
+                    setFrequency(item.frequency);
+                    selectedWeekDays = item.weekDays || [];
+                    updateWeekDayButtons();
+                } else if (item.type === 'log') {
+                    setLogColor(item.color);
+                    setLogIcon(item.icon);
+                }
+            } else {
+                document.getElementById('item-modal-title').textContent = '新建事项';
+                document.getElementById('item-id').value = '';
+                document.getElementById('item-title').value = '';
+                document.getElementById('item-project').value = '';
+                document.getElementById('item-note').value = '';
+                document.getElementById('item-due').value = getToday();
+                
+                if (forceType) {
+                    setItemType(forceType);
+                } else {
+                    setItemType('todo');
+                }
+                
+                setPriority('medium');
+                setHabitColor('#ef4444');
+                setHabitIcon('fa-star');
+                setFrequency('daily');
+                selectedWeekDays = [];
+                updateWeekDayButtons();
+                setLogColor('#ef4444');
+                setLogIcon('fa-star');
+            }
+            modal.classList.remove('hidden');
+        }
+
+        function closeItemModal() {
+            document.getElementById('item-modal').classList.add('hidden');
+        }
+
+        function setItemType(type) {
+            currentItemType = type;
+            document.getElementById('type-todo').classList.toggle('bg-primary', type === 'todo');
+            document.getElementById('type-todo').classList.toggle('text-white', type === 'todo');
+            document.getElementById('type-habit').classList.toggle('bg-primary', type === 'habit');
+            document.getElementById('type-habit').classList.toggle('text-white', type === 'habit');
+            document.getElementById('type-log').classList.toggle('bg-primary', type === 'log');
+            document.getElementById('type-log').classList.toggle('text-white', type === 'log');
+            document.getElementById('todo-fields').classList.toggle('hidden', type !== 'todo');
+            document.getElementById('habit-fields').classList.toggle('hidden', type !== 'habit');
+            document.getElementById('log-fields').classList.toggle('hidden', type !== 'log');
+        }
+
+        function setPriority(p) {
+            currentPriority = p;
+            document.querySelectorAll('[id^="pri-"]').forEach(b => {
+                b.classList.remove('bg-warning', 'bg-danger', 'bg-success', 'text-white');
+                b.classList.add('border');
+            });
+            const btn = document.getElementById('pri-' + p);
+            btn.classList.remove('border');
+            if (p === 'high') btn.classList.add('bg-danger', 'text-white');
+            else if (p === 'medium') btn.classList.add('bg-warning', 'text-white');
+            else btn.classList.add('bg-success', 'text-white');
+        }
+
+        function setHabitColor(color) {
+            currentHabitColor = color;
+            document.querySelectorAll('.habit-color-btn').forEach(b => {
+                b.classList.remove('ring-2', 'ring-offset-2', 'ring-primary');
+            });
+            event.target.classList.add('ring-2', 'ring-offset-2', 'ring-primary');
+        }
+
+        function setHabitIcon(icon) {
+            currentHabitIcon = icon;
+            const iconContainer = document.getElementById('habit-icons');
+            iconContainer.innerHTML = habitIcons.map(ic => `
+                <button onclick="setHabitIcon('${ic}')" class="w-10 h-10 rounded-xl flex items-center justify-center text-lg transition-all ${currentHabitIcon === ic ? 'bg-primary text-white' : 'bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600'}">
+                    <i class="fas ${ic}"></i>
+                </button>
+            `).join('');
+        }
+
+        function setLogColor(color) {
+            currentLogColor = color;
+            document.querySelectorAll('.log-color-btn').forEach(b => {
+                b.classList.remove('ring-2', 'ring-offset-2', 'ring-primary');
+            });
+            event.target.classList.add('ring-2', 'ring-offset-2', 'ring-primary');
+        }
+
+        function setLogIcon(icon) {
+            currentLogIcon = icon;
+            const iconContainer = document.getElementById('log-icons');
+            iconContainer.innerHTML = habitIcons.map(ic => `
+                <button onclick="setLogIcon('${ic}')" class="w-10 h-10 rounded-xl flex items-center justify-center text-lg transition-all ${currentLogIcon === ic ? 'bg-primary text-white' : 'bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600'}">
+                    <i class="fas ${ic}"></i>
+                </button>
+            `).join('');
+        }
+
+        function setFrequency(freq) {
+            currentFrequency = freq;
+            document.getElementById('freq-daily').classList.toggle('bg-primary', freq === 'daily');
+            document.getElementById('freq-daily').classList.toggle('text-white', freq === 'daily');
+            document.getElementById('freq-weekly').classList.toggle('bg-primary', freq === 'weekly');
+            document.getElementById('freq-weekly').classList.toggle('text-white', freq === 'weekly');
+            document.getElementById('weekly-days').classList.toggle('hidden', freq !== 'weekly');
+        }
+
+        function toggleWeekDay(day) {
+            if (selectedWeekDays.includes(day)) {
+                selectedWeekDays = selectedWeekDays.filter(d => d !== day);
+            } else {
+                selectedWeekDays.push(day);
+            }
+            updateWeekDayButtons();
+        }
+
+        function updateWeekDayButtons() {
+            document.querySelectorAll('.week-day-btn').forEach(btn => {
+                const day = parseInt(btn.dataset.day);
+                if (selectedWeekDays.includes(day)) {
+                    btn.classList.add('bg-primary', 'text-white');
+                    btn.classList.remove('dark:border-gray-700');
+                } else {
+                    btn.classList.remove('bg-primary', 'text-white');
+                    btn.classList.add('dark:border-gray-700');
+                }
+            });
+        }
+
+        function saveItem() {
+            const id = document.getElementById('item-id').value;
+            const title = document.getElementById('item-title').value.trim();
+            if (!title) return alert('请输入事项名称');
+
+            let item;
+            if (currentItemType === 'todo') {
+                item = {
+                    id: id || generateId(),
+                    title,
+                    type: 'todo',
+                    project: document.getElementById('item-project').value,
+                    due: document.getElementById('item-due').value,
+                    priority: currentPriority,
+                    note: document.getElementById('item-note').value.trim(),
+                    completed: id ? items.find(i => i.id === id)?.completed || false : false,
+                    completedAt: id ? items.find(i => i.id === id)?.completedAt || null : null,
+                    createdAt: id ? items.find(i => i.id === id)?.createdAt || new Date().toISOString() : new Date().toISOString()
+                };
+            } else if (currentItemType === 'habit') {
+                item = {
+                    id: id || generateId(),
+                    title,
+                    type: 'habit',
+                    project: document.getElementById('item-project').value,
+                    icon: currentHabitIcon,
+                    color: currentHabitColor,
+                    frequency: currentFrequency,
+                    weekDays: currentFrequency === 'weekly' ? [...selectedWeekDays] : null,
+                    note: document.getElementById('item-note').value.trim(),
+                    checks: id ? items.find(i => i.id === id)?.checks || [] : [],
+                    createdAt: id ? items.find(i => i.id === id)?.createdAt || new Date().toISOString() : new Date().toISOString()
+                };
+            } else if (currentItemType === 'log') {
+                item = {
+                    id: id || generateId(),
+                    title,
+                    type: 'log',
+                    project: document.getElementById('item-project').value,
+                    icon: currentLogIcon,
+                    color: currentLogColor,
+                    note: document.getElementById('item-note').value.trim(),
+                    checks: id ? items.find(i => i.id === id)?.checks || [] : [],
+                    createdAt: id ? items.find(i => i.id === id)?.createdAt || new Date().toISOString() : new Date().toISOString()
+                };
+            }
+
+            if (id) {
+                const idx = items.findIndex(i => i.id === id);
+                items[idx] = item;
+            } else {
+                items.push(item);
+            }
+
+            saveData();
+            closeItemModal();
+            if (currentView === 'items') renderItems();
+            if (currentView === 'dashboard') renderDashboard();
+            if (currentView === 'calendar') renderCalendar();
+        }
+
+        function editItem(id) {
+            openItemModal(null, id);
+        }
+
+        function toggleItem(id) {
+            const item = items.find(i => i.id === id);
+            if (!item) return;
+            
+            if (item.type === 'todo') {
+                item.completed = !item.completed;
+                item.completedAt = item.completed ? new Date().toISOString() : null;
+            } else {
+                const today = getToday();
+                if (!item.checks) item.checks = [];
+                if (item.checks.includes(today)) {
+                    item.checks = item.checks.filter(d => d !== today);
+                } else {
+                    item.checks.push(today);
+                }
+            }
+            
+            saveData();
+            if (currentView === 'items') renderItems();
+            if (currentView === 'dashboard') renderDashboard();
+            if (currentView === 'calendar') renderCalendar();
+        }
+
+        function deleteItem(id) {
+            if (confirm('确定删除这个事项吗？')) {
+                items = items.filter(i => i.id !== id);
+                saveData();
+                if (currentView === 'items') renderItems();
+                if (currentView === 'dashboard') renderDashboard();
+            }
+        }
+
+        function recordItem(id) {
+            const item = items.find(i => i.id === id);
+            if (!item || item.type !== 'log') return;
+            const now = new Date().toISOString();
+            if (!item.checks) item.checks = [];
+            item.checks.push(now);
+            saveData();
+            if (currentView === 'items') renderItems();
+            if (currentView === 'dashboard') renderDashboard();
+        }
+
+        function addNewProject() {
+            const name = prompt('输入新项目名称：');
+            if (name && !projects.includes(name)) {
+                projects.push(name.trim());
+                saveData();
+                const select = document.getElementById('item-project');
+                select.innerHTML = '<option value="">默认</option>' + projects.map(p => `<option value="${escapeHtml(p)}">${escapeHtml(p)}</option>`).join('');
+                select.value = name.trim();
+            }
+        }
+
+        // ==================== Habits Helper ====================
+        function getWeekDayName(idx) {
+            return ['周日','周一','周二','周三','周四','周五','周六'][idx];
+        }
+
+        function getWeekProgress(item) {
+            const today = new Date();
+            const progress = [];
+            for (let i = 6; i >= 0; i--) {
+                const d = new Date(today);
+                d.setDate(d.getDate() - i);
+                const dateStr = d.toISOString().split('T')[0];
+                progress.push(isHabitDone(item.id, dateStr));
+            }
+            return progress;
+        }
+
+        function getTodayHabits() {
+            const today = new Date();
+            const dayOfWeek = today.getDay();
+            return items.filter(i => {
+                if (i.type !== 'habit') return false;
+                if (i.frequency === 'daily') return true;
+                if (i.frequency === 'weekly' && i.weekDays) {
+                    return i.weekDays.includes(dayOfWeek);
+                }
+                return true;
+            });
+        }
+
+        function isHabitDone(itemId, date) {
+            const item = items.find(i => i.id === itemId);
+            return item && item.checks && item.checks.includes(date);
+        }
+
+        function calculateStreak(item) {
+            if (!item.checks || item.checks.length === 0) return 0;
+            const sorted = [...item.checks].sort().reverse();
+            let streak = 0;
+            let checkDate = new Date();
+            const today = getToday();
+
+            if (sorted.includes(today)) {
+                streak = 1;
+                checkDate.setDate(checkDate.getDate() - 1);
+            } else if (sorted.includes(getYesterday())) {
+                checkDate.setDate(checkDate.getDate() - 1);
+            } else {
+                return 0;
+            }
+
+            while (true) {
+                const dateStr = checkDate.toISOString().split('T')[0];
+                if (sorted.includes(dateStr)) {
+                    streak++;
+                    checkDate.setDate(checkDate.getDate() - 1);
+                } else {
+                    break;
+                }
+            }
+            return streak;
+        }
+
+        function getYesterday() {
+            const d = new Date();
+            d.setDate(d.getDate() - 1);
+            return d.toISOString().split('T')[0];
+        }
+
+        // ==================== Log Helpers ====================
+        function getTodayLogCount(item) {
+            if (!item.checks) return 0;
+            const today = getToday();
+            return item.checks.filter(c => c.startsWith(today)).length;
+        }
+
+        function getLogCountInRange(item, days) {
+            if (!item.checks) return 0;
+            const now = new Date();
+            const cutoff = new Date(now);
+            cutoff.setDate(cutoff.getDate() - days);
+            const cutoffStr = cutoff.toISOString().split('T')[0];
+            return item.checks.filter(c => {
+                const checkDate = c.split('T')[0];
+                return checkDate >= cutoffStr;
+            }).length;
+        }
+
+        function getLogAvgFrequency(item) {
+            if (!item.checks || item.checks.length === 0) return 0;
+            const created = new Date(item.createdAt);
+            const now = new Date();
+            const daysDiff = Math.max(1, Math.ceil((now - created) / (1000 * 60 * 60 * 24)));
+            return (item.checks.length / daysDiff).toFixed(1);
+        }
+
+        // ==================== Calendar ====================
+        function setCalendarView(view) {
+            calendarView = view;
+            document.querySelectorAll('[id^="cal-view-"]').forEach(b => {
+                b.classList.remove('bg-primary', 'text-white');
+                b.classList.add('bg-gray-200', 'dark:bg-gray-700');
+            });
+            document.getElementById('cal-view-' + view).classList.add('bg-primary', 'text-white');
+            document.getElementById('cal-view-' + view).classList.remove('bg-gray-200', 'dark:bg-gray-700');
+            renderCalendar();
+        }
+
+        function setCalendarType(type) {
+            calendarType = type;
+            document.querySelectorAll('.cal-type-btn').forEach(b => {
+                b.classList.remove('bg-primary', 'text-white');
+                b.classList.add('bg-gray-200', 'dark:bg-gray-700');
+            });
+            document.getElementById('cal-type-' + type).classList.add('bg-primary', 'text-white');
+            document.getElementById('cal-type-' + type).classList.remove('bg-gray-200', 'dark:bg-gray-700');
+            renderCalendar();
+        }
+
+        function renderCalendar() {
+            const container = document.getElementById('calendar-container');
+            if (calendarView === 'week') {
+                renderWeekCalendar(container);
+            } else if (calendarView === 'month') {
+                renderMonthCalendar(container);
+            } else {
+                renderYearCalendar(container);
+            }
+        }
+
+        function renderWeekCalendar(container) {
+            const today = new Date();
+            let html = '<div class="grid grid-cols-7 gap-2">';
+            for (let i = 0; i < 7; i++) {
+                const d = new Date(today);
+                d.setDate(d.getDate() - today.getDay() + i);
+                const dateStr = d.toISOString().split('T')[0];
+                const isToday = dateStr === getToday();
+                const dayTodos = items.filter(item => item.type === 'todo' && item.due === dateStr && (calendarType === 'both' || calendarType === 'todo'));
+                const dayHabits = items.filter(item => {
+                    if (item.type !== 'habit') return false;
+                    if (calendarType === 'todo') return false;
+                    return isHabitDone(item.id, dateStr);
+                });
+                const dayLogs = items.filter(item => {
+                    if (item.type !== 'log') return false;
+                    if (calendarType === 'todo' || calendarType === 'habit') return false;
+                    return item.checks && item.checks.some(c => c.startsWith(dateStr));
+                });
+
+                html += `
+                    <div class="calendar-day rounded-xl p-3 ${isToday ? 'bg-primary/10 border-2 border-primary' : 'bg-gray-50 dark:bg-gray-700/50'} min-h-[120px]">
+                        <div class="text-center mb-2">
+                            <div class="text-xs text-gray-400">${['日','一','二','三','四','五','六'][i]}</div>
+                            <div class="text-lg font-bold ${isToday ? 'text-primary' : ''}">${d.getDate()}</div>
+                        </div>
+                        <div class="space-y-1">
+                            ${dayTodos.map(t => `
+                                <div class="text-xs p-1 rounded ${t.completed ? 'bg-success/20 text-success line-through' : 'bg-warning/20 text-warning'} truncate">${escapeHtml(t.title)}</div>
+                            `).join('')}
+                            ${dayHabits.map(h => `
+                                <div class="text-xs p-1 rounded text-white truncate" style="background: ${h.color}"><i class="fas ${h.icon} mr-1"></i>${escapeHtml(h.title)}</div>
+                            `).join('')}
+                            ${dayLogs.map(l => `
+                                <div class="text-xs p-1 rounded text-white truncate" style="background: ${l.color}"><i class="fas ${l.icon} mr-1"></i>${escapeHtml(l.title)} x${l.checks.filter(c => c.startsWith(dateStr)).length}</div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+            html += '</div>';
+            container.innerHTML = html;
+        }
+
+        function renderMonthCalendar(container) {
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = today.getMonth();
+            const firstDay = new Date(year, month, 1);
+            const lastDay = new Date(year, month + 1, 0);
+            const startPadding = firstDay.getDay();
+
+            let html = `
+                <div class="text-center mb-4">
+                    <h3 class="text-xl font-bold">${year}年 ${month + 1}月</h3>
+                </div>
+                <div class="grid grid-cols-7 gap-1 mb-2">
+                    ${['日','一','二','三','四','五','六'].map(d => `<div class="text-center text-sm text-gray-400 py-2">${d}</div>`).join('')}
+                </div>
+                <div class="grid grid-cols-7 gap-1">
+            `;
+
+            for (let i = 0; i < startPadding; i++) {
+                html += '<div></div>';
+            }
+
+            for (let day = 1; day <= lastDay.getDate(); day++) {
+                const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                const isToday = dateStr === getToday();
+                const dayTodos = items.filter(item => item.type === 'todo' && item.due === dateStr && (calendarType === 'both' || calendarType === 'todo'));
+                const dayHabits = items.filter(item => {
+                    if (item.type !== 'habit') return false;
+                    if (calendarType === 'todo') return false;
+                    return isHabitDone(item.id, dateStr);
+                });
+                const dayLogs = items.filter(item => {
+                    if (item.type !== 'log') return false;
+                    if (calendarType === 'todo' || calendarType === 'habit') return false;
+                    return item.checks && item.checks.some(c => c.startsWith(dateStr));
+                });
+                const hasItems = dayTodos.length > 0 || dayHabits.length > 0 || dayLogs.length > 0;
+
+                html += `
+                    <div class="calendar-day rounded-lg p-2 ${isToday ? 'bg-primary/10 border-2 border-primary' : 'bg-gray-50 dark:bg-gray-700/30'} min-h-[80px] cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700" onclick="showDayDetail('${dateStr}')">
+                        <div class="text-sm font-medium ${isToday ? 'text-primary' : ''}">${day}</div>
+                        <div class="flex gap-1 mt-1 flex-wrap">
+                            ${dayTodos.map(t => `<div class="w-2 h-2 rounded-full ${t.completed ? 'bg-success' : 'bg-warning'}"></div>`).join('')}
+                            ${dayHabits.map(h => `<div class="w-2 h-2 rounded-full" style="background: ${h.color}"></div>`).join('')}
+                            ${dayLogs.map(l => `<div class="w-2 h-2 rounded-full" style="background: ${l.color}"></div>`).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+            html += '</div>';
+            container.innerHTML = html;
+        }
+
+        function renderYearCalendar(container) {
+            const year = new Date().getFullYear();
+            let html = `<div class="text-center mb-4"><h3 class="text-xl font-bold">${year}年</h3></div><div class="grid grid-cols-3 md:grid-cols-4 gap-4">`;
+
+            for (let month = 0; month < 12; month++) {
+                const firstDay = new Date(year, month, 1);
+                const lastDay = new Date(year, month + 1, 0);
+                let doneCount = 0;
+                let totalCount = 0;
+
+                for (let day = 1; day <= lastDay.getDate(); day++) {
+                    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                    const dayTodos = items.filter(item => item.type === 'todo' && item.due === dateStr && (calendarType === 'both' || calendarType === 'todo'));
+                    const dayHabits = items.filter(item => {
+                        if (item.type !== 'habit') return false;
+                        if (calendarType === 'todo') return false;
+                        return isHabitDone(item.id, dateStr);
+                    });
+                    const dayLogs = items.filter(item => {
+                        if (item.type !== 'log') return false;
+                        if (calendarType === 'todo' || calendarType === 'habit') return false;
+                        return item.checks && item.checks.some(c => c.startsWith(dateStr));
+                    });
+                    doneCount += dayTodos.filter(t => t.completed).length + dayHabits.length + dayLogs.length;
+                    totalCount += dayTodos.length + getTodayHabits().length + items.filter(i => i.type === 'log').length;
+                }
+
+                const rate = totalCount > 0 ? Math.round(doneCount / totalCount * 100) : 0;
+
+                html += `
+                    <div class="bg-gray-50 dark:bg-gray-700/30 rounded-xl p-4">
+                        <div class="font-semibold mb-2">${month + 1}月</div>
+                        <div class="relative w-16 h-16 mx-auto">
+                            <svg class="progress-ring w-16 h-16" viewBox="0 0 64 64">
+                                <circle cx="32" cy="32" r="28" fill="none" stroke="currentColor" stroke-width="6" class="text-gray-200 dark:text-gray-600"/>
+                                <circle cx="32" cy="32" r="28" fill="none" stroke="currentColor" stroke-width="6" stroke-linecap="round"
+                                    stroke-dasharray="${2 * Math.PI * 28}" stroke-dashoffset="${2 * Math.PI * 28 * (1 - rate / 100)}"
+                                    class="text-primary transition-all duration-1000"/>
+                            </svg>
+                            <div class="absolute inset-0 flex items-center justify-center text-sm font-bold">${rate}%</div>
+                        </div>
+                        <div class="text-xs text-gray-400 text-center mt-2">${doneCount}/${totalCount} 完成</div>
+                    </div>
+                `;
+            }
+            html += '</div>';
+            container.innerHTML = html;
+        }
+
+        function showDayDetail(dateStr) {
+            const dayTodos = items.filter(item => item.type === 'todo' && item.due === dateStr);
+            const dayHabits = items.filter(item => item.type === 'habit' && isHabitDone(item.id, dateStr));
+            const dayLogs = items.filter(item => item.type === 'log' && item.checks && item.checks.some(c => c.startsWith(dateStr)));
+            const logText = dayLogs.map(l => `${l.title} x${l.checks.filter(c => c.startsWith(dateStr)).length}`).join('\n') || '无';
+            alert(`${dateStr}\n\n待办：${dayTodos.map(t => (t.completed ? '✓' : '○') + ' ' + t.title).join('\n') || '无'}\n\n习惯：${dayHabits.map(h => '✓ ' + h.title).join('\n') || '无'}\n\n记录：${logText}`);
+        }
+
+        // ==================== Stats ====================
+        function calculateWeekRate() {
+            let total = 0, done = 0;
+            for (let i = 6; i >= 0; i--) {
+                const d = new Date();
+                d.setDate(d.getDate() - i);
+                const dateStr = d.toISOString().split('T')[0];
+                const dayTodos = items.filter(item => item.type === 'todo' && item.due === dateStr);
+                const dayHabits = items.filter(item => item.type === 'habit' && isHabitDone(item.id, dateStr));
+                total += dayTodos.length + getTodayHabits().length;
+                done += dayTodos.filter(t => t.completed).length + dayHabits.length;
+            }
+            return total > 0 ? Math.round(done / total * 100) : 0;
+        }
+
+        function renderStats() {
+            // Habit trend chart
+            const trendCtx = document.getElementById('habit-trend-chart').getContext('2d');
+            const labels = [];
+            const data = [];
+            for (let i = 6; i >= 0; i--) {
+                const d = new Date();
+                d.setDate(d.getDate() - i);
+                const dateStr = d.toISOString().split('T')[0];
+                labels.push(d.getDate() + '日');
+                const doneHabits = items.filter(item => item.type === 'habit' && isHabitDone(item.id, dateStr)).length;
+                data.push(doneHabits);
+            }
+
+            if (charts.trend) charts.trend.destroy();
+            charts.trend = new Chart(trendCtx, {
+                type: 'line',
+                data: {
+                    labels,
+                    datasets: [{
+                        label: '打卡习惯数',
+                        data,
+                        borderColor: '#6366f1',
+                        backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { beginAtZero: true, ticks: { stepSize: 1 } }
+                    }
+                }
+            });
+
+            // Habit pie chart
+            const pieCtx = document.getElementById('habit-pie-chart').getContext('2d');
+            const habitItems = items.filter(i => i.type === 'habit');
+            const habitRates = habitItems.map(h => {
+                const today = new Date();
+                let possibleDays = 0;
+                for (let i = 29; i >= 0; i--) {
+                    const d = new Date(today);
+                    d.setDate(d.getDate() - i);
+                    if (h.frequency === 'daily' || (h.frequency === 'weekly' && h.weekDays && h.weekDays.includes(d.getDay()))) {
+                        possibleDays++;
+                    }
+                }
+                const doneDays = h.checks ? h.checks.filter(c => {
+                    const checkDate = new Date(c);
+                    const daysDiff = (today - checkDate) / (1000 * 60 * 60 * 24);
+                    return daysDiff <= 30;
+                }).length : 0;
+                return { name: h.title, rate: possibleDays > 0 ? Math.round(doneDays / possibleDays * 100) : 0, color: h.color };
+            });
+
+            if (charts.pie) charts.pie.destroy();
+            charts.pie = new Chart(pieCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: habitRates.map(h => h.name),
+                    datasets: [{
+                        data: habitRates.map(h => h.rate),
+                        backgroundColor: habitRates.map(h => h.color)
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { boxWidth: 12 } }
+                    }
+                }
+            });
+
+            // Todo stats chart
+            const todoCtx = document.getElementById('todo-stats-chart').getContext('2d');
+            const todoLabels = [];
+            const todoDone = [];
+            const todoTotal = [];
+            for (let i = 6; i >= 0; i--) {
+                const d = new Date();
+                d.setDate(d.getDate() - i);
+                const dateStr = d.toISOString().split('T')[0];
+                todoLabels.push(d.getDate() + '日');
+                const dayTodos = items.filter(item => item.type === 'todo' && item.due === dateStr);
+                todoDone.push(dayTodos.filter(t => t.completed).length);
+                todoTotal.push(dayTodos.length);
+            }
+
+            if (charts.todo) charts.todo.destroy();
+            charts.todo = new Chart(todoCtx, {
+                type: 'bar',
+                data: {
+                    labels: todoLabels,
+                    datasets: [
+                        { label: '已完成', data: todoDone, backgroundColor: '#22c55e' },
+                        { label: '未完成', data: todoTotal.map((t, i) => t - todoDone[i]), backgroundColor: '#f59e0b' }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } }
+                }
+            });
+
+            // Habit ranking
+            const ranking = document.getElementById('habit-ranking');
+            const sortedHabits = [...habitItems].sort((a, b) => calculateStreak(b) - calculateStreak(a));
+            ranking.innerHTML = sortedHabits.map((h, i) => {
+                const streak = calculateStreak(h);
+                const totalChecks = h.checks ? h.checks.length : 0;
+                return `
+                    <div class="flex items-center gap-4 p-3 rounded-xl bg-gray-50 dark:bg-gray-700/30">
+                        <div class="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold">${i + 1}</div>
+                        <div class="w-10 h-10 rounded-xl flex items-center justify-center text-white" style="background: ${h.color}">
+                            <i class="fas ${h.icon}"></i>
+                        </div>
+                        <div class="flex-1">
+                            <div class="font-medium">${escapeHtml(h.title)}</div>
+                            <div class="text-xs text-gray-400">累计打卡 ${totalChecks} 天</div>
+                        </div>
+                        <div class="flex items-center gap-1 text-warning">
+                            <i class="fas fa-fire ${streak > 0 ? 'streak-flame' : ''}"></i>
+                            <span class="font-bold">${streak}</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            // Log frequency chart
+            const logCtx = document.getElementById('log-stats-chart').getContext('2d');
+            const logLabels = [];
+            const logData = [];
+            const logItemsAll = items.filter(i => i.type === 'log');
+            for (let i = 6; i >= 0; i--) {
+                const d = new Date();
+                d.setDate(d.getDate() - i);
+                const dateStr = d.toISOString().split('T')[0];
+                logLabels.push(d.getDate() + '日');
+                let dayLogCount = 0;
+                logItemsAll.forEach(item => {
+                    if (item.checks) {
+                        dayLogCount += item.checks.filter(c => c.startsWith(dateStr)).length;
+                    }
+                });
+                logData.push(dayLogCount);
+            }
+
+            if (charts.logStats) charts.logStats.destroy();
+            charts.logStats = new Chart(logCtx, {
+                type: 'bar',
+                data: {
+                    labels: logLabels,
+                    datasets: [{
+                        label: '记录次数',
+                        data: logData,
+                        backgroundColor: '#06b6d4',
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { beginAtZero: true, ticks: { stepSize: 1 } }
+                    }
+                }
+            });
+        }
+
+        // ==================== Export/Import ====================
+        function exportData() {
+            const data = { items, projects, exportDate: new Date().toISOString() };
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `habit-tracker-backup-${getToday()}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function importData() {
+            document.getElementById('import-file').click();
+        }
+
+        function handleImport(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    if (data.items) items = data.items;
+                    if (data.projects) projects = data.projects;
+                    saveData();
+                    alert('数据导入成功！');
+                    showView(currentView);
+                } catch (err) {
+                    alert('导入失败：文件格式错误');
+                }
+            };
+            reader.readAsText(file);
+            event.target.value = '';
+        }
+
+        // ==================== Schedule ====================
+        const WORKOUT_SCHEDULE = [
+            { week: 1, level: '初阶', days: [
+                { day: 1, type: '下肢', desc: '' },
+                { day: 2, type: '休息', desc: '' },
+                { day: 3, type: '上肢', desc: '' },
+                { day: 4, type: '休息', desc: '' },
+                { day: 5, type: '下肢', desc: '' },
+                { day: 6, type: '上肢', desc: '' },
+                { day: 7, type: '休息', desc: '' }
+            ]},
+            { week: 2, level: '初阶', days: [
+                { day: 8, type: '下肢', desc: '' },
+                { day: 9, type: '休息', desc: '' },
+                { day: 10, type: '上肢', desc: '' },
+                { day: 11, type: '休息', desc: '' },
+                { day: 12, type: '下肢', desc: '瑜伽休息术' },
+                { day: 13, type: '上肢', desc: '' },
+                { day: 14, type: '休息', desc: '' }
+            ]},
+            { week: 3, level: '初阶', days: [
+                { day: 15, type: '下肢', desc: '' },
+                { day: 16, type: '休息', desc: '' },
+                { day: 17, type: '上肢', desc: '' },
+                { day: 18, type: '休息', desc: '' },
+                { day: 19, type: '下肢', desc: '筋膜放松' },
+                { day: 20, type: '上肢', desc: '' },
+                { day: 21, type: '休息', desc: '' }
+            ]},
+            { week: 4, level: '初阶', days: [
+                { day: 22, type: '下肢', desc: '' },
+                { day: 23, type: '休息', desc: '' },
+                { day: 24, type: '上肢', desc: '' },
+                { day: 25, type: '休息', desc: '' },
+                { day: 26, type: '下肢', desc: '冥想' },
+                { day: 27, type: '上肢', desc: '' },
+                { day: 28, type: '休息', desc: '' }
+            ]},
+            { week: 5, level: '中阶', days: [
+                { day: 29, type: '下肢', desc: '筋膜放松' },
+                { day: 30, type: '休息', desc: '' },
+                { day: 31, type: '上肢', desc: '' },
+                { day: 32, type: '休息', desc: '' },
+                { day: 33, type: '下肢', desc: '' },
+                { day: 34, type: '上肢', desc: '' },
+                { day: 35, type: '休息', desc: '' }
+            ]},
+            { week: 6, level: '中阶', days: [
+                { day: 36, type: '下肢', desc: '' },
+                { day: 37, type: '休息', desc: '' },
+                { day: 38, type: '上肢', desc: '' },
+                { day: 39, type: '休息', desc: '' },
+                { day: 40, type: '下肢', desc: '' },
+                { day: 41, type: '上肢', desc: '' },
+                { day: 42, type: '休息', desc: '' }
+            ]},
+            { week: 7, level: '中高阶', days: [
+                { day: 43, type: '下肢', desc: '' },
+                { day: 44, type: '休息', desc: '' },
+                { day: 45, type: '上肢', desc: '' },
+                { day: 46, type: '休息', desc: '' },
+                { day: 47, type: '下肢', desc: '冥想日' },
+                { day: 48, type: '上肢', desc: '' },
+                { day: 49, type: '休息', desc: '' }
+            ]},
+            { week: 8, level: '中高阶', days: [
+                { day: 50, type: '下肢', desc: '筋膜放松' },
+                { day: 51, type: '休息', desc: '' },
+                { day: 52, type: '上肢', desc: '' },
+                { day: 53, type: '休息', desc: '' },
+                { day: 54, type: '下肢', desc: '' },
+                { day: 55, type: '上肢', desc: '' },
+                { day: 56, type: '休息', desc: '' }
+            ]},
+            { week: 9, level: '高阶', days: [
+                { day: 57, type: '下肢', desc: '' },
+                { day: 58, type: '休息', desc: '' },
+                { day: 59, type: '上肢', desc: '' },
+                { day: 60, type: '休息', desc: '' },
+                { day: 61, type: '下肢', desc: '' },
+                { day: 62, type: '上肢', desc: '' },
+                { day: 63, type: '休息', desc: '' }
+            ]},
+            { week: 10, level: '高阶', days: [
+                { day: 64, type: '下肢', desc: '' },
+                { day: 65, type: '休息', desc: '' },
+                { day: 66, type: '上肢', desc: '' },
+                { day: 67, type: '休息', desc: '' },
+                { day: 68, type: '下肢', desc: '筋膜放松' },
+                { day: 69, type: '上肢', desc: '' },
+                { day: 70, type: '休息', desc: '' }
+            ]},
+            { week: 11, level: '高阶', days: [
+                { day: 71, type: '下肢', desc: '' },
+                { day: 72, type: '休息', desc: '' },
+                { day: 73, type: '上肢', desc: '' },
+                { day: 74, type: '休息', desc: '' },
+                { day: 75, type: '下肢', desc: '' },
+                { day: 76, type: '上肢', desc: '' },
+                { day: 77, type: '休息', desc: '' }
+            ]},
+            { week: 12, level: '高阶', days: [
+                { day: 78, type: '生理期周', desc: '' },
+                { day: 79, type: 'Day 1', desc: '' },
+                { day: 80, type: 'Day 2', desc: '' },
+                { day: 81, type: 'Day 3', desc: '' },
+                { day: 82, type: 'Day 4', desc: '' },
+                { day: 83, type: 'Day 5', desc: '' },
+                { day: 84, type: '休息', desc: '结束后按原计划继续' }
+            ]}
+        ];
+
+        function getScheduleDayDate(startDateStr, dayNum) {
+            if (!startDateStr) return null;
+            const start = new Date(startDateStr);
+            const d = new Date(start);
+            d.setDate(d.getDate() + dayNum - 1);
+            return d.toISOString().split('T')[0];
+        }
+
+        function getCurrentScheduleDay() {
+            const startDate = scheduleData.startDate;
+            if (!startDate) return null;
+            const start = new Date(startDate);
+            const today = new Date();
+            const diffDays = Math.floor((today - start) / (1000 * 60 * 60 * 24));
+            if (diffDays < 0 || diffDays >= 84) return null;
+            return diffDays + 1;
+        }
+
+        function saveScheduleStartDate() {
+            const date = document.getElementById('schedule-start-date').value;
+            if (date) {
+                scheduleData.startDate = date;
+                localStorage.setItem('ht_schedule', JSON.stringify(scheduleData));
+                renderSchedule();
+            }
+        }
+
+        function isScheduleDayChecked(dayNum) {
+            const dateStr = getScheduleDayDate(scheduleData.startDate, dayNum);
+            if (!dateStr) return false;
+            return scheduleChecks.includes(dateStr);
+        }
+
+        function toggleScheduleDay(dayNum) {
+            const dateStr = getScheduleDayDate(scheduleData.startDate, dayNum);
+            if (!dateStr) return;
+            if (scheduleChecks.includes(dateStr)) {
+                scheduleChecks = scheduleChecks.filter(d => d !== dateStr);
+            } else {
+                scheduleChecks.push(dateStr);
+            }
+            localStorage.setItem('ht_schedule_checks', JSON.stringify(scheduleChecks));
+
+            // 同步到习惯中的"运动"
+            syncScheduleToHabit(dateStr, scheduleChecks.includes(dateStr));
+
+            renderSchedule();
+        }
+
+        function syncScheduleToHabit(dateStr, isChecked) {
+            let exerciseHabit = items.find(i => i.type === 'habit' && i.title === '运动');
+            if (!exerciseHabit) {
+                // 自动创建"运动"习惯
+                exerciseHabit = {
+                    id: generateId(),
+                    title: '运动',
+                    type: 'habit',
+                    project: '健康',
+                    icon: 'fa-dumbbell',
+                    color: '#ef4444',
+                    frequency: 'daily',
+                    weekDays: null,
+                    note: '举铁课表自动同步',
+                    checks: [],
+                    createdAt: new Date().toISOString()
+                };
+                items.push(exerciseHabit);
+                if (!projects.includes('健康')) projects.push('健康');
+            }
+            if (!exerciseHabit.checks) exerciseHabit.checks = [];
+            if (isChecked) {
+                if (!exerciseHabit.checks.includes(dateStr)) {
+                    exerciseHabit.checks.push(dateStr);
+                }
+            } else {
+                exerciseHabit.checks = exerciseHabit.checks.filter(d => d !== dateStr);
+            }
+            saveData();
+            if (currentView === 'items') renderItems();
+            if (currentView === 'dashboard') renderDashboard();
+            if (currentView === 'calendar') renderCalendar();
+        }
+
+        function renderSchedule() {
+            const startDateInput = document.getElementById('schedule-start-date');
+            if (scheduleData.startDate) {
+                startDateInput.value = scheduleData.startDate;
+            }
+
+            const currentDay = getCurrentScheduleDay();
+            const todayStr = getToday();
+
+            // Progress
+            let progressText = '未设置开始日期';
+            let progressPercent = 0;
+            if (scheduleData.startDate) {
+                if (currentDay) {
+                    const week = Math.ceil(currentDay / 7);
+                    progressText = `第 ${week} 周 / 12 周 · Day ${currentDay}`;
+                    progressPercent = Math.round((currentDay / 84) * 100);
+                } else {
+                    const start = new Date(scheduleData.startDate);
+                    const today = new Date();
+                    if (today < start) {
+                        const diff = Math.ceil((start - today) / (1000 * 60 * 60 * 24));
+                        progressText = `还有 ${diff} 天开始`;
+                    } else {
+                        progressText = '课程已完成';
+                        progressPercent = 100;
+                    }
+                }
+            }
+            document.getElementById('schedule-progress-text').textContent = progressText;
+            document.getElementById('schedule-progress-bar').style.width = progressPercent + '%';
+
+            // Today status
+            const todayStatus = document.getElementById('schedule-today-status');
+            if (currentDay) {
+                const weekData = WORKOUT_SCHEDULE[Math.ceil(currentDay / 7) - 1];
+                const dayData = weekData.days[(currentDay - 1) % 7];
+                const checked = isScheduleDayChecked(currentDay);
+                todayStatus.innerHTML = `<span class="${checked ? 'text-success' : 'text-primary'}">今日: ${dayData.type}${dayData.desc ? ' (' + dayData.desc + ')' : ''} ${checked ? '✓ 已打卡' : ''}</span>`;
+            } else {
+                todayStatus.textContent = '';
+            }
+
+            // Render grid
+            const grid = document.getElementById('schedule-grid');
+            grid.innerHTML = WORKOUT_SCHEDULE.map(week => {
+                const weekChecked = week.days.filter(d => d.type !== '休息').map(d => isScheduleDayChecked(d.day)).filter(Boolean).length;
+                const weekTotal = week.days.filter(d => d.type !== '休息').length;
+                const isCurrentWeek = currentDay && Math.ceil(currentDay / 7) === week.week;
+                return `
+                    <div class="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm ${isCurrentWeek ? 'ring-2 ring-primary' : ''}">
+                        <div class="flex items-center justify-between mb-4">
+                            <div>
+                                <h3 class="font-bold text-lg">第 ${week.week} 周</h3>
+                                <span class="text-xs text-gray-400">${week.level}</span>
+                            </div>
+                            <div class="text-sm text-gray-500">
+                                <span class="font-medium text-primary">${weekChecked}</span> / ${weekTotal} 完成
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-7 gap-2">
+                            ${week.days.map(d => {
+                                const dateStr = getScheduleDayDate(scheduleData.startDate, d.day);
+                                const isToday = dateStr === todayStr;
+                                const checked = isScheduleDayChecked(d.day);
+                                const isRest = d.type === '休息';
+                                const isPast = dateStr && dateStr < todayStr && !isRest;
+                                const isFuture = dateStr && dateStr > todayStr;
+                                return `
+                                    <div class="rounded-xl p-2 text-center transition-all ${isToday ? 'bg-primary/10 border-2 border-primary' : checked ? 'bg-success/10 border border-success' : isRest ? 'bg-gray-50 dark:bg-gray-700/30' : isPast ? 'bg-danger/5 border border-danger/20' : 'bg-gray-50 dark:bg-gray-700/30'}">
+                                        <div class="text-xs text-gray-400 mb-1">Day ${d.day}</div>
+                                        <div class="text-xs font-medium ${isRest ? 'text-gray-400' : checked ? 'text-success' : isToday ? 'text-primary' : isPast ? 'text-danger' : ''}">${d.type}</div>
+                                        ${d.desc ? `<div class="text-[10px] text-gray-400 mt-0.5">${d.desc}</div>` : ''}
+                                        ${!isRest && dateStr ? `
+                                            <button onclick="toggleScheduleDay(${d.day})" class="mt-1 w-6 h-6 rounded-full flex items-center justify-center mx-auto transition-all ${checked ? 'bg-success text-white' : isToday ? 'bg-primary text-white hover:bg-primary/80' : 'bg-gray-200 dark:bg-gray-600 text-gray-400 hover:bg-gray-300'}">
+                                                <i class="fas ${checked ? 'fa-check' : 'fa-check'} text-xs"></i>
+                                            </button>
+                                        ` : ''}
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function openScheduleSettings() {
+            const startDate = scheduleData.startDate || '';
+            const newDate = prompt('设置课程开始日期（YYYY-MM-DD）：', startDate);
+            if (newDate && /^\d{4}-\d{2}-\d{2}$/.test(newDate)) {
+                scheduleData.startDate = newDate;
+                localStorage.setItem('ht_schedule', JSON.stringify(scheduleData));
+                document.getElementById('schedule-start-date').value = newDate;
+                renderSchedule();
+            }
+        }
+
+        // ==================== Utilities ====================
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // ==================== Init ====================
+        document.addEventListener('DOMContentLoaded', function() {
+            migrateData();
+            showView('dashboard');
+
+            // 注册 Service Worker
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('./sw.js').then(reg => {
+                    console.log('Service Worker 已注册');
+                }).catch(err => {
+                    console.log('Service Worker 注册失败:', err.message);
+                });
+            }
+        });
+    </script>
+</body>
+</html>
