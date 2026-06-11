@@ -14,6 +14,9 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="EXERCISE_SCHEDULE.js"></script>
+    <script src="ENGLISH_SCHEDULE.js"></script>
+    <script src="FINANCE_SCHEDULE.js"></script>
     <script>
         tailwind.config = {
             darkMode: 'class',
@@ -70,7 +73,7 @@
                     <i class="fas fa-calendar-alt w-6"></i><span>日历视图</span>
                 </button>
                 <button onclick="showView('schedule')" id="nav-schedule" class="nav-btn w-full flex items-center px-4 py-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-all">
-                    <i class="fas fa-dumbbell w-6"></i><span>举铁课表</span>
+                    <i class="fas fa-dumbbell w-6"></i><span>运动课表</span>
                 </button>
                 <button onclick="showView('stats')" id="nav-stats" class="nav-btn w-full flex items-center px-4 py-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-all">
                     <i class="fas fa-chart-pie w-6"></i><span>统计分析</span>
@@ -113,7 +116,7 @@
                     <i class="fas fa-calendar-alt w-6"></i><span>日历视图</span>
                 </button>
                 <button onclick="showView('schedule'); toggleMobileMenu()" class="w-full flex items-center px-4 py-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700">
-                    <i class="fas fa-dumbbell w-6"></i><span>举铁课表</span>
+                    <i class="fas fa-dumbbell w-6"></i><span>运动课表</span>
                 </button>
                 <button onclick="showView('stats'); toggleMobileMenu()" class="w-full flex items-center px-4 py-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700">
                     <i class="fas fa-chart-pie w-6"></i><span>统计分析</span>
@@ -268,8 +271,21 @@
 
             <!-- Schedule View -->
             <div id="view-schedule" class="view-section hidden fade-in">
+                <!-- Schedule Type Tabs -->
+                <div class="flex gap-2 mb-6 overflow-auto pb-2">
+                    <button onclick="switchScheduleType('exercise')" id="schedule-tab-exercise" class="schedule-tab-btn px-4 py-2 rounded-xl bg-primary text-white text-sm whitespace-nowrap transition-all">
+                        <i class="fas fa-dumbbell mr-1"></i>运动课表
+                    </button>
+                    <button onclick="switchScheduleType('english')" id="schedule-tab-english" class="schedule-tab-btn px-4 py-2 rounded-xl bg-gray-200 dark:bg-gray-700 text-sm whitespace-nowrap transition-all">
+                        <i class="fas fa-book mr-1"></i>英语课表
+                    </button>
+                    <button onclick="switchScheduleType('finance')" id="schedule-tab-finance" class="schedule-tab-btn px-4 py-2 rounded-xl bg-gray-200 dark:bg-gray-700 text-sm whitespace-nowrap transition-all">
+                        <i class="fas fa-chart-line mr-1"></i>理财课表
+                    </button>
+                </div>
+
                 <div class="flex justify-between items-center mb-6">
-                    <h2 class="text-2xl font-bold">举铁课表</h2>
+                    <h2 class="text-2xl font-bold" id="schedule-title">运动课表</h2>
                     <button onclick="openScheduleSettings()" class="bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-xl transition-all">
                         <i class="fas fa-cog mr-1"></i>设置
                     </button>
@@ -285,7 +301,7 @@
                         <div class="flex-1 min-w-[200px]">
                             <div class="flex justify-between text-sm mb-1">
                                 <span class="text-gray-500 dark:text-gray-400">当前进度</span>
-                                <span id="schedule-progress-text" class="font-medium">第 1 周 / 13 周</span>
+                                <span id="schedule-progress-text" class="font-medium">第 1 周 / 12 周</span>
                             </div>
                             <div class="h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                                 <div id="schedule-progress-bar" class="h-full bg-gradient-to-r from-primary to-secondary rounded-full transition-all" style="width: 0%"></div>
@@ -473,8 +489,17 @@
         let currentLogIcon = 'fa-star';
         let selectedWeekDays = [];
         let charts = {};
-        let scheduleData = JSON.parse(localStorage.getItem('ht_schedule') || '{}');
-        let scheduleChecks = JSON.parse(localStorage.getItem('ht_schedule_checks') || '[]');
+        let currentScheduleType = localStorage.getItem('ht_current_schedule') || 'exercise';
+        let scheduleData = {
+            exercise: JSON.parse(localStorage.getItem('ht_schedule_exercise') || '{}'),
+            english: JSON.parse(localStorage.getItem('ht_schedule_english') || '{}'),
+            finance: JSON.parse(localStorage.getItem('ht_schedule_finance') || '{}')
+        };
+        let scheduleChecks = {
+            exercise: JSON.parse(localStorage.getItem('ht_schedule_checks_exercise') || '[]'),
+            english: JSON.parse(localStorage.getItem('ht_schedule_checks_english') || '[]'),
+            finance: JSON.parse(localStorage.getItem('ht_schedule_checks_finance') || '[]')
+        };
 
         const habitIcons = ['fa-star','fa-heart','fa-bolt','fa-fire','fa-trophy','fa-medal','fa-gem','fa-sun','fa-moon','fa-book','fa-dumbbell','fa-running','fa-bicycle','fa-swimmer','fa-music','fa-paint-brush','fa-code','fa-laptop','fa-coffee','fa-apple-alt','fa-carrot','fa-bed','fa-clock','fa-calendar-check'];
 
@@ -482,7 +507,7 @@
         function migrateData() {
             const oldTodos = JSON.parse(localStorage.getItem('ht_todos') || '[]');
             const oldHabits = JSON.parse(localStorage.getItem('ht_habits') || '[]');
-            
+
             if (oldTodos.length > 0 || oldHabits.length > 0) {
                 // Migrate todos
                 oldTodos.forEach(t => {
@@ -499,7 +524,7 @@
                         createdAt: t.createdAt || new Date().toISOString()
                     });
                 });
-                
+
                 // Migrate habits
                 oldHabits.forEach(h => {
                     items.push({
@@ -516,10 +541,35 @@
                         createdAt: h.createdAt || new Date().toISOString()
                     });
                 });
-                
+
                 saveData();
                 localStorage.removeItem('ht_todos');
                 localStorage.removeItem('ht_habits');
+            }
+
+            // Migrate old single-schedule data to new per-schedule format
+            const oldSchedule = localStorage.getItem('ht_schedule');
+            if (oldSchedule) {
+                try {
+                    const parsed = JSON.parse(oldSchedule);
+                    if (parsed.startDate && !scheduleData.exercise.startDate) {
+                        scheduleData.exercise = parsed;
+                        localStorage.setItem('ht_schedule_exercise', JSON.stringify(parsed));
+                    }
+                } catch (e) {}
+                localStorage.removeItem('ht_schedule');
+            }
+
+            const oldChecks = localStorage.getItem('ht_schedule_checks');
+            if (oldChecks) {
+                try {
+                    const parsed = JSON.parse(oldChecks);
+                    if (Array.isArray(parsed) && parsed.length > 0 && scheduleChecks.exercise.length === 0) {
+                        scheduleChecks.exercise = parsed;
+                        localStorage.setItem('ht_schedule_checks_exercise', JSON.stringify(parsed));
+                    }
+                } catch (e) {}
+                localStorage.removeItem('ht_schedule_checks');
             }
         }
 
@@ -1676,117 +1726,67 @@
         }
 
         // ==================== Schedule ====================
-        const WORKOUT_SCHEDULE = [
-            { week: 1, level: '初阶', days: [
-                { day: 1, type: 'Day 1', label: 'Day 1', desc: '' },
-                { day: 2, type: '下肢', label: '', desc: '' },
-                { day: 3, type: '休息', label: '', desc: '' },
-                { day: 4, type: 'Day 2', label: 'Day 2', desc: '' },
-                { day: 5, type: '上肢', label: '', desc: '' },
-                { day: 6, type: 'Day 3', label: 'Day 3', desc: '' },
-                { day: 7, type: '休息', label: '', desc: '' }
-            ]},
-            { week: 2, level: '初阶', days: [
-                { day: 8, type: 'Day 4', label: 'Day 4', desc: '' },
-                { day: 9, type: '下肢', label: '', desc: '' },
-                { day: 10, type: 'Day 5', label: 'Day 5', desc: '瑜伽休息术' },
-                { day: 11, type: 'Day 6', label: 'Day 6', desc: '' },
-                { day: 12, type: '上肢', label: '', desc: '' },
-                { day: 13, type: 'Day 7', label: 'Day 7', desc: '' },
-                { day: 14, type: '休息', label: '', desc: '' }
-            ]},
-            { week: 3, level: '初阶', days: [
-                { day: 15, type: 'Day 8', label: 'Day 8', desc: '筋膜放松' },
-                { day: 16, type: '下肢', label: '', desc: '' },
-                { day: 17, type: '休息', label: '', desc: '' },
-                { day: 18, type: 'Day 9', label: 'Day 9', desc: '' },
-                { day: 19, type: '上肢', label: '', desc: '' },
-                { day: 20, type: 'Day 10', label: 'Day 10', desc: '' },
-                { day: 21, type: '休息', label: '', desc: '' }
-            ]},
-            { week: 4, level: '初阶', days: [
-                { day: 22, type: 'Day 11', label: 'Day 11', desc: '' },
-                { day: 23, type: '下肢', label: '', desc: '' },
-                { day: 24, type: 'Day 12', label: 'Day 12', desc: '冥想' },
-                { day: 25, type: 'Day 13', label: 'Day 13', desc: '' },
-                { day: 26, type: '上肢', label: '', desc: '' },
-                { day: 27, type: 'Day 14', label: 'Day 14', desc: '' },
-                { day: 28, type: '休息', label: '', desc: '' }
-            ]},
-            { week: 5, level: '中阶', days: [
-                { day: 29, type: 'Day 15', label: 'Day 15', desc: '' },
-                { day: 30, type: '下肢', label: '', desc: '' },
-                { day: 31, type: '休息', label: '', desc: '' },
-                { day: 32, type: 'Day 16', label: 'Day 16', desc: '' },
-                { day: 33, type: '上肢', label: '', desc: '' },
-                { day: 34, type: 'Day 17', label: 'Day 17', desc: '' },
-                { day: 35, type: '休息', label: '', desc: '' }
-            ]},
-            { week: 6, level: '中阶', days: [
-                { day: 36, type: 'Day 18', label: 'Day 18', desc: '' },
-                { day: 37, type: '下肢', label: '', desc: '' },
-                { day: 38, type: '休息', label: '', desc: '' },
-                { day: 39, type: 'Day 19', label: 'Day 19', desc: '' },
-                { day: 40, type: '上肢', label: '', desc: '' },
-                { day: 41, type: 'Day 20', label: 'Day 20', desc: '' },
-                { day: 42, type: '休息', label: '', desc: '' }
-            ]},
-            { week: 7, level: '中高阶', days: [
-                { day: 43, type: 'Day 21', label: 'Day 21', desc: '' },
-                { day: 44, type: '下肢', label: '', desc: '' },
-                { day: 45, type: 'Day 26', label: 'Day 26', desc: '冥想' },
-                { day: 46, type: 'Day 27', label: 'Day 27', desc: '' },
-                { day: 47, type: '上肢', label: '', desc: '' },
-                { day: 48, type: 'Day 28', label: 'Day 28', desc: '' },
-                { day: 49, type: '休息', label: '', desc: '' }
-            ]},
-            { week: 8, level: '中高阶', days: [
-                { day: 50, type: 'Day 29', label: 'Day 29', desc: '筋膜放松' },
-                { day: 51, type: '下肢', label: '', desc: '' },
-                { day: 52, type: '休息', label: '', desc: '' },
-                { day: 53, type: 'Day 30', label: 'Day 30', desc: '' },
-                { day: 54, type: '上肢', label: '', desc: '' },
-                { day: 55, type: 'Day 31', label: 'Day 31', desc: '' },
-                { day: 56, type: '休息', label: '', desc: '' }
-            ]},
-            { week: 9, level: '高阶', days: [
-                { day: 57, type: 'Day 32', label: 'Day 32', desc: '' },
-                { day: 58, type: '下肢', label: '', desc: '' },
-                { day: 59, type: '休息', label: '', desc: '' },
-                { day: 60, type: 'Day 33', label: 'Day 33', desc: '' },
-                { day: 61, type: '上肢', label: '', desc: '' },
-                { day: 62, type: 'Day 34', label: 'Day 34', desc: '' },
-                { day: 63, type: '休息', label: '', desc: '' }
-            ]},
-            { week: 10, level: '高阶', days: [
-                { day: 64, type: 'Day 35', label: 'Day 35', desc: '' },
-                { day: 65, type: '下肢', label: '', desc: '' },
-                { day: 66, type: 'Day 36', label: 'Day 36', desc: '筋膜放松' },
-                { day: 67, type: 'Day 37', label: 'Day 37', desc: '' },
-                { day: 68, type: '上肢', label: '', desc: '' },
-                { day: 69, type: 'Day 38', label: 'Day 38', desc: '' },
-                { day: 70, type: '休息', label: '', desc: '' }
-            ]},
-            { week: 11, level: '高阶', days: [
-                { day: 71, type: 'Day 39', label: 'Day 39', desc: '' },
-                { day: 72, type: '下肢', label: '', desc: '' },
-                { day: 73, type: '休息', label: '', desc: '' },
-                { day: 74, type: 'Day 40', label: 'Day 40', desc: '' },
-                { day: 75, type: '上肢', label: '', desc: '' },
-                { day: 76, type: 'Day 41', label: 'Day 41', desc: '' },
-                { day: 77, type: '休息', label: '', desc: '' }
-            ]},
-            { week: 12, level: '高阶', days: [
-                { day: 78, type: 'Day 42', label: 'Day 42', desc: '' }
-            ]},
-            { week: 13, level: '生理期周', days: [
-                { day: 79, type: '生理期', label: 'Day 1', desc: '休息或轻度活动' },
-                { day: 80, type: '生理期', label: 'Day 2', desc: '休息或轻度活动' },
-                { day: 81, type: '生理期', label: 'Day 3', desc: '休息或轻度活动' },
-                { day: 82, type: '生理期', label: 'Day 4', desc: '休息或轻度活动' },
-                { day: 83, type: '生理期', label: 'Day 5', desc: '结束后按原课表继续' }
-            ]}
-        ];
+        const SCHEDULE_CONFIGS = {
+            exercise: {
+                name: '运动课表',
+                icon: 'fa-dumbbell',
+                habitName: '运动',
+                habitProject: '健康',
+                habitIcon: 'fa-dumbbell',
+                habitColor: '#ef4444',
+                habitNote: '运动课表自动同步',
+                totalDays: 84,
+                totalWeeks: 12,
+                getLevel: (week) => {
+                    if (week <= 4) return '阶段一·正位重建期';
+                    if (week <= 8) return '阶段二·旋转抗阻与稳定强化';
+                    return '阶段三·力量基础与器械过渡';
+                },
+                schedule: typeof EXERCISE_SCHEDULE !== 'undefined' ? EXERCISE_SCHEDULE : []
+            },
+            english: {
+                name: '英语课表',
+                icon: 'fa-book',
+                habitName: '学习',
+                habitProject: '学习',
+                habitIcon: 'fa-book',
+                habitColor: '#3b82f6',
+                habitNote: '英语课表自动同步',
+                totalDays: 30,
+                totalWeeks: 4,
+                getLevel: (week) => '基础突破期',
+                schedule: typeof ENGLISH_SCHEDULE !== 'undefined' ? ENGLISH_SCHEDULE : []
+            },
+            finance: {
+                name: '理财课表',
+                icon: 'fa-chart-line',
+                habitName: '工作',
+                habitProject: '理财',
+                habitIcon: 'fa-chart-line',
+                habitColor: '#10b981',
+                habitNote: '理财课表自动同步',
+                totalDays: 84,
+                totalWeeks: 12,
+                getLevel: (week) => {
+                    if (week <= 4) return '第一阶段·投资基础';
+                    if (week <= 8) return '第二阶段·策略学习';
+                    return '第三阶段·策略优化';
+                },
+                schedule: typeof FINANCE_SCHEDULE !== 'undefined' ? FINANCE_SCHEDULE : []
+            }
+        };
+
+        // Helper: group flat schedule array into weeks
+        function groupScheduleIntoWeeks(flatSchedule, totalWeeks) {
+            const weeks = [];
+            for (let w = 1; w <= totalWeeks; w++) {
+                const weekDays = flatSchedule.filter(d => Math.ceil(d.day / 7) === w);
+                if (weekDays.length > 0) {
+                    weeks.push({ week: w, days: weekDays });
+                }
+            }
+            return weeks;
+        }
 
         function getScheduleDayDate(startDateStr, dayNum) {
             if (!startDateStr) return null;
@@ -1797,73 +1797,76 @@
         }
 
         function getCurrentScheduleDay() {
-            const startDate = scheduleData.startDate;
+            const config = SCHEDULE_CONFIGS[currentScheduleType];
+            const startDate = scheduleData[currentScheduleType].startDate;
             if (!startDate) return null;
             const start = new Date(startDate);
             const today = new Date();
             const diffDays = Math.floor((today - start) / (1000 * 60 * 60 * 24));
-            if (diffDays < 0 || diffDays >= 83) return null;
+            if (diffDays < 0 || diffDays >= config.totalDays) return null;
             return diffDays + 1;
         }
 
         function saveScheduleStartDate() {
             const date = document.getElementById('schedule-start-date').value;
             if (date) {
-                scheduleData.startDate = date;
-                localStorage.setItem('ht_schedule', JSON.stringify(scheduleData));
+                scheduleData[currentScheduleType].startDate = date;
+                localStorage.setItem('ht_schedule_' + currentScheduleType, JSON.stringify(scheduleData[currentScheduleType]));
                 renderSchedule();
             }
         }
 
         function isScheduleDayChecked(dayNum) {
-            const dateStr = getScheduleDayDate(scheduleData.startDate, dayNum);
+            const dateStr = getScheduleDayDate(scheduleData[currentScheduleType].startDate, dayNum);
             if (!dateStr) return false;
-            return scheduleChecks.includes(dateStr);
+            return scheduleChecks[currentScheduleType].includes(dateStr);
         }
 
         function toggleScheduleDay(dayNum) {
-            const dateStr = getScheduleDayDate(scheduleData.startDate, dayNum);
+            const dateStr = getScheduleDayDate(scheduleData[currentScheduleType].startDate, dayNum);
             if (!dateStr) return;
-            if (scheduleChecks.includes(dateStr)) {
-                scheduleChecks = scheduleChecks.filter(d => d !== dateStr);
+            const checks = scheduleChecks[currentScheduleType];
+            if (checks.includes(dateStr)) {
+                scheduleChecks[currentScheduleType] = checks.filter(d => d !== dateStr);
             } else {
-                scheduleChecks.push(dateStr);
+                scheduleChecks[currentScheduleType].push(dateStr);
             }
-            localStorage.setItem('ht_schedule_checks', JSON.stringify(scheduleChecks));
+            localStorage.setItem('ht_schedule_checks_' + currentScheduleType, JSON.stringify(scheduleChecks[currentScheduleType]));
 
-            // 同步到习惯中的"运动"
-            syncScheduleToHabit(dateStr, scheduleChecks.includes(dateStr));
+            // 同步到对应习惯
+            syncScheduleToHabit(dateStr, scheduleChecks[currentScheduleType].includes(dateStr));
 
             renderSchedule();
         }
 
         function syncScheduleToHabit(dateStr, isChecked) {
-            let exerciseHabit = items.find(i => i.type === 'habit' && i.title === '运动');
-            if (!exerciseHabit) {
-                // 自动创建"运动"习惯
-                exerciseHabit = {
+            const config = SCHEDULE_CONFIGS[currentScheduleType];
+            let habit = items.find(i => i.type === 'habit' && i.title === config.habitName);
+            if (!habit) {
+                // 自动创建习惯
+                habit = {
                     id: generateId(),
-                    title: '运动',
+                    title: config.habitName,
                     type: 'habit',
-                    project: '健康',
-                    icon: 'fa-dumbbell',
-                    color: '#ef4444',
+                    project: config.habitProject,
+                    icon: config.habitIcon,
+                    color: config.habitColor,
                     frequency: 'daily',
                     weekDays: null,
-                    note: '举铁课表自动同步',
+                    note: config.habitNote,
                     checks: [],
                     createdAt: new Date().toISOString()
                 };
-                items.push(exerciseHabit);
-                if (!projects.includes('健康')) projects.push('健康');
+                items.push(habit);
+                if (!projects.includes(config.habitProject)) projects.push(config.habitProject);
             }
-            if (!exerciseHabit.checks) exerciseHabit.checks = [];
+            if (!habit.checks) habit.checks = [];
             if (isChecked) {
-                if (!exerciseHabit.checks.includes(dateStr)) {
-                    exerciseHabit.checks.push(dateStr);
+                if (!habit.checks.includes(dateStr)) {
+                    habit.checks.push(dateStr);
                 }
             } else {
-                exerciseHabit.checks = exerciseHabit.checks.filter(d => d !== dateStr);
+                habit.checks = habit.checks.filter(d => d !== dateStr);
             }
             saveData();
             if (currentView === 'items') renderItems();
@@ -1871,25 +1874,53 @@
             if (currentView === 'calendar') renderCalendar();
         }
 
+        function switchScheduleType(type) {
+            currentScheduleType = type;
+            localStorage.setItem('ht_current_schedule', type);
+            renderSchedule();
+        }
+
         function renderSchedule() {
+            const config = SCHEDULE_CONFIGS[currentScheduleType];
+            const currentData = scheduleData[currentScheduleType];
+
+            // Update tab styles
+            document.querySelectorAll('.schedule-tab-btn').forEach(btn => {
+                btn.classList.remove('bg-primary', 'text-white');
+                btn.classList.add('bg-gray-200', 'dark:bg-gray-700');
+            });
+            const activeTab = document.getElementById('schedule-tab-' + currentScheduleType);
+            if (activeTab) {
+                activeTab.classList.add('bg-primary', 'text-white');
+                activeTab.classList.remove('bg-gray-200', 'dark:bg-gray-700');
+            }
+
+            // Update title
+            document.getElementById('schedule-title').textContent = config.name;
+
             const startDateInput = document.getElementById('schedule-start-date');
-            if (scheduleData.startDate) {
-                startDateInput.value = scheduleData.startDate;
+            if (currentData.startDate) {
+                startDateInput.value = currentData.startDate;
+            } else {
+                startDateInput.value = '';
             }
 
             const currentDay = getCurrentScheduleDay();
             const todayStr = getToday();
 
+            // Group flat schedule into weeks
+            const weeks = groupScheduleIntoWeeks(config.schedule, config.totalWeeks);
+
             // Progress
             let progressText = '未设置开始日期';
             let progressPercent = 0;
-            if (scheduleData.startDate) {
+            if (currentData.startDate) {
                 if (currentDay) {
                     const week = Math.ceil(currentDay / 7);
-                    progressText = `第 ${week} 周 / 13 周 · Day ${currentDay}`;
-                    progressPercent = Math.round((currentDay / 83) * 100);
+                    progressText = `第 ${week} 周 / ${config.totalWeeks} 周 · Day ${currentDay}`;
+                    progressPercent = Math.round((currentDay / config.totalDays) * 100);
                 } else {
-                    const start = new Date(scheduleData.startDate);
+                    const start = new Date(currentData.startDate);
                     const today = new Date();
                     if (today < start) {
                         const diff = Math.ceil((start - today) / (1000 * 60 * 60 * 24));
@@ -1905,27 +1936,36 @@
 
             // Today status
             const todayStatus = document.getElementById('schedule-today-status');
-            if (currentDay) {
-                const weekData = WORKOUT_SCHEDULE[Math.ceil(currentDay / 7) - 1];
-                const dayData = weekData.days.find(d => d.day === currentDay);
-                const checked = isScheduleDayChecked(currentDay);
-                todayStatus.innerHTML = `<span class="${checked ? 'text-success' : 'text-primary'}">今日: ${dayData.type}${dayData.desc ? ' (' + dayData.desc + ')' : ''} ${checked ? '✓ 已打卡' : ''}</span>`;
+            if (currentDay && config.schedule.length > 0) {
+                const dayData = config.schedule.find(d => d.day === currentDay);
+                if (dayData) {
+                    const checked = isScheduleDayChecked(currentDay);
+                    todayStatus.innerHTML = `<span class="${checked ? 'text-success' : 'text-primary'}">今日: ${dayData.type}${dayData.desc ? ' (' + dayData.desc + ')' : ''} ${checked ? '✓ 已打卡' : ''}</span>`;
+                } else {
+                    todayStatus.textContent = '';
+                }
             } else {
                 todayStatus.textContent = '';
             }
 
             // Render grid
             const grid = document.getElementById('schedule-grid');
-            grid.innerHTML = WORKOUT_SCHEDULE.map(week => {
+            if (config.schedule.length === 0) {
+                grid.innerHTML = '<div class="text-center py-12 text-gray-400"><i class="fas fa-clipboard-list text-4xl mb-3"></i><p>暂无课表数据</p></div>';
+                return;
+            }
+
+            grid.innerHTML = weeks.map(week => {
                 const weekChecked = week.days.filter(d => d.type !== '休息').map(d => isScheduleDayChecked(d.day)).filter(Boolean).length;
                 const weekTotal = week.days.filter(d => d.type !== '休息').length;
                 const isCurrentWeek = currentDay && Math.ceil(currentDay / 7) === week.week;
+                const level = config.getLevel(week.week);
                 return `
                     <div class="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm ${isCurrentWeek ? 'ring-2 ring-primary' : ''}">
                         <div class="flex items-center justify-between mb-4">
                             <div>
                                 <h3 class="font-bold text-lg">第 ${week.week} 周</h3>
-                                <span class="text-xs text-gray-400">${week.level}</span>
+                                <span class="text-xs text-gray-400">${level}</span>
                             </div>
                             <div class="text-sm text-gray-500">
                                 <span class="font-medium text-primary">${weekChecked}</span> / ${weekTotal} 完成
@@ -1933,7 +1973,7 @@
                         </div>
                         <div class="grid grid-cols-7 gap-2">
                             ${week.days.map(d => {
-                                const dateStr = getScheduleDayDate(scheduleData.startDate, d.day);
+                                const dateStr = getScheduleDayDate(currentData.startDate, d.day);
                                 const isToday = dateStr === todayStr;
                                 const checked = isScheduleDayChecked(d.day);
                                 const isRest = d.type === '休息';
@@ -1960,11 +2000,12 @@
         }
 
         function openScheduleSettings() {
-            const startDate = scheduleData.startDate || '';
+            const currentData = scheduleData[currentScheduleType];
+            const startDate = currentData.startDate || '';
             const newDate = prompt('设置课程开始日期（YYYY-MM-DD）：', startDate);
             if (newDate && /^\d{4}-\d{2}-\d{2}$/.test(newDate)) {
-                scheduleData.startDate = newDate;
-                localStorage.setItem('ht_schedule', JSON.stringify(scheduleData));
+                scheduleData[currentScheduleType].startDate = newDate;
+                localStorage.setItem('ht_schedule_' + currentScheduleType, JSON.stringify(scheduleData[currentScheduleType]));
                 document.getElementById('schedule-start-date').value = newDate;
                 renderSchedule();
             }

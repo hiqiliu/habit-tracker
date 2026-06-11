@@ -1,4 +1,4 @@
-const CACHE_NAME = 'habit-tracker-v4';
+const CACHE_NAME = 'habit-tracker-v5';
 
 // 安装：缓存所有资源
 self.addEventListener('install', event => {
@@ -9,7 +9,10 @@ self.addEventListener('install', event => {
                 './habit-tracker.html',
                 './manifest.json',
                 './icon-192.png',
-                './icon-512.png'
+                './icon-512.png',
+                './EXERCISE_SCHEDULE.js',
+                './ENGLISH_SCHEDULE.js',
+                './FINANCE_SCHEDULE.js'
             ]);
         }).then(() => self.skipWaiting())
     );
