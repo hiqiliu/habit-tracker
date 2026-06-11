@@ -1,4 +1,4 @@
-const 英语课表_SCHEDULE = [
+const ENGLISH_SCHEDULE = [
 
   // 第一周 B级 + 700L
   { day: 1, type: "Day1 EP #B01  Newsela #1 泛读", label: "Day 1", desc: "" },

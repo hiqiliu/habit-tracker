@@ -1,4 +1,4 @@
-const 理财课表_SCHEDULE = [
+const FINANCE_SCHEDULE = [
 
   // 第1周
   { day: 1, type: "Day1 观看「复利效应」视频", label: "Day 1", desc: "" },

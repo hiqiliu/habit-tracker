@@ -1,4 +1,4 @@
-const 运动课表_SCHEDULE = [
+const EXERCISE_SCHEDULE = [
 
   // 第一周
   { day: 1, type: "Day1", label: "Day 1", desc: "" },
