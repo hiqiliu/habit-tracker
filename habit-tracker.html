@@ -1752,9 +1752,12 @@
                 habitIcon: 'fa-book',
                 habitColor: '#3b82f6',
                 habitNote: '英语课表自动同步',
-                totalDays: 30,
-                totalWeeks: 4,
-                getLevel: (week) => '基础突破期',
+                totalDays: 70,
+                totalWeeks: 10,
+                getLevel: (week) => {
+                    if (week <= 5) return '基础突破期·日课';
+                    return '进阶提升期·输入';
+                },
                 schedule: typeof ENGLISH_SCHEDULE !== 'undefined' ? ENGLISH_SCHEDULE : []
             },
             finance: {
@@ -1765,12 +1768,12 @@
                 habitIcon: 'fa-chart-line',
                 habitColor: '#10b981',
                 habitNote: '理财课表自动同步',
-                totalDays: 84,
+                totalDays: 82,
                 totalWeeks: 12,
                 getLevel: (week) => {
                     if (week <= 4) return '第一阶段·投资基础';
                     if (week <= 8) return '第二阶段·策略学习';
-                    return '第三阶段·策略优化';
+                    return '第三阶段·策略构建与实盘';
                 },
                 schedule: typeof FINANCE_SCHEDULE !== 'undefined' ? FINANCE_SCHEDULE : []
             }
