@@ -269,19 +269,40 @@
                 <div id="calendar-container" class="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm"></div>
             </div>
 
+            <!-- New Schedule Modal -->
+            <div id="new-schedule-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 w-full max-w-md">
+                    <h3 class="text-xl font-bold mb-4">新建课表</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="text-sm text-gray-500 block mb-1">课表名称</label>
+                            <input type="text" id="new-schedule-name" class="w-full px-4 py-2 rounded-xl border dark:border-gray-700 dark:bg-gray-800" placeholder="例如：钢琴课表">
+                        </div>
+                        <div>
+                            <label class="text-sm text-gray-500 block mb-1">图标 (Font Awesome class)</label>
+                            <input type="text" id="new-schedule-icon" class="w-full px-4 py-2 rounded-xl border dark:border-gray-700 dark:bg-gray-800" placeholder="fa-music" value="fa-star">
+                        </div>
+                        <div>
+                            <label class="text-sm text-gray-500 block mb-1">总天数</label>
+                            <input type="number" id="new-schedule-days" class="w-full px-4 py-2 rounded-xl border dark:border-gray-700 dark:bg-gray-800" value="30" min="1" max="365">
+                        </div>
+                        <div>
+                            <label class="text-sm text-gray-500 block mb-1">同步习惯名称（可选）</label>
+                            <input type="text" id="new-schedule-habit" class="w-full px-4 py-2 rounded-xl border dark:border-gray-700 dark:bg-gray-800" placeholder="例如：练琴">
+                        </div>
+                    </div>
+                    <div class="flex gap-2 mt-6">
+                        <button onclick="closeNewScheduleModal()" class="flex-1 py-2 rounded-xl border dark:border-gray-600">取消</button>
+                        <button onclick="createNewSchedule()" class="flex-1 py-2 rounded-xl bg-primary text-white">创建</button>
+                    </div>
+                </div>
+            </div>
+
             <!-- Schedule View -->
             <div id="view-schedule" class="view-section hidden fade-in">
                 <!-- Schedule Type Tabs -->
-                <div class="flex gap-2 mb-6 overflow-auto pb-2">
-                    <button onclick="switchScheduleType('exercise')" id="schedule-tab-exercise" class="schedule-tab-btn px-4 py-2 rounded-xl bg-primary text-white text-sm whitespace-nowrap transition-all">
-                        <i class="fas fa-dumbbell mr-1"></i>运动课表
-                    </button>
-                    <button onclick="switchScheduleType('english')" id="schedule-tab-english" class="schedule-tab-btn px-4 py-2 rounded-xl bg-gray-200 dark:bg-gray-700 text-sm whitespace-nowrap transition-all">
-                        <i class="fas fa-book mr-1"></i>英语课表
-                    </button>
-                    <button onclick="switchScheduleType('finance')" id="schedule-tab-finance" class="schedule-tab-btn px-4 py-2 rounded-xl bg-gray-200 dark:bg-gray-700 text-sm whitespace-nowrap transition-all">
-                        <i class="fas fa-chart-line mr-1"></i>理财课表
-                    </button>
+                <div id="schedule-tabs" class="flex gap-2 mb-6 overflow-auto pb-2">
+                    <!-- Populated by renderScheduleTabs() -->
                 </div>
 
                 <div class="flex justify-between items-center mb-6">
@@ -1887,6 +1908,7 @@
         function switchScheduleType(type) {
             currentScheduleType = type;
             localStorage.setItem('ht_current_schedule', type);
+            renderScheduleTabs();
             renderSchedule();
         }
 
@@ -2056,6 +2078,11 @@
                         <button onclick="resetScheduleData()" class="bg-danger text-white px-4 py-2 rounded-xl text-sm">
                             <i class="fas fa-undo mr-1"></i>重置默认
                         </button>
+                        ${currentScheduleType.startsWith('custom_') ? `
+                        <button onclick="deleteCustomSchedule('${currentScheduleType}')" class="bg-danger text-white px-4 py-2 rounded-xl text-sm">
+                            <i class="fas fa-trash mr-1"></i>删除课表
+                        </button>
+                        ` : ''}
                     </div>
                 `;
             }
@@ -2108,6 +2135,112 @@
             }
         }
 
+        // Custom schedules management
+        function loadCustomSchedules() {
+            const custom = localStorage.getItem('ht_custom_schedules');
+            if (custom) {
+                const schedules = JSON.parse(custom);
+                schedules.forEach(s => {
+                    SCHEDULE_CONFIGS[s.id] = s.config;
+                });
+            }
+        }
+
+        function saveCustomSchedules() {
+            const custom = Object.entries(SCHEDULE_CONFIGS)
+                .filter(([k, v]) => !['exercise', 'english', 'finance'].includes(k))
+                .map(([k, v]) => ({ id: k, config: v }));
+            localStorage.setItem('ht_custom_schedules', JSON.stringify(custom));
+        }
+
+        function openNewScheduleModal() {
+            document.getElementById('new-schedule-modal').classList.remove('hidden');
+        }
+
+        function closeNewScheduleModal() {
+            document.getElementById('new-schedule-modal').classList.add('hidden');
+            document.getElementById('new-schedule-name').value = '';
+            document.getElementById('new-schedule-icon').value = 'fa-star';
+            document.getElementById('new-schedule-days').value = '30';
+            document.getElementById('new-schedule-habit').value = '';
+        }
+
+        function createNewSchedule() {
+            const name = document.getElementById('new-schedule-name').value.trim();
+            const icon = document.getElementById('new-schedule-icon').value.trim() || 'fa-star';
+            const days = parseInt(document.getElementById('new-schedule-days').value) || 30;
+            const habitName = document.getElementById('new-schedule-habit').value.trim();
+
+            if (!name) {
+                alert('请输入课表名称');
+                return;
+            }
+
+            const id = 'custom_' + Date.now();
+            const weeks = Math.ceil(days / 7);
+
+            SCHEDULE_CONFIGS[id] = {
+                name: name,
+                icon: icon,
+                habitName: habitName || name,
+                habitProject: '自定义',
+                habitIcon: icon,
+                habitColor: '#6366f1',
+                habitNote: name + '自动同步',
+                totalDays: days,
+                totalWeeks: weeks,
+                getLevel: (week) => '第 ' + week + ' 周',
+                schedule: Array.from({length: days}, (_, i) => ({
+                    day: i + 1,
+                    type: 'Day ' + (i + 1),
+                    label: 'Day ' + (i + 1),
+                    desc: ''
+                }))
+            };
+
+            // Initialize data
+            scheduleData[id] = JSON.parse(localStorage.getItem('ht_schedule_' + id) || '{}');
+            scheduleChecks[id] = JSON.parse(localStorage.getItem('ht_schedule_checks_' + id) || '[]');
+
+            saveCustomSchedules();
+            closeNewScheduleModal();
+            renderScheduleTabs();
+            switchScheduleType(id);
+        }
+
+        function deleteCustomSchedule(id) {
+            if (!confirm('确定要删除课表「' + SCHEDULE_CONFIGS[id].name + '」吗？')) return;
+            delete SCHEDULE_CONFIGS[id];
+            delete scheduleData[id];
+            delete scheduleChecks[id];
+            localStorage.removeItem('ht_schedule_' + id);
+            localStorage.removeItem('ht_schedule_checks_' + id);
+            localStorage.removeItem('ht_schedule_custom_' + id);
+            saveCustomSchedules();
+            renderScheduleTabs();
+            switchScheduleType('exercise');
+        }
+
+        function renderScheduleTabs() {
+            const container = document.getElementById('schedule-tabs');
+            if (!container) return;
+
+            let html = '';
+            Object.entries(SCHEDULE_CONFIGS).forEach(([id, config]) => {
+                html += `
+                    <button onclick="switchScheduleType('${id}')" id="schedule-tab-${id}" class="schedule-tab-btn px-4 py-2 rounded-xl bg-gray-200 dark:bg-gray-700 text-sm whitespace-nowrap transition-all">
+                        <i class="fas ${config.icon} mr-1"></i>${config.name}
+                    </button>
+                `;
+            });
+            html += `
+                <button onclick="openNewScheduleModal()" class="schedule-tab-btn px-3 py-2 rounded-xl bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-sm whitespace-nowrap transition-all">
+                    <i class="fas fa-plus"></i>
+                </button>
+            `;
+            container.innerHTML = html;
+        }
+
         function openScheduleSettings() {
             const currentData = scheduleData[currentScheduleType];
             const startDate = currentData.startDate || '';
@@ -2139,6 +2272,18 @@
                     SCHEDULE_CONFIGS[type].schedule = JSON.parse(custom);
                 }
             });
+
+            // Load and init custom schedules
+            loadCustomSchedules();
+            Object.keys(SCHEDULE_CONFIGS).forEach(type => {
+                if (!scheduleData[type]) {
+                    scheduleData[type] = JSON.parse(localStorage.getItem('ht_schedule_' + type) || '{}');
+                }
+                if (!scheduleChecks[type]) {
+                    scheduleChecks[type] = JSON.parse(localStorage.getItem('ht_schedule_checks_' + type) || '[]');
+                }
+            });
+            renderScheduleTabs();
 
             showView('dashboard');
 
