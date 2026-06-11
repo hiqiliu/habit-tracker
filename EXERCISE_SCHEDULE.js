@@ -1,4 +1,4 @@
-const EXERCISE_SCHEDULE = [
+const 运动课表_SCHEDULE = [
 
   // 第一周
   { day: 1, type: "Day1", label: "Day 1", desc: "" },
@@ -11,13 +11,11 @@ const EXERCISE_SCHEDULE = [
 
   // 第二周
   { day: 8, type: "Day4", label: "Day 8", desc: "" },
-  { day: 9, type: "Day5
-瑜伽休息术", label: "Day 9", desc: "" },
+  { day: 9, type: "Day5 瑜伽休息术", label: "Day 9", desc: "" },
   { day: 10, type: "Day6", label: "Day 10", desc: "" },
   { day: 11, type: "核心流动#4", label: "Day 11", desc: "" },
   { day: 12, type: "Day7", label: "Day 12", desc: "" },
-  { day: 13, type: "Day8
-筋膜放松", label: "Day 13", desc: "" },
+  { day: 13, type: "Day8 筋膜放松", label: "Day 13", desc: "" },
   { day: 14, type: "有氧/全身泡沫轴", label: "Day 14", desc: "" },
 
   // 第三周
@@ -26,8 +24,7 @@ const EXERCISE_SCHEDULE = [
   { day: 17, type: "Day10", label: "Day 17", desc: "" },
   { day: 18, type: "核心流动#6", label: "Day 18", desc: "" },
   { day: 19, type: "Day11", label: "Day 19", desc: "" },
-  { day: 20, type: "Day12
-冥想", label: "Day 20", desc: "" },
+  { day: 20, type: "Day12 冥想", label: "Day 20", desc: "" },
   { day: 21, type: "有氧/全身泡沫轴", label: "Day 21", desc: "" },
 
   // 第四周
@@ -54,8 +51,7 @@ const EXERCISE_SCHEDULE = [
   { day: 38, type: "Day20", label: "Day 38", desc: "" },
   { day: 39, type: "体式 #7", label: "Day 39", desc: "" },
   { day: 40, type: "Day21", label: "Day 40", desc: "" },
-  { day: 41, type: "Day26
-冥想", label: "Day 41", desc: "" },
+  { day: 41, type: "Day26 冥想", label: "Day 41", desc: "" },
   { day: 42, type: "有氧/全身泡沫轴", label: "Day 42", desc: "" },
 
   // 第七周
