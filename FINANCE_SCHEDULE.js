@@ -104,4 +104,5 @@ const FINANCE_SCHEDULE = [
   { day: 80, type: "学习滑点/延迟/心理差异", label: "Day 80", desc: "" },
   { day: 81, type: "对照实盘检查清单", label: "Day 81", desc: "" },
   { day: 82, type: "回顾总结", label: "Day 82", desc: "" },
+
 ];

@@ -89,4 +89,5 @@ const ENGLISH_SCHEDULE = [
   { day: 68, type: "EP #C20 1.2倍速 《经济学人》Espresso 3条 泛读", label: "Day 68", desc: "" },
   { day: 69, type: "EP #C20 1.2倍速 检测 《经济学人》Espresso 2条 精读", label: "Day 69", desc: "" },
   { day: 70, type: "EP笔记复习 《老友记》E10 3遍", label: "Day 70", desc: "" },
+
 ];

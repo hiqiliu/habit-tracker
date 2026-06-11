@@ -116,7 +116,7 @@
                     <i class="fas fa-calendar-alt w-6"></i><span>日历视图</span>
                 </button>
                 <button onclick="showView('schedule'); toggleMobileMenu()" class="w-full flex items-center px-4 py-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700">
-                    <i class="fas fa-dumbbell w-6"></i><span>运动课表</span>
+                    <i class="fas fa-clipboard-list w-6"></i><span>课表</span>
                 </button>
                 <button onclick="showView('stats'); toggleMobileMenu()" class="w-full flex items-center px-4 py-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700">
                     <i class="fas fa-chart-pie w-6"></i><span>统计分析</span>
@@ -1738,9 +1738,10 @@
                 totalDays: 84,
                 totalWeeks: 12,
                 getLevel: (week) => {
-                    if (week <= 4) return '阶段一·正位重建期';
-                    if (week <= 8) return '阶段二·旋转抗阻与稳定强化';
-                    return '阶段三·力量基础与器械过渡';
+                    if (week <= 4) return '核心流动期';
+                    if (week <= 8) return '体式期';
+                    if (week <= 11) return '综合期';
+                    return '生理期';
                 },
                 schedule: typeof EXERCISE_SCHEDULE !== 'undefined' ? EXERCISE_SCHEDULE : []
             },
@@ -1974,7 +1975,7 @@
                                 <span class="font-medium text-primary">${weekChecked}</span> / ${weekTotal} 完成
                             </div>
                         </div>
-                        <div class="grid grid-cols-7 gap-2">
+                        <div class="space-y-1.5">
                             ${week.days.map(d => {
                                 const dateStr = getScheduleDayDate(currentData.startDate, d.day);
                                 const isToday = dateStr === todayStr;
@@ -1982,15 +1983,21 @@
                                 const isRest = d.type === '休息';
                                 const isPast = dateStr && dateStr < todayStr && !isRest;
                                 const isFuture = dateStr && dateStr > todayStr;
-                                const showLabel = d.label || `Day ${d.day}`;
+                                const showLabel = d.label || ('Day ' + d.day);
+                                const dayOfWeek = dateStr ? new Date(dateStr).toLocaleDateString('zh-CN', {weekday: 'short'}) : '';
                                 return `
-                                    <div class="rounded-xl p-2 text-center transition-all ${isToday ? 'bg-primary/10 border-2 border-primary' : checked ? 'bg-success/10 border border-success' : isRest ? 'bg-gray-50 dark:bg-gray-700/30' : isPast ? 'bg-danger/5 border border-danger/20' : 'bg-gray-50 dark:bg-gray-700/30'}">
-                                        <div class="text-xs text-gray-400 mb-1">${showLabel}</div>
-                                        <div class="text-xs font-medium ${isRest ? 'text-gray-400' : checked ? 'text-success' : isToday ? 'text-primary' : isPast ? 'text-danger' : ''}">${d.type}</div>
-                                        ${d.desc ? `<div class="text-[10px] text-gray-400 mt-0.5">${d.desc}</div>` : ''}
+                                    <div class="flex items-center gap-3 p-2.5 rounded-xl transition-all ${isToday ? 'bg-primary/10 border-2 border-primary' : checked ? 'bg-success/5 border border-success/30' : isRest ? 'bg-gray-50 dark:bg-gray-700/20' : isPast ? 'bg-gray-50 dark:bg-gray-700/20 opacity-60' : 'bg-gray-50 dark:bg-gray-700/20'}">
+                                        <div class="w-8 text-center">
+                                            <div class="text-[10px] text-gray-400">${dayOfWeek}</div>
+                                            <div class="text-xs font-bold ${isToday ? 'text-primary' : 'text-gray-500'}">${showLabel}</div>
+                                        </div>
+                                        <div class="flex-1 min-w-0">
+                                            <div class="text-sm font-medium ${isRest ? 'text-gray-400 line-through' : checked ? 'text-success' : isToday ? 'text-primary' : ''}">${d.type}</div>
+                                            ${d.desc ? '<div class="text-xs text-gray-400 mt-0.5">' + d.desc + '</div>' : ''}
+                                        </div>
                                         ${!isRest && dateStr ? `
-                                            <button onclick="toggleScheduleDay(${d.day})" class="mt-1 w-6 h-6 rounded-full flex items-center justify-center mx-auto transition-all ${checked ? 'bg-success text-white' : isToday ? 'bg-primary text-white hover:bg-primary/80' : 'bg-gray-200 dark:bg-gray-600 text-gray-400 hover:bg-gray-300'}">
-                                                <i class="fas ${checked ? 'fa-check' : 'fa-check'} text-xs"></i>
+                                            <button onclick="toggleScheduleDay(${d.day})" class="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 transition-all ${checked ? 'bg-success text-white' : isToday ? 'bg-primary text-white hover:bg-primary/80' : 'bg-gray-200 dark:bg-gray-600 text-gray-400 hover:bg-gray-300'}">
+                                                <i class="fas fa-check text-xs"></i>
                                             </button>
                                         ` : ''}
                                     </div>

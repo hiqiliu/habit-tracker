@@ -10,20 +10,20 @@ const EXERCISE_SCHEDULE = [
   { day: 7, type: "休息", label: "Day 7", desc: "" },
 
   // 第二周
-  { day: 8, type: "瑜伽休息术", label: "Day 8", desc: "" },
-  { day: 9, type: "休息", label: "Day 9", desc: "" },
+  { day: 8, type: "休息", label: "Day 8", desc: "" },
+  { day: 9, type: "瑜伽休息术", label: "Day 9", desc: "" },
   { day: 10, type: "核心流动#4", label: "Day 10", desc: "" },
-  { day: 11, type: "筋膜放松", label: "Day 11", desc: "" },
-  { day: 12, type: "有氧/全身泡沫轴", label: "Day 12", desc: "" },
-  { day: 13, type: "休息", label: "Day 13", desc: "" },
+  { day: 11, type: "休息", label: "Day 11", desc: "" },
+  { day: 12, type: "筋膜放松", label: "Day 12", desc: "" },
+  { day: 13, type: "有氧/全身泡沫轴", label: "Day 13", desc: "" },
   { day: 14, type: "休息", label: "Day 14", desc: "" },
 
   // 第三周
   { day: 15, type: "核心流动#5", label: "Day 15", desc: "" },
   { day: 16, type: "核心流动#6", label: "Day 16", desc: "" },
-  { day: 17, type: "冥想", label: "Day 17", desc: "" },
-  { day: 18, type: "有氧/全身泡沫轴", label: "Day 18", desc: "" },
-  { day: 19, type: "休息", label: "Day 19", desc: "" },
+  { day: 17, type: "休息", label: "Day 17", desc: "" },
+  { day: 18, type: "冥想", label: "Day 18", desc: "" },
+  { day: 19, type: "有氧/全身泡沫轴", label: "Day 19", desc: "" },
   { day: 20, type: "休息", label: "Day 20", desc: "" },
   { day: 21, type: "休息", label: "Day 21", desc: "" },
 
@@ -48,9 +48,9 @@ const EXERCISE_SCHEDULE = [
   // 第六周
   { day: 36, type: "体式 #6", label: "Day 36", desc: "" },
   { day: 37, type: "体式 #7", label: "Day 37", desc: "" },
-  { day: 38, type: "冥想", label: "Day 38", desc: "" },
-  { day: 39, type: "有氧/全身泡沫轴", label: "Day 39", desc: "" },
-  { day: 40, type: "休息", label: "Day 40", desc: "" },
+  { day: 38, type: "休息", label: "Day 38", desc: "" },
+  { day: 39, type: "冥想", label: "Day 39", desc: "" },
+  { day: 40, type: "有氧/全身泡沫轴", label: "Day 40", desc: "" },
   { day: 41, type: "休息", label: "Day 41", desc: "" },
   { day: 42, type: "休息", label: "Day 42", desc: "" },
 
@@ -107,4 +107,5 @@ const EXERCISE_SCHEDULE = [
   { day: 82, type: "生理期", label: "Day 5", desc: "休息或轻度活动" },
   { day: 83, type: "休息", label: "Day 83", desc: "" },
   { day: 84, type: "休息", label: "Day 84", desc: "" },
+
 ];
