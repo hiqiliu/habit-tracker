@@ -286,9 +286,14 @@
 
                 <div class="flex justify-between items-center mb-6">
                     <h2 class="text-2xl font-bold" id="schedule-title">运动课表</h2>
-                    <button onclick="openScheduleSettings()" class="bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-xl transition-all">
-                        <i class="fas fa-cog mr-1"></i>设置
-                    </button>
+                    <div class="flex gap-2">
+                        <button onclick="toggleScheduleEditMode()" id="schedule-edit-btn" class="bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 px-4 py-2 rounded-xl transition-all">
+                            <i class="fas fa-edit mr-1"></i>编辑
+                        </button>
+                        <button onclick="openScheduleSettings()" class="bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-xl transition-all">
+                            <i class="fas fa-cog mr-1"></i>设置
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Start Date & Progress -->
@@ -490,6 +495,7 @@
         let selectedWeekDays = [];
         let charts = {};
         let currentScheduleType = localStorage.getItem('ht_current_schedule') || 'exercise';
+        let scheduleEditMode = false;
         let scheduleData = {
             exercise: JSON.parse(localStorage.getItem('ht_schedule_exercise') || '{}'),
             english: JSON.parse(localStorage.getItem('ht_schedule_english') || '{}'),
@@ -1959,21 +1965,35 @@
                 return;
             }
 
+            // Update edit button style
+            const editBtn = document.getElementById('schedule-edit-btn');
+            if (editBtn) {
+                if (scheduleEditMode) {
+                    editBtn.classList.add('bg-primary', 'text-white');
+                    editBtn.classList.remove('bg-gray-200', 'dark:bg-gray-700', 'text-gray-700', 'dark:text-gray-200');
+                } else {
+                    editBtn.classList.remove('bg-primary', 'text-white');
+                    editBtn.classList.add('bg-gray-200', 'dark:bg-gray-700', 'text-gray-700', 'dark:text-gray-200');
+                }
+            }
+
             grid.innerHTML = weeks.map(week => {
                 const weekChecked = week.days.filter(d => d.type !== '休息').map(d => isScheduleDayChecked(d.day)).filter(Boolean).length;
                 const weekTotal = week.days.filter(d => d.type !== '休息').length;
                 const isCurrentWeek = currentDay && Math.ceil(currentDay / 7) === week.week;
                 const level = config.getLevel(week.week);
                 return `
-                    <div class="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm ${isCurrentWeek ? 'ring-2 ring-primary' : ''}">
+                    <div class="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm ${isCurrentWeek && !scheduleEditMode ? 'ring-2 ring-primary' : ''}">
                         <div class="flex items-center justify-between mb-4">
                             <div>
                                 <h3 class="font-bold text-lg">第 ${week.week} 周</h3>
                                 <span class="text-xs text-gray-400">${level}</span>
                             </div>
+                            ${!scheduleEditMode ? `
                             <div class="text-sm text-gray-500">
                                 <span class="font-medium text-primary">${weekChecked}</span> / ${weekTotal} 完成
                             </div>
+                            ` : ''}
                         </div>
                         <div class="space-y-1.5">
                             ${week.days.map(d => {
@@ -1985,6 +2005,20 @@
                                 const isFuture = dateStr && dateStr > todayStr;
                                 const showLabel = d.label || ('Day ' + d.day);
                                 const dayOfWeek = dateStr ? new Date(dateStr).toLocaleDateString('zh-CN', {weekday: 'short'}) : '';
+                                if (scheduleEditMode) {
+                                    return `
+                                        <div class="flex items-center gap-2 p-2.5 rounded-xl bg-gray-50 dark:bg-gray-700/20">
+                                            <div class="w-8 text-center">
+                                                <div class="text-[10px] text-gray-400">${dayOfWeek}</div>
+                                                <div class="text-xs font-bold text-gray-500">${showLabel}</div>
+                                            </div>
+                                            <input type="text" value="${d.type}" onchange="updateScheduleDay(${d.day}, this.value)" class="flex-1 px-2 py-1 text-sm rounded-lg border dark:border-gray-600 dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-primary">
+                                            <button onclick="deleteScheduleDay(${d.day})" class="w-7 h-7 rounded-full flex items-center justify-center text-danger hover:bg-danger/10">
+                                                <i class="fas fa-times text-xs"></i>
+                                            </button>
+                                        </div>
+                                    `;
+                                }
                                 return `
                                     <div class="flex items-center gap-3 p-2.5 rounded-xl transition-all ${isToday ? 'bg-primary/10 border-2 border-primary' : checked ? 'bg-success/5 border border-success/30' : isRest ? 'bg-gray-50 dark:bg-gray-700/20' : isPast ? 'bg-gray-50 dark:bg-gray-700/20 opacity-60' : 'bg-gray-50 dark:bg-gray-700/20'}">
                                         <div class="w-8 text-center">
@@ -2004,9 +2038,74 @@
                                 `;
                             }).join('')}
                         </div>
+                        ${scheduleEditMode ? `
+                            <button onclick="addScheduleDay(${week.week})" class="mt-3 w-full py-2 rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-600 text-gray-500 hover:border-primary hover:text-primary transition-all text-sm">
+                                <i class="fas fa-plus mr-1"></i>添加一天
+                            </button>
+                        ` : ''}
                     </div>
                 `;
             }).join('');
+
+            if (scheduleEditMode) {
+                grid.innerHTML += `
+                    <div class="flex gap-2 mt-4">
+                        <button onclick="addScheduleDay()" class="bg-primary text-white px-4 py-2 rounded-xl text-sm">
+                            <i class="fas fa-plus mr-1"></i>添加一天
+                        </button>
+                        <button onclick="resetScheduleData()" class="bg-danger text-white px-4 py-2 rounded-xl text-sm">
+                            <i class="fas fa-undo mr-1"></i>重置默认
+                        </button>
+                    </div>
+                `;
+            }
+        }
+
+        function toggleScheduleEditMode() {
+            scheduleEditMode = !scheduleEditMode;
+            renderSchedule();
+        }
+
+        function updateScheduleDay(day, newType) {
+            const config = SCHEDULE_CONFIGS[currentScheduleType];
+            const dayEntry = config.schedule.find(d => d.day === day);
+            if (dayEntry) {
+                dayEntry.type = newType;
+                saveScheduleData();
+                renderSchedule();
+            }
+        }
+
+        function deleteScheduleDay(day) {
+            const config = SCHEDULE_CONFIGS[currentScheduleType];
+            config.schedule = config.schedule.filter(d => d.day !== day);
+            // Re-number days
+            config.schedule.forEach((d, i) => {
+                d.day = i + 1;
+                d.label = 'Day ' + (i + 1);
+            });
+            saveScheduleData();
+            renderSchedule();
+        }
+
+        function addScheduleDay(weekIndex) {
+            const config = SCHEDULE_CONFIGS[currentScheduleType];
+            const newDay = config.schedule.length + 1;
+            config.schedule.push({ day: newDay, type: '新内容', label: 'Day ' + newDay, desc: '' });
+            saveScheduleData();
+            renderSchedule();
+        }
+
+        function saveScheduleData() {
+            const config = SCHEDULE_CONFIGS[currentScheduleType];
+            localStorage.setItem('ht_schedule_custom_' + currentScheduleType, JSON.stringify(config.schedule));
+        }
+
+        function resetScheduleData() {
+            if (confirm('确定要重置为默认课表吗？所有自定义修改将丢失。')) {
+                localStorage.removeItem('ht_schedule_custom_' + currentScheduleType);
+                location.reload();
+            }
         }
 
         function openScheduleSettings() {
@@ -2032,6 +2131,15 @@
         // ==================== Init ====================
         document.addEventListener('DOMContentLoaded', function() {
             migrateData();
+
+            // Load custom schedule if exists
+            ['exercise', 'english', 'finance'].forEach(type => {
+                const custom = localStorage.getItem('ht_schedule_custom_' + type);
+                if (custom) {
+                    SCHEDULE_CONFIGS[type].schedule = JSON.parse(custom);
+                }
+            });
+
             showView('dashboard');
 
             // 注册 Service Worker
