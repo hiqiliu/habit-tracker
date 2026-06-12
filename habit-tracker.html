@@ -2547,10 +2547,15 @@
             const today = now.getDate();
             const thisMonth = now.getMonth() + 1;
             
-            // 获取过去5年的年份
+            // 获取日记本创建年份
+            const notebooks = await getNotebooks();
+            const nb = notebooks.find(n => n.id === currentDiaryId);
+            const createdYear = nb ? parseInt(nb.createdAt.split('-')[0]) : now.getFullYear();
+            
+            // 显示创建年 + 未来4年
             const years = [];
-            for (let i = 4; i >= 0; i--) {
-                years.push(now.getFullYear() - i);
+            for (let i = 0; i < 5; i++) {
+                years.push(createdYear + i);
             }
             
             // 构建月份天数
@@ -2561,7 +2566,7 @@
             entries.forEach(e => { entryMap[e.date] = e; });
             
             // 5列年份头部
-            let html = `<div class="mb-4"><div class="text-sm font-medium text-gray-500 mb-2">${now.getFullYear() - 4} - ${now.getFullYear()} · ${thisMonth}月</div>`;
+            let html = `<div class="mb-4"><div class="text-sm font-medium text-gray-500 mb-2">${createdYear} - ${createdYear + 4} · ${thisMonth}月</div>`;
             html += `<div class="grid grid-cols-5 gap-1">`;
             years.forEach(y => {
                 html += `<div class="text-xs font-bold text-center ${y === now.getFullYear() ? 'text-primary' : 'text-gray-500'} pb-1">${y}</div>`;
