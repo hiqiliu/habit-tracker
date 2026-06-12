@@ -187,6 +187,17 @@
                     </div>
                 </div>
 
+                <!-- Weekly Todos -->
+                <div class="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm mb-4">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="text-base font-semibold flex items-center">
+                            <i class="fas fa-calendar-week text-primary mr-2"></i>本周待办
+                        </h3>
+                        <span class="text-xs text-gray-400" id="dash-week-todo-summary">0/0</span>
+                    </div>
+                    <div id="dash-week-todos" class="space-y-1"></div>
+                </div>
+
                 <!-- Today's Overview -->
                 <div class="grid md:grid-cols-3 gap-4">
                     <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm">
@@ -936,6 +947,62 @@
                 `;
             }
             logList.innerHTML = logHtml;
+
+            // Render weekly todos
+            renderWeeklyTodos();
+        }
+
+        function renderWeeklyTodos() {
+            const container = document.getElementById('dash-week-todos');
+            const summary = document.getElementById('dash-week-todo-summary');
+            
+            const weekDays = ['日', '一', '二', '三', '四', '五', '六'];
+            const today = new Date();
+            const todayDay = today.getDay();
+            
+            let totalAll = 0, doneAll = 0;
+            let html = '';
+            
+            for (let i = 0; i < 7; i++) {
+                const d = new Date(today);
+                d.setDate(d.getDate() - todayDay + i);
+                const dateStr = d.toISOString().split('T')[0];
+                const isToday = i === todayDay;
+                
+                const dayTodos = items.filter(item => item.type === 'todo' && item.due === dateStr);
+                const doneCount = dayTodos.filter(t => t.completed).length;
+                const totalCount = dayTodos.length;
+                totalAll += totalCount;
+                doneAll += doneCount;
+                
+                const hasItems = totalCount > 0;
+                const isDone = hasItems && doneCount === totalCount;
+                
+                html += `
+                    <div class="flex items-center gap-2 py-1.5 px-2 rounded-lg ${isToday ? 'bg-primary/5' : ''}">
+                        <div class="w-8 text-center">
+                            <div class="text-[10px] text-gray-400">${weekDays[i]}</div>
+                            <div class="text-xs font-bold ${isToday ? 'text-primary' : 'text-gray-600'}">${d.getDate()}</div>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            ${hasItems ? `
+                                <div class="flex items-center gap-1 flex-wrap">
+                                    ${dayTodos.map(t => `
+                                        <span class="text-[10px] px-1.5 py-0.5 rounded ${t.completed ? 'bg-success/10 text-success line-through' : 'bg-warning/10 text-warning'}">${escapeHtml(t.title)}</span>
+                                    `).join('')}
+                                </div>
+                                <div class="mt-0.5 h-1 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+                                    <div class="h-full ${isDone ? 'bg-success' : 'bg-primary'} rounded-full transition-all" style="width: ${totalCount > 0 ? (doneCount / totalCount * 100) : 0}%"></div>
+                                </div>
+                            ` : `<span class="text-xs text-gray-300">无待办</span>`}
+                        </div>
+                        ${hasItems ? `<span class="text-[10px] ${isDone ? 'text-success' : 'text-gray-400'}">${doneCount}/${totalCount}</span>` : ''}
+                    </div>
+                `;
+            }
+            
+            container.innerHTML = html;
+            summary.textContent = `${doneAll}/${totalAll} 完成`;
         }
 
         // ==================== Items ====================
@@ -1536,12 +1603,16 @@
 
         function renderWeekCalendar(container) {
             const today = new Date();
-            let html = '<div class="grid grid-cols-7 gap-2">';
+            const todayStr = getToday();
+            let html = '<div class="space-y-2">';
+            
             for (let i = 0; i < 7; i++) {
                 const d = new Date(today);
                 d.setDate(d.getDate() - today.getDay() + i);
                 const dateStr = d.toISOString().split('T')[0];
-                const isToday = dateStr === getToday();
+                const isToday = dateStr === todayStr;
+                const dayLabel = d.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric', weekday: 'short' });
+                
                 const dayTodos = items.filter(item => item.type === 'todo' && item.due === dateStr && (calendarType === 'both' || calendarType === 'todo'));
                 const dayHabits = items.filter(item => {
                     if (item.type !== 'habit') return false;
@@ -1553,24 +1624,40 @@
                     if (calendarType === 'todo' || calendarType === 'habit') return false;
                     return item.checks && item.checks.some(c => c.startsWith(dateStr));
                 });
-
+                
+                const hasItems = dayTodos.length > 0 || dayHabits.length > 0 || dayLogs.length > 0;
+                
                 html += `
-                    <div class="calendar-day rounded-xl p-3 ${isToday ? 'bg-primary/10 border-2 border-primary' : 'bg-gray-50 dark:bg-gray-700/50'} min-h-[120px]">
-                        <div class="text-center mb-2">
-                            <div class="text-xs text-gray-400">${['日','一','二','三','四','五','六'][i]}</div>
-                            <div class="text-lg font-bold ${isToday ? 'text-primary' : ''}">${d.getDate()}</div>
+                    <div class="bg-white dark:bg-gray-800 rounded-xl p-3 shadow-sm ${isToday ? 'ring-2 ring-primary ring-inset' : ''}">
+                        <div class="flex items-center gap-2 mb-2">
+                            <div class="text-sm font-bold ${isToday ? 'text-primary' : 'text-gray-600'}">${dayLabel}</div>
+                            ${isToday ? '<span class="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">今天</span>' : ''}
                         </div>
-                        <div class="space-y-1">
-                            ${dayTodos.map(t => `
-                                <div class="text-xs p-1 rounded ${t.completed ? 'bg-success/20 text-success line-through' : 'bg-warning/20 text-warning'} truncate">${escapeHtml(t.title)}</div>
-                            `).join('')}
-                            ${dayHabits.map(h => `
-                                <div class="text-xs p-1 rounded text-white truncate" style="background: ${h.color}"><i class="fas ${h.icon} mr-1"></i>${escapeHtml(h.title)}</div>
-                            `).join('')}
-                            ${dayLogs.map(l => `
-                                <div class="text-xs p-1 rounded text-white truncate" style="background: ${l.color}"><i class="fas ${l.icon} mr-1"></i>${escapeHtml(l.title)} x${l.checks.filter(c => c.startsWith(dateStr)).length}</div>
-                            `).join('')}
-                        </div>
+                        ${hasItems ? `
+                            <div class="space-y-1.5">
+                                ${dayTodos.map(t => `
+                                    <div class="flex items-center gap-2 text-sm">
+                                        <input type="checkbox" ${t.completed ? 'checked' : ''} onchange="toggleItem('${t.id}')" class="w-4 h-4 rounded accent-primary">
+                                        <span class="${t.completed ? 'line-through text-gray-400' : ''}">${escapeHtml(t.title)}</span>
+                                        ${t.priority === 'high' ? '<span class="text-[10px] bg-danger/10 text-danger px-1 rounded">高</span>' : ''}
+                                    </div>
+                                `).join('')}
+                                ${dayHabits.map(h => `
+                                    <div class="flex items-center gap-2 text-sm">
+                                        <div class="w-5 h-5 rounded flex items-center justify-center text-white text-xs" style="background: ${h.color}"><i class="fas ${h.icon}"></i></div>
+                                        <span>${escapeHtml(h.title)}</span>
+                                        <span class="text-xs text-success">✓ 已打卡</span>
+                                    </div>
+                                `).join('')}
+                                ${dayLogs.map(l => `
+                                    <div class="flex items-center gap-2 text-sm">
+                                        <div class="w-5 h-5 rounded flex items-center justify-center text-white text-xs" style="background: ${l.color}"><i class="fas ${l.icon}"></i></div>
+                                        <span>${escapeHtml(l.title)}</span>
+                                        <span class="text-xs text-gray-400">x${l.checks.filter(c => c.startsWith(dateStr)).length}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        ` : '<div class="text-xs text-gray-300 py-1">暂无打卡记录</div>'}
                     </div>
                 `;
             }
