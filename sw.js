@@ -12,7 +12,8 @@ self.addEventListener('install', event => {
                 './icon-512.png',
                 './EXERCISE_SCHEDULE.js',
                 './ENGLISH_SCHEDULE.js',
-                './FINANCE_SCHEDULE.js'
+                './FINANCE_SCHEDULE.js',
+                './diary-db.js'
             ]);
         }).then(() => self.skipWaiting())
     );
