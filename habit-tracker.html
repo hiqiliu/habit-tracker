@@ -551,26 +551,26 @@
 
 <!-- Bookshelf View -->
 <div id="view-bookshelf" class="view-section hidden fade-in">
-    <div class="flex justify-between items-center mb-6">
-        <h2 class="text-2xl font-bold">书架</h2>
+    <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
+        <h2 class="text-xl sm:text-2xl font-bold">书架</h2>
         <div class="flex gap-2">
-            <button onclick="openBookshelfStats()" class="text-sm px-3 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300"><i class="fas fa-chart-bar mr-1"></i>统计</button>
-            <button onclick="openAddBookModal()" class="bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-xl text-sm"><i class="fas fa-plus mr-1"></i>添加书籍</button>
+            <button onclick="openBookshelfStats()" class="text-xs sm:text-sm px-3 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 flex-1 sm:flex-none"><i class="fas fa-chart-bar mr-1"></i>统计</button>
+            <button onclick="openAddBookModal()" class="bg-primary hover:bg-primary/90 text-white px-3 py-2 rounded-xl text-xs sm:text-sm flex-1 sm:flex-none"><i class="fas fa-plus mr-1"></i>添加书籍</button>
         </div>
     </div>
     <!-- Status Tabs -->
-    <div class="flex gap-2 mb-4">
-        <button onclick="switchBookTab('reading')" id="book-tab-reading" class="px-4 py-2 rounded-xl bg-primary text-white text-sm">阅读中</button>
-        <button onclick="switchBookTab('to_read')" id="book-tab-to_read" class="px-4 py-2 rounded-xl bg-gray-200 dark:bg-gray-700 text-sm">待阅读</button>
-        <button onclick="switchBookTab('finished')" id="book-tab-finished" class="px-4 py-2 rounded-xl bg-gray-200 dark:bg-gray-700 text-sm">已完成</button>
+    <div class="flex gap-1.5 sm:gap-2 mb-4 overflow-auto pb-1">
+        <button onclick="switchBookTab('reading')" id="book-tab-reading" class="px-3 sm:px-4 py-2 rounded-xl bg-primary text-white text-xs sm:text-sm whitespace-nowrap flex-1 sm:flex-none">阅读中</button>
+        <button onclick="switchBookTab('to_read')" id="book-tab-to_read" class="px-3 sm:px-4 py-2 rounded-xl bg-gray-200 dark:bg-gray-700 text-xs sm:text-sm whitespace-nowrap flex-1 sm:flex-none">待阅读</button>
+        <button onclick="switchBookTab('finished')" id="book-tab-finished" class="px-3 sm:px-4 py-2 rounded-xl bg-gray-200 dark:bg-gray-700 text-xs sm:text-sm whitespace-nowrap flex-1 sm:flex-none">已完成</button>
     </div>
     <!-- Book List -->
     <div id="bookshelf-list"></div>
 </div>
 
 <!-- Add Book Modal -->
-<div id="add-book-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4" onclick="event.target===this&&closeAddBookModal()">
-    <div class="bg-white dark:bg-gray-800 rounded-t-2xl sm:rounded-2xl p-5 w-full max-w-md max-h-[90vh] overflow-auto" onclick="event.stopPropagation()">
+<div id="add-book-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center" onclick="event.target===this&&closeAddBookModal()">
+    <div class="bg-white dark:bg-gray-800 rounded-t-2xl sm:rounded-2xl p-5 w-full max-w-md max-h-[85vh] overflow-auto" style="padding-bottom: max(1.25rem, env(safe-area-inset-bottom));" onclick="event.stopPropagation()">
         <div class="flex justify-between items-center mb-4">
             <h3 class="text-lg font-bold" id="add-book-modal-title">添加书籍</h3>
             <button onclick="closeAddBookModal()" class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"><i class="fas fa-times"></i></button>
@@ -612,8 +612,8 @@
 </div>
 
 <!-- Book Detail / Notes Modal -->
-<div id="book-detail-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4" onclick="event.target===this&&closeBookDetail()">
-    <div class="bg-white dark:bg-gray-800 rounded-t-2xl sm:rounded-2xl p-5 w-full max-w-lg max-h-[90vh] overflow-auto" onclick="event.stopPropagation()">
+<div id="book-detail-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center" onclick="event.target===this&&closeBookDetail()">
+    <div class="bg-white dark:bg-gray-800 rounded-t-2xl sm:rounded-2xl p-5 w-full max-w-lg max-h-[85vh] overflow-auto" style="padding-bottom: max(1.25rem, env(safe-area-inset-bottom));" onclick="event.stopPropagation()">
         <div class="flex justify-between items-center mb-4">
             <h3 class="text-lg font-bold" id="book-detail-title"></h3>
             <button onclick="closeBookDetail()" class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"><i class="fas fa-times"></i></button>
@@ -3031,31 +3031,31 @@ async function renderBookshelf() {
         const stars = b.rating > 0 ? '★'.repeat(b.rating) + '☆'.repeat(5 - b.rating) : '';
         
         return `
-        <div class="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm mb-3 hover:shadow-md transition-all cursor-pointer border border-gray-100 dark:border-gray-700" onclick="openBookDetail(${b.id})">
-            <div class="flex items-start gap-3">
-                <div class="w-10 h-14 rounded-lg flex items-center justify-center text-white flex-shrink-0" style="background: ${cat.color}">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl p-3 sm:p-4 shadow-sm mb-2 sm:mb-3 hover:shadow-md transition-all cursor-pointer border border-gray-100 dark:border-gray-700" onclick="openBookDetail(${b.id})">
+            <div class="flex items-start gap-2.5 sm:gap-3">
+                <div class="w-9 h-12 sm:w-10 sm:h-14 rounded-lg flex items-center justify-center text-white flex-shrink-0 text-sm sm:text-base" style="background: ${cat.color}">
                     <i class="fas ${cat.icon}"></i>
                 </div>
                 <div class="flex-1 min-w-0">
-                    <div class="font-semibold truncate">${escapeHtml(b.title)}</div>
-                    <div class="text-xs text-gray-400">${escapeHtml(b.author)} · ${b.category}</div>
+                    <div class="font-semibold text-sm sm:text-base truncate">${escapeHtml(b.title)}</div>
+                    <div class="text-[10px] sm:text-xs text-gray-400">${escapeHtml(b.author)} · ${b.category}</div>
                     ${b.status === 'reading' ? `
-                        <div class="mt-2">
-                            <div class="flex justify-between text-xs text-gray-500 mb-1">
+                        <div class="mt-1.5 sm:mt-2">
+                            <div class="flex justify-between text-[10px] sm:text-xs text-gray-500 mb-0.5">
                                 <span>${b.currentPage}/${b.totalPages} 页</span>
                                 <span>${progress}%</span>
                             </div>
-                            <div class="h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                            <div class="h-1 sm:h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                                 <div class="h-full bg-primary rounded-full transition-all" style="width: ${progress}%"></div>
                             </div>
                         </div>
                     ` : ''}
-                    ${b.status === 'finished' && stars ? `<div class="text-xs text-warning mt-1">${stars}</div>` : ''}
-                    ${b.review ? `<div class="text-xs text-gray-500 mt-1 truncate">"${escapeHtml(b.review)}"</div>` : ''}
+                    ${b.status === 'finished' && stars ? `<div class="text-[10px] sm:text-xs text-warning mt-0.5 sm:mt-1">${stars}</div>` : ''}
+                    ${b.review ? `<div class="text-[10px] sm:text-xs text-gray-500 mt-0.5 sm:mt-1 truncate">"${escapeHtml(b.review)}"</div>` : ''}
                 </div>
                 <div class="flex gap-1 flex-shrink-0">
-                    ${b.status === 'reading' ? `<button onclick="event.stopPropagation(); quickLogReading(${b.id})" class="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center text-xs hover:bg-primary/20" title="记录阅读"><i class="fas fa-plus"></i></button>` : ''}
-                    <button onclick="event.stopPropagation(); editBook(${b.id})" class="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-xs hover:bg-gray-200"><i class="fas fa-pen"></i></button>
+                    ${b.status === 'reading' ? `<button onclick="event.stopPropagation(); quickLogReading(${b.id})" class="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center text-[10px] sm:text-xs hover:bg-primary/20" title="记录阅读"><i class="fas fa-plus"></i></button>` : ''}
+                    <button onclick="event.stopPropagation(); editBook(${b.id})" class="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-[10px] sm:text-xs hover:bg-gray-200"><i class="fas fa-pen"></i></button>
                 </div>
             </div>
         </div>`;
