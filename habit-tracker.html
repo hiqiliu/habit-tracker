@@ -398,7 +398,7 @@
                 </div>
             </div>
             <!-- Diary View -->
-<div id="view-diary" class="view-section hidden fade-in">
+            <div id="view-diary" class="view-section hidden fade-in">
     <div id="diary-notebooks-view">
         <div class="flex justify-between items-center mb-6">
             <h2 class="text-2xl font-bold">五年日记</h2>
@@ -548,27 +548,26 @@
 <div id="diary-photo-viewer" class="hidden fixed inset-0 bg-black/80 z-[60] flex items-center justify-center p-4" onclick="this.classList.add('hidden')">
     <img id="diary-photo-viewer-img" class="max-w-full max-h-full rounded-xl object-contain">
 </div>
+            <!-- Bookshelf View -->
+            <div id="view-bookshelf" class="view-section hidden fade-in">
+                <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
+                    <h2 class="text-xl sm:text-2xl font-bold">书架</h2>
+                    <div class="flex gap-2">
+                        <button onclick="openBookshelfStats()" class="text-xs sm:text-sm px-3 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 flex-1 sm:flex-none"><i class="fas fa-chart-bar mr-1"></i>统计</button>
+                        <button onclick="openAddBookModal()" class="bg-primary hover:bg-primary/90 text-white px-3 py-2 rounded-xl text-xs sm:text-sm flex-1 sm:flex-none"><i class="fas fa-plus mr-1"></i>添加书籍</button>
+                    </div>
+                </div>
+                <!-- Status Tabs -->
+                <div class="flex gap-1.5 sm:gap-2 mb-4 overflow-auto pb-1">
+                    <button onclick="switchBookTab('reading')" id="book-tab-reading" class="px-3 sm:px-4 py-2 rounded-xl bg-primary text-white text-xs sm:text-sm whitespace-nowrap flex-1 sm:flex-none">阅读中</button>
+                    <button onclick="switchBookTab('to_read')" id="book-tab-to_read" class="px-3 sm:px-4 py-2 rounded-xl bg-gray-200 dark:bg-gray-700 text-xs sm:text-sm whitespace-nowrap flex-1 sm:flex-none">待阅读</button>
+                    <button onclick="switchBookTab('finished')" id="book-tab-finished" class="px-3 sm:px-4 py-2 rounded-xl bg-gray-200 dark:bg-gray-700 text-xs sm:text-sm whitespace-nowrap flex-1 sm:flex-none">已完成</button>
+                </div>
+                <!-- Book List -->
+                <div id="bookshelf-list"></div>
+            </div>
             </div>
         </main>
-
-<!-- Bookshelf View -->
-<div id="view-bookshelf" class="view-section hidden fade-in">
-    <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
-        <h2 class="text-xl sm:text-2xl font-bold">书架</h2>
-        <div class="flex gap-2">
-            <button onclick="openBookshelfStats()" class="text-xs sm:text-sm px-3 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 flex-1 sm:flex-none"><i class="fas fa-chart-bar mr-1"></i>统计</button>
-            <button onclick="openAddBookModal()" class="bg-primary hover:bg-primary/90 text-white px-3 py-2 rounded-xl text-xs sm:text-sm flex-1 sm:flex-none"><i class="fas fa-plus mr-1"></i>添加书籍</button>
-        </div>
-    </div>
-    <!-- Status Tabs -->
-    <div class="flex gap-1.5 sm:gap-2 mb-4 overflow-auto pb-1">
-        <button onclick="switchBookTab('reading')" id="book-tab-reading" class="px-3 sm:px-4 py-2 rounded-xl bg-primary text-white text-xs sm:text-sm whitespace-nowrap flex-1 sm:flex-none">阅读中</button>
-        <button onclick="switchBookTab('to_read')" id="book-tab-to_read" class="px-3 sm:px-4 py-2 rounded-xl bg-gray-200 dark:bg-gray-700 text-xs sm:text-sm whitespace-nowrap flex-1 sm:flex-none">待阅读</button>
-        <button onclick="switchBookTab('finished')" id="book-tab-finished" class="px-3 sm:px-4 py-2 rounded-xl bg-gray-200 dark:bg-gray-700 text-xs sm:text-sm whitespace-nowrap flex-1 sm:flex-none">已完成</button>
-    </div>
-    <!-- Book List -->
-    <div id="bookshelf-list"></div>
-</div>
 
 <!-- Add Book Modal -->
 <div id="add-book-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center" onclick="event.target===this&&closeAddBookModal()">
