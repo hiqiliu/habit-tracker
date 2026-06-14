@@ -18,6 +18,7 @@
     <script src="ENGLISH_SCHEDULE.js"></script>
     <script src="FINANCE_SCHEDULE.js"></script>
     <script src="diary-db.js"></script>
+    <script src="bookshelf-db.js"></script>
     <script>
         tailwind.config = {
             darkMode: 'class',
@@ -79,6 +80,9 @@
                 <button onclick="showView('diary')" id="nav-diary" class="nav-btn w-full flex items-center px-4 py-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-all">
                     <i class="fas fa-book w-6"></i><span>五年日记</span>
                 </button>
+                <button onclick="showView('bookshelf')" id="nav-bookshelf" class="nav-btn w-full flex items-center px-4 py-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-all">
+                    <i class="fas fa-book-reader w-6"></i><span>书架</span>
+                </button>
                 <button onclick="showView('stats')" id="nav-stats" class="nav-btn w-full flex items-center px-4 py-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-all">
                     <i class="fas fa-chart-pie w-6"></i><span>统计分析</span>
                 </button>
@@ -124,6 +128,9 @@
                 </button>
                 <button onclick="showView('diary'); toggleMobileMenu()" class="w-full flex items-center px-4 py-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700">
                     <i class="fas fa-book w-6"></i><span>五年日记</span>
+                </button>
+                <button onclick="showView('bookshelf'); toggleMobileMenu()" class="w-full flex items-center px-4 py-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700">
+                    <i class="fas fa-book-reader w-6"></i><span>书架</span>
                 </button>
                 <button onclick="showView('stats'); toggleMobileMenu()" class="w-full flex items-center px-4 py-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700">
                     <i class="fas fa-chart-pie w-6"></i><span>统计分析</span>
@@ -541,6 +548,90 @@
     <img id="diary-photo-viewer-img" class="max-w-full max-h-full rounded-xl object-contain">
 </div>
         </main>
+
+<!-- Bookshelf View -->
+<div id="view-bookshelf" class="view-section hidden fade-in">
+    <div class="flex justify-between items-center mb-6">
+        <h2 class="text-2xl font-bold">书架</h2>
+        <div class="flex gap-2">
+            <button onclick="openBookshelfStats()" class="text-sm px-3 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300"><i class="fas fa-chart-bar mr-1"></i>统计</button>
+            <button onclick="openAddBookModal()" class="bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-xl text-sm"><i class="fas fa-plus mr-1"></i>添加书籍</button>
+        </div>
+    </div>
+    <!-- Status Tabs -->
+    <div class="flex gap-2 mb-4">
+        <button onclick="switchBookTab('reading')" id="book-tab-reading" class="px-4 py-2 rounded-xl bg-primary text-white text-sm">阅读中</button>
+        <button onclick="switchBookTab('to_read')" id="book-tab-to_read" class="px-4 py-2 rounded-xl bg-gray-200 dark:bg-gray-700 text-sm">待阅读</button>
+        <button onclick="switchBookTab('finished')" id="book-tab-finished" class="px-4 py-2 rounded-xl bg-gray-200 dark:bg-gray-700 text-sm">已完成</button>
+    </div>
+    <!-- Book List -->
+    <div id="bookshelf-list"></div>
+</div>
+
+<!-- Add Book Modal -->
+<div id="add-book-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4" onclick="event.target===this&&closeAddBookModal()">
+    <div class="bg-white dark:bg-gray-800 rounded-t-2xl sm:rounded-2xl p-5 w-full max-w-md max-h-[90vh] overflow-auto" onclick="event.stopPropagation()">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-bold" id="add-book-modal-title">添加书籍</h3>
+            <button onclick="closeAddBookModal()" class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="space-y-4">
+            <div><label class="text-xs text-gray-500 block mb-1">书名 *</label><input type="text" id="book-title" class="w-full px-4 py-2.5 rounded-xl border dark:border-gray-700 dark:bg-gray-800 text-sm" placeholder="书名"></div>
+            <div><label class="text-xs text-gray-500 block mb-1">作者</label><input type="text" id="book-author" class="w-full px-4 py-2.5 rounded-xl border dark:border-gray-700 dark:bg-gray-800 text-sm" placeholder="作者"></div>
+            <div class="flex gap-2">
+                <div class="flex-1"><label class="text-xs text-gray-500 block mb-1">类型</label>
+                    <select id="book-category" class="w-full px-4 py-2.5 rounded-xl border dark:border-gray-700 dark:bg-gray-800 text-sm">
+                        <option value="小说">小说</option><option value="非虚构">非虚构</option><option value="技术">技术</option><option value="历史">历史</option><option value="哲学">哲学</option><option value="心理">心理</option><option value="经济">经济</option><option value="科学">科学</option><option value="艺术">艺术</option><option value="传记">传记</option><option value="其他">其他</option>
+                    </select>
+                </div>
+                <div class="flex-1"><label class="text-xs text-gray-500 block mb-1">状态</label>
+                    <select id="book-status" class="w-full px-4 py-2.5 rounded-xl border dark:border-gray-700 dark:bg-gray-800 text-sm">
+                        <option value="to_read">待阅读</option><option value="reading">阅读中</option><option value="finished">已完成</option>
+                    </select>
+                </div>
+            </div>
+            <div class="flex gap-2">
+                <div class="flex-1"><label class="text-xs text-gray-500 block mb-1">总页数</label><input type="number" id="book-total-pages" class="w-full px-4 py-2.5 rounded-xl border dark:border-gray-700 dark:bg-gray-800 text-sm" placeholder="0" min="0"></div>
+                <div class="flex-1"><label class="text-xs text-gray-500 block mb-1">当前页</label><input type="number" id="book-current-page" class="w-full px-4 py-2.5 rounded-xl border dark:border-gray-700 dark:bg-gray-800 text-sm" placeholder="0" min="0"></div>
+            </div>
+            <div><label class="text-xs text-gray-500 block mb-1">评分 (1-5)</label>
+                <div class="flex gap-2" id="book-rating-stars">
+                    <button onclick="setBookRating(1)" data-star="1" class="text-2xl text-gray-300 hover:text-warning">★</button>
+                    <button onclick="setBookRating(2)" data-star="2" class="text-2xl text-gray-300 hover:text-warning">★</button>
+                    <button onclick="setBookRating(3)" data-star="3" class="text-2xl text-gray-300 hover:text-warning">★</button>
+                    <button onclick="setBookRating(4)" data-star="4" class="text-2xl text-gray-300 hover:text-warning">★</button>
+                    <button onclick="setBookRating(5)" data-star="5" class="text-2xl text-gray-300 hover:text-warning">★</button>
+                </div>
+            </div>
+            <div><label class="text-xs text-gray-500 block mb-1">短评</label><textarea id="book-review" rows="2" class="w-full px-4 py-2.5 rounded-xl border dark:border-gray-700 dark:bg-gray-800 text-sm resize-none" placeholder="一句话评价..."></textarea></div>
+        </div>
+        <input type="hidden" id="book-edit-id">
+        <input type="hidden" id="book-rating-value" value="0">
+        <button onclick="saveBook()" class="w-full mt-4 py-3 rounded-xl bg-primary text-white font-medium hover:bg-primary/90"><i class="fas fa-save mr-1"></i>保存</button>
+    </div>
+</div>
+
+<!-- Book Detail / Notes Modal -->
+<div id="book-detail-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4" onclick="event.target===this&&closeBookDetail()">
+    <div class="bg-white dark:bg-gray-800 rounded-t-2xl sm:rounded-2xl p-5 w-full max-w-lg max-h-[90vh] overflow-auto" onclick="event.stopPropagation()">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-bold" id="book-detail-title"></h3>
+            <button onclick="closeBookDetail()" class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"><i class="fas fa-times"></i></button>
+        </div>
+        <div id="book-detail-content"></div>
+    </div>
+</div>
+
+<!-- Yearly Stats Modal -->
+<div id="bookshelf-stats-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onclick="event.target===this&&closeBookshelfStats()">
+    <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 w-full max-w-md max-h-[90vh] overflow-auto" onclick="event.stopPropagation()">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-bold">年度阅读统计</h3>
+            <button onclick="closeBookshelfStats()" class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"><i class="fas fa-times"></i></button>
+        </div>
+        <div id="bookshelf-stats-content"></div>
+    </div>
+</div>
     </div>
 
     <!-- Item Modal -->
@@ -812,6 +903,9 @@
             if (view === 'schedule') renderSchedule();
             if (view === 'diary') renderDiaryNotebooks();
             if (view === 'stats') renderStats();
+            if (view === 'bookshelf') {
+                renderBookshelf();
+            }
         }
 
         function toggleMobileMenu() {
@@ -2907,6 +3001,300 @@
             a.click();
             URL.revokeObjectURL(url);
         }
+
+// ==================== 书架 - UI逻辑 ====================
+let bookTab = 'reading';
+let selectedBookRating = 0;
+
+function switchBookTab(tab) {
+    bookTab = tab;
+    ['reading', 'to_read', 'finished'].forEach(t => {
+        const btn = document.getElementById('book-tab-' + t);
+        btn.className = 'px-4 py-2 rounded-xl ' + (t === tab ? 'bg-primary text-white' : 'bg-gray-200 dark:bg-gray-700') + ' text-sm';
+    });
+    renderBookshelf();
+}
+
+async function renderBookshelf() {
+    const list = document.getElementById('bookshelf-list');
+    const books = await getBooksByStatus(bookTab);
+    
+    if (books.length === 0) {
+        const cfg = BOOK_STATUS_CONFIG[bookTab];
+        list.innerHTML = `<div class="text-center py-12 text-gray-400"><i class="fas ${cfg.icon} text-4xl mb-3 block"></i>暂无${cfg.label}的书籍</div>`;
+        return;
+    }
+    
+    list.innerHTML = books.map(b => {
+        const cat = BOOK_CATEGORIES[b.category] || BOOK_CATEGORIES['其他'];
+        const progress = b.totalPages > 0 ? Math.round(b.currentPage / b.totalPages * 100) : 0;
+        const stars = b.rating > 0 ? '★'.repeat(b.rating) + '☆'.repeat(5 - b.rating) : '';
+        
+        return `
+        <div class="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm mb-3 hover:shadow-md transition-all cursor-pointer border border-gray-100 dark:border-gray-700" onclick="openBookDetail(${b.id})">
+            <div class="flex items-start gap-3">
+                <div class="w-10 h-14 rounded-lg flex items-center justify-center text-white flex-shrink-0" style="background: ${cat.color}">
+                    <i class="fas ${cat.icon}"></i>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <div class="font-semibold truncate">${escapeHtml(b.title)}</div>
+                    <div class="text-xs text-gray-400">${escapeHtml(b.author)} · ${b.category}</div>
+                    ${b.status === 'reading' ? `
+                        <div class="mt-2">
+                            <div class="flex justify-between text-xs text-gray-500 mb-1">
+                                <span>${b.currentPage}/${b.totalPages} 页</span>
+                                <span>${progress}%</span>
+                            </div>
+                            <div class="h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                                <div class="h-full bg-primary rounded-full transition-all" style="width: ${progress}%"></div>
+                            </div>
+                        </div>
+                    ` : ''}
+                    ${b.status === 'finished' && stars ? `<div class="text-xs text-warning mt-1">${stars}</div>` : ''}
+                    ${b.review ? `<div class="text-xs text-gray-500 mt-1 truncate">"${escapeHtml(b.review)}"</div>` : ''}
+                </div>
+                <div class="flex gap-1 flex-shrink-0">
+                    ${b.status === 'reading' ? `<button onclick="event.stopPropagation(); quickLogReading(${b.id})" class="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center text-xs hover:bg-primary/20" title="记录阅读"><i class="fas fa-plus"></i></button>` : ''}
+                    <button onclick="event.stopPropagation(); editBook(${b.id})" class="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-xs hover:bg-gray-200"><i class="fas fa-pen"></i></button>
+                </div>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function openAddBookModal() {
+    document.getElementById('add-book-modal-title').textContent = '添加书籍';
+    document.getElementById('book-title').value = '';
+    document.getElementById('book-author').value = '';
+    document.getElementById('book-category').value = '小说';
+    document.getElementById('book-status').value = 'to_read';
+    document.getElementById('book-total-pages').value = '';
+    document.getElementById('book-current-page').value = '0';
+    document.getElementById('book-review').value = '';
+    document.getElementById('book-edit-id').value = '';
+    selectedBookRating = 0;
+    updateRatingStars();
+    document.getElementById('add-book-modal').classList.remove('hidden');
+}
+
+function closeAddBookModal() {
+    document.getElementById('add-book-modal').classList.add('hidden');
+}
+
+function setBookRating(n) {
+    selectedBookRating = (selectedBookRating === n) ? 0 : n;
+    document.getElementById('book-rating-value').value = selectedBookRating;
+    updateRatingStars();
+}
+
+function updateRatingStars() {
+    document.querySelectorAll('#book-rating-stars button').forEach(btn => {
+        const star = parseInt(btn.dataset.star);
+        btn.classList.toggle('text-warning', star <= selectedBookRating);
+        btn.classList.toggle('text-gray-300', star > selectedBookRating);
+    });
+}
+
+async function editBook(id) {
+    const book = await getBook(id);
+    if (!book) return;
+    document.getElementById('add-book-modal-title').textContent = '编辑书籍';
+    document.getElementById('book-title').value = book.title;
+    document.getElementById('book-author').value = book.author;
+    document.getElementById('book-category').value = book.category;
+    document.getElementById('book-status').value = book.status;
+    document.getElementById('book-total-pages').value = book.totalPages || '';
+    document.getElementById('book-current-page').value = book.currentPage || 0;
+    document.getElementById('book-review').value = book.review || '';
+    document.getElementById('book-edit-id').value = book.id;
+    selectedBookRating = book.rating || 0;
+    document.getElementById('book-rating-value').value = selectedBookRating;
+    updateRatingStars();
+    document.getElementById('add-book-modal').classList.remove('hidden');
+}
+
+async function saveBook() {
+    const title = document.getElementById('book-title').value.trim();
+    if (!title) { alert('请输入书名'); return; }
+    
+    const editId = document.getElementById('book-edit-id').value;
+    const data = {
+        title: title,
+        author: document.getElementById('book-author').value.trim(),
+        category: document.getElementById('book-category').value,
+        status: document.getElementById('book-status').value,
+        totalPages: parseInt(document.getElementById('book-total-pages').value) || 0,
+        currentPage: parseInt(document.getElementById('book-current-page').value) || 0,
+        rating: selectedBookRating,
+        review: document.getElementById('book-review').value.trim()
+    };
+    
+    if (editId) {
+        await updateBook(parseInt(editId), data);
+    } else {
+        if (data.status === 'reading') data.startedAt = new Date().toISOString();
+        if (data.status === 'finished') data.finishedAt = new Date().toISOString();
+        await addBook(data);
+    }
+    
+    closeAddBookModal();
+    renderBookshelf();
+}
+
+async function quickLogReading(bookId) {
+    const pages = prompt('今天读了多少页？（留空记为0页）');
+    if (pages === null) return;
+    await logReading(bookId, parseInt(pages) || 0);
+    renderBookshelf();
+    renderDashboard();
+}
+
+// ==================== 书籍详情 + 笔记 ====================
+async function openBookDetail(id) {
+    const book = await getBook(id);
+    if (!book) return;
+    const notes = await getBookNotes(id);
+    const cat = BOOK_CATEGORIES[book.category] || BOOK_CATEGORIES['其他'];
+    const progress = book.totalPages > 0 ? Math.round(book.currentPage / book.totalPages * 100) : 0;
+    const stars = book.rating > 0 ? '★'.repeat(book.rating) + '☆'.repeat(5 - book.rating) : '';
+    
+    document.getElementById('book-detail-title').textContent = book.title;
+    
+    let html = `
+        <div class="flex items-center gap-3 mb-4">
+            <div class="w-12 h-16 rounded-lg flex items-center justify-center text-white" style="background: ${cat.color}">
+                <i class="fas ${cat.icon} text-lg"></i>
+            </div>
+            <div>
+                <div class="font-bold">${escapeHtml(book.title)}</div>
+                <div class="text-sm text-gray-400">${escapeHtml(book.author)} · ${book.category}</div>
+                <div class="text-xs mt-1"><span class="px-2 py-0.5 rounded-full text-white text-xs" style="background: ${BOOK_STATUS_CONFIG[book.status].color}">${BOOK_STATUS_CONFIG[book.status].label}</span></div>
+            </div>
+        </div>
+        ${book.status === 'reading' ? `
+            <div class="mb-4">
+                <div class="flex justify-between text-sm mb-1"><span>阅读进度</span><span>${book.currentPage}/${book.totalPages} 页 (${progress}%)</span></div>
+                <div class="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden"><div class="h-full bg-primary rounded-full" style="width: ${progress}%"></div></div>
+            </div>
+        ` : ''}
+        ${stars ? `<div class="text-warning mb-2">${stars}</div>` : ''}
+        ${book.review ? `<div class="text-sm text-gray-600 dark:text-gray-300 mb-4 italic">"${escapeHtml(book.review)}"</div>` : ''}
+        <div class="flex gap-2 mb-4">
+            <button onclick="editBook(${book.id}); closeBookDetail();" class="flex-1 py-2 rounded-xl bg-gray-100 dark:bg-gray-700 text-sm"><i class="fas fa-pen mr-1"></i>编辑</button>
+            ${book.status === 'reading' ? `<button onclick="quickLogReading(${book.id}); closeBookDetail();" class="flex-1 py-2 rounded-xl bg-primary text-white text-sm"><i class="fas fa-book-open mr-1"></i>记录阅读</button>` : ''}
+            <button onclick="deleteBookConfirm(${book.id})" class="py-2 px-4 rounded-xl bg-danger/10 text-danger text-sm"><i class="fas fa-trash"></i></button>
+        </div>
+        <hr class="dark:border-gray-700 mb-4">
+        <div class="flex justify-between items-center mb-3">
+            <h4 class="font-semibold">阅读笔记 (${notes.length})</h4>
+        </div>
+        <div class="mb-3">
+            <textarea id="new-note-content" rows="2" class="w-full px-4 py-2.5 rounded-xl border dark:border-gray-700 dark:bg-gray-800 text-sm resize-none" placeholder="写一条笔记..."></textarea>
+            <button onclick="saveBookNote(${book.id})" class="mt-2 w-full py-2 rounded-xl bg-primary text-white text-sm"><i class="fas fa-plus mr-1"></i>添加笔记</button>
+        </div>
+        <div class="space-y-2">
+            ${notes.length === 0 ? '<p class="text-sm text-gray-400 text-center py-4">暂无笔记</p>' : 
+                notes.map(n => `
+                    <div class="bg-gray-50 dark:bg-gray-700/30 rounded-xl p-3">
+                        <div class="text-sm">${escapeHtml(n.content)}</div>
+                        <div class="text-[10px] text-gray-400 mt-1">${new Date(n.createdAt).toLocaleDateString('zh-CN')}</div>
+                        <button onclick="deleteBookNoteConfirm(${n.id}, ${book.id})" class="text-[10px] text-danger mt-1"><i class="fas fa-times mr-0.5"></i>删除</button>
+                    </div>
+                `).join('')}
+        </div>
+    `;
+    
+    document.getElementById('book-detail-content').innerHTML = html;
+    document.getElementById('book-detail-modal').classList.remove('hidden');
+}
+
+function closeBookDetail() {
+    document.getElementById('book-detail-modal').classList.add('hidden');
+}
+
+async function saveBookNote(bookId) {
+    const content = document.getElementById('new-note-content').value.trim();
+    if (!content) return;
+    await addBookNote(bookId, content);
+    openBookDetail(bookId);
+}
+
+async function deleteBookNoteConfirm(noteId, bookId) {
+    if (!confirm('删除这条笔记？')) return;
+    await deleteBookNote(noteId);
+    openBookDetail(bookId);
+}
+
+async function deleteBookConfirm(id) {
+    if (!confirm('确定要删除这本书吗？相关笔记也会被删除。')) return;
+    await deleteBook(id);
+    closeBookDetail();
+    renderBookshelf();
+}
+
+// ==================== 年度统计 ====================
+async function openBookshelfStats() {
+    const year = new Date().getFullYear().toString();
+    const stats = await getYearlyStats(year);
+    
+    const catEntries = Object.entries(stats.categoryMap).sort((a, b) => b[1] - a[1]);
+    const monthEntries = Object.entries(stats.monthlyMap).sort();
+    
+    let html = `
+        <div class="text-center mb-4">
+            <div class="text-3xl font-bold text-primary">${stats.totalFinished}</div>
+            <div class="text-sm text-gray-400">本年已完成</div>
+        </div>
+        <div class="grid grid-cols-3 gap-3 mb-4">
+            <div class="bg-gray-50 dark:bg-gray-700/30 rounded-xl p-3 text-center">
+                <div class="text-lg font-bold">${stats.totalReading}</div>
+                <div class="text-[10px] text-gray-400">阅读中</div>
+            </div>
+            <div class="bg-gray-50 dark:bg-gray-700/30 rounded-xl p-3 text-center">
+                <div class="text-lg font-bold">${stats.totalPages}</div>
+                <div class="text-[10px] text-gray-400">总页数</div>
+            </div>
+            <div class="bg-gray-50 dark:bg-gray-700/30 rounded-xl p-3 text-center">
+                <div class="text-lg font-bold">${stats.avgRating}</div>
+                <div class="text-[10px] text-gray-400">均分</div>
+            </div>
+        </div>
+        ${catEntries.length > 0 ? `
+            <h4 class="font-semibold text-sm mb-2">阅读类型分布</h4>
+            <div class="space-y-1.5 mb-4">
+                ${catEntries.map(([cat, count]) => {
+                    const c = BOOK_CATEGORIES[cat] || BOOK_CATEGORIES['其他'];
+                    const pct = Math.round(count / stats.totalFinished * 100);
+                    return `<div class="flex items-center gap-2 text-sm">
+                        <i class="fas ${c.icon} w-4" style="color: ${c.color}"></i>
+                        <span class="w-12">${cat}</span>
+                        <div class="flex-1 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden"><div class="h-full rounded-full" style="width: ${pct}%; background: ${c.color}"></div></div>
+                        <span class="text-xs text-gray-400 w-8 text-right">${count}本</span>
+                    </div>`;
+                }).join('')}
+            </div>
+        ` : ''}
+        ${monthEntries.length > 0 ? `
+            <h4 class="font-semibold text-sm mb-2">月度完成</h4>
+            <div class="space-y-1.5">
+                ${monthEntries.map(([month, count]) => `
+                    <div class="flex items-center gap-2 text-sm">
+                        <span class="w-16 text-xs">${month}</span>
+                        <div class="flex-1 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden"><div class="h-full bg-primary rounded-full" style="width: ${Math.min(count * 20, 100)}%"></div></div>
+                        <span class="text-xs text-gray-400 w-8 text-right">${count}本</span>
+                    </div>
+                `).join('')}
+            </div>
+        ` : '<p class="text-sm text-gray-400 text-center">本年暂无完成的书籍</p>'}
+    `;
+    
+    document.getElementById('bookshelf-stats-content').innerHTML = html;
+    document.getElementById('bookshelf-stats-modal').classList.remove('hidden');
+}
+
+function closeBookshelfStats() {
+    document.getElementById('bookshelf-stats-modal').classList.add('hidden');
+}
     </script>
 </body>
 </html>
