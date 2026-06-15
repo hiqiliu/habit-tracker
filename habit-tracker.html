@@ -2048,7 +2048,8 @@
         // ==================== Export/Import ====================
         async function exportData() {
             const diaryBackup = await exportDiaryBackup();
-            const data = { items, projects, scheduleChecks, diary: diaryBackup, exportDate: new Date().toISOString() };
+            const bookshelfBackup = await exportBookshelfBackup();
+            const data = { items, projects, scheduleChecks, diary: diaryBackup, bookshelf: bookshelfBackup, exportDate: new Date().toISOString() };
             const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -2081,6 +2082,10 @@
                     // Restore diary data if present
                     if (data.diary && data.diary.notebooks) {
                         await importDiaryBackup(data.diary);
+                    }
+                    // Restore bookshelf data if present
+                    if (data.bookshelf && data.bookshelf.books) {
+                        await importBookshelfBackup(data.bookshelf);
                     }
                     saveData();
                     alert('数据导入成功！');

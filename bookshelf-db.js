@@ -281,6 +281,84 @@ async function getYearlyStats(year) {
     };
 }
 
+// ==================== 导出备份 ====================
+async function exportBookshelfBackup() {
+    const books = await getAllBooks();
+    const backup = {
+        version: 1,
+        exportedAt: new Date().toISOString(),
+        books: []
+    };
+    
+    for (const book of books) {
+        const notes = await getBookNotes(book.id);
+        const logs = await getReadingLogs(book.id);
+        backup.books.push({
+            title: book.title,
+            author: book.author,
+            category: book.category,
+            totalPages: book.totalPages,
+            currentPage: book.currentPage,
+            status: book.status,
+            rating: book.rating,
+            review: book.review,
+            cover: book.cover,
+            startedAt: book.startedAt,
+            finishedAt: book.finishedAt,
+            addedAt: book.addedAt,
+            notes: notes.map(n => ({ content: n.content, createdAt: n.createdAt })),
+            logs: logs.map(l => ({ date: l.date, pagesRead: l.pagesRead }))
+        });
+    }
+    
+    return backup;
+}
+
+// ==================== 导入备份 ====================
+async function importBookshelfBackup(backup) {
+    if (!backup || !backup.books) return;
+    
+    for (const book of backup.books) {
+        const newBook = await addBook({
+            title: book.title,
+            author: book.author,
+            category: book.category,
+            totalPages: book.totalPages,
+            currentPage: book.currentPage,
+            status: book.status,
+            rating: book.rating,
+            review: book.review,
+            cover: book.cover,
+            startedAt: book.startedAt,
+            finishedAt: book.finishedAt
+        });
+        
+        // Add notes
+        if (book.notes && book.notes.length > 0) {
+            for (const note of book.notes) {
+                await addBookNote(newBook.id, note.content);
+            }
+        }
+        
+        // Add reading logs
+        if (book.logs && book.logs.length > 0) {
+            for (const log of book.logs) {
+                const db = await openBookshelfDB();
+                const tx = db.transaction('readingLog', 'readwrite');
+                const store = tx.objectStore('readingLog');
+                store.add({
+                    bookId: newBook.id,
+                    date: log.date,
+                    pagesRead: log.pagesRead,
+                    createdAt: new Date().toISOString()
+                });
+                await new Promise(r => { tx.oncomplete = () => r(); });
+                db.close();
+            }
+        }
+    }
+}
+
 // ==================== 书籍分类配置 ====================
 const BOOK_CATEGORIES = {
     '小说': { icon: 'fa-book', color: '#6366f1' },
