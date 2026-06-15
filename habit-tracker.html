@@ -2049,7 +2049,25 @@
         async function exportData() {
             const diaryBackup = await exportDiaryBackup();
             const bookshelfBackup = await exportBookshelfBackup();
-            const data = { items, projects, scheduleChecks, diary: diaryBackup, bookshelf: bookshelfBackup, exportDate: new Date().toISOString() };
+            // Export custom schedule configs
+            const customSchedules = Object.entries(SCHEDULE_CONFIGS)
+                .filter(([k, v]) => !['exercise', 'english', 'finance'].includes(k))
+                .map(([k, v]) => ({ id: k, config: v }));
+            // Export custom schedule content (ht_schedule_custom_*)
+            const customScheduleContent = {};
+            ['exercise', 'english', 'finance'].forEach(type => {
+                const content = localStorage.getItem('ht_schedule_custom_' + type);
+                if (content) customScheduleContent[type] = content;
+            });
+            const data = {
+                items, projects, scheduleChecks,
+                currentScheduleType,
+                customSchedules,
+                customScheduleContent,
+                diary: diaryBackup,
+                bookshelf: bookshelfBackup,
+                exportDate: new Date().toISOString()
+            };
             const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -2086,6 +2104,24 @@
                     // Restore bookshelf data if present
                     if (data.bookshelf && data.bookshelf.books) {
                         await importBookshelfBackup(data.bookshelf);
+                    }
+                    // Restore custom schedule configs
+                    if (data.customSchedules && data.customSchedules.length > 0) {
+                        data.customSchedules.forEach(s => {
+                            SCHEDULE_CONFIGS[s.id] = s.config;
+                        });
+                        saveCustomSchedules();
+                    }
+                    // Restore custom schedule content
+                    if (data.customScheduleContent) {
+                        Object.entries(data.customScheduleContent).forEach(([type, content]) => {
+                            localStorage.setItem('ht_schedule_custom_' + type, content);
+                        });
+                    }
+                    // Restore current schedule type
+                    if (data.currentScheduleType) {
+                        currentScheduleType = data.currentScheduleType;
+                        localStorage.setItem('ht_current_schedule', currentScheduleType);
                     }
                     saveData();
                     alert('数据导入成功！');
