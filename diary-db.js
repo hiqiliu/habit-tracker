@@ -49,12 +49,12 @@ async function createNotebook(name) {
     };
     
     store.add(notebook);
-    await new Promise((resolve, reject) => {
+    const result = await new Promise((resolve, reject) => {
         tx.oncomplete = () => resolve(notebook);
         tx.onerror = () => reject(tx.error);
     });
     db.close();
-    return notebook;
+    return result;
 }
 
 async function getNotebooks() {
@@ -330,6 +330,42 @@ async function exportDiaryBackup() {
     }
     
     return backup;
+}
+
+// ==================== 导入备份 ====================
+async function importDiaryBackup(backup) {
+    if (!backup || !backup.notebooks) return;
+    
+    for (const nb of backup.notebooks) {
+        // Create notebook with same ID if not exists
+        const db = await openDiaryDB();
+        const tx = db.transaction('notebooks', 'readwrite');
+        const store = tx.objectStore('notebooks');
+        
+        const existing = await new Promise(r => {
+            const req = store.get(nb.id);
+            req.onsuccess = () => r(req.result);
+        });
+        
+        if (!existing) {
+            store.add({
+                id: nb.id,
+                name: nb.name,
+                createdAt: nb.createdAt,
+                updatedAt: new Date().toISOString(),
+                entryCount: nb.entries ? nb.entries.length : 0
+            });
+        }
+        await new Promise(r => { tx.oncomplete = () => r(); });
+        db.close();
+        
+        // Add entries
+        if (nb.entries && nb.entries.length > 0) {
+            for (const entry of nb.entries) {
+                await saveEntry(nb.id, entry);
+            }
+        }
+    }
 }
 
 // ==================== 天气图标映射 ====================

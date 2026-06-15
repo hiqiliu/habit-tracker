@@ -2046,8 +2046,9 @@
         }
 
         // ==================== Export/Import ====================
-        function exportData() {
-            const data = { items, projects, scheduleChecks, exportDate: new Date().toISOString() };
+        async function exportData() {
+            const diaryBackup = await exportDiaryBackup();
+            const data = { items, projects, scheduleChecks, diary: diaryBackup, exportDate: new Date().toISOString() };
             const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -2065,7 +2066,7 @@
             const file = event.target.files[0];
             if (!file) return;
             const reader = new FileReader();
-            reader.onload = function(e) {
+            reader.onload = async function(e) {
                 try {
                     const data = JSON.parse(e.target.result);
                     if (data.items) items = data.items;
@@ -2076,6 +2077,10 @@
                             scheduleChecks[type] = checks;
                             localStorage.setItem('ht_schedule_checks_' + type, JSON.stringify(checks));
                         });
+                    }
+                    // Restore diary data if present
+                    if (data.diary && data.diary.notebooks) {
+                        await importDiaryBackup(data.diary);
                     }
                     saveData();
                     alert('数据导入成功！');
