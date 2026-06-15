@@ -2047,7 +2047,7 @@
 
         // ==================== Export/Import ====================
         function exportData() {
-            const data = { items, projects, exportDate: new Date().toISOString() };
+            const data = { items, projects, scheduleChecks, exportDate: new Date().toISOString() };
             const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -2070,6 +2070,13 @@
                     const data = JSON.parse(e.target.result);
                     if (data.items) items = data.items;
                     if (data.projects) projects = data.projects;
+                    // Restore schedule checks if present in backup
+                    if (data.scheduleChecks) {
+                        Object.entries(data.scheduleChecks).forEach(([type, checks]) => {
+                            scheduleChecks[type] = checks;
+                            localStorage.setItem('ht_schedule_checks_' + type, JSON.stringify(checks));
+                        });
+                    }
                     saveData();
                     alert('数据导入成功！');
                     showView(currentView);
