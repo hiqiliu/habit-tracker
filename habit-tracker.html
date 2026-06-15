@@ -2195,18 +2195,25 @@
         }
 
         function toggleScheduleDay(dayNum) {
-            const dateStr = getScheduleDayDate(scheduleData[currentScheduleType].startDate, dayNum);
-            if (!dateStr) return;
+            // Use today's date for check-in (actual completion time), not planned date
+            const todayStr = getToday();
+            const plannedDateStr = getScheduleDayDate(scheduleData[currentScheduleType].startDate, dayNum);
+            if (!plannedDateStr) return;
+            
+            // Store mapping: plannedDate -> actualDate for tracking
+            const checkKey = plannedDateStr; // Use planned date as key for schedule display
             const checks = scheduleChecks[currentScheduleType];
-            if (checks.includes(dateStr)) {
-                scheduleChecks[currentScheduleType] = checks.filter(d => d !== dateStr);
+            const isChecking = !checks.includes(checkKey);
+            
+            if (isChecking) {
+                scheduleChecks[currentScheduleType].push(checkKey);
             } else {
-                scheduleChecks[currentScheduleType].push(dateStr);
+                scheduleChecks[currentScheduleType] = checks.filter(d => d !== checkKey);
             }
             localStorage.setItem('ht_schedule_checks_' + currentScheduleType, JSON.stringify(scheduleChecks[currentScheduleType]));
 
-            // 同步到对应习惯
-            syncScheduleToHabit(dateStr, scheduleChecks[currentScheduleType].includes(dateStr));
+            // Sync to habit using TODAY's date (actual completion time)
+            syncScheduleToHabit(todayStr, isChecking);
 
             renderSchedule();
         }
