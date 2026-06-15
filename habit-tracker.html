@@ -343,23 +343,18 @@
                     </div>
                 </div>
 
-                <!-- Start Date & Progress -->
+                <!-- Progress -->
                 <div class="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm mb-6">
                     <div class="flex flex-wrap items-center gap-4">
-                        <div>
-                            <label class="text-sm text-gray-500 dark:text-gray-400 block mb-1">开始日期</label>
-                            <input type="date" id="schedule-start-date" onchange="saveScheduleStartDate()" class="px-4 py-2 rounded-xl border dark:border-gray-700 dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary">
-                        </div>
                         <div class="flex-1 min-w-[200px]">
                             <div class="flex justify-between text-sm mb-1">
                                 <span class="text-gray-500 dark:text-gray-400">当前进度</span>
-                                <span id="schedule-progress-text" class="font-medium">第 1 周 / 12 周</span>
+                                <span id="schedule-progress-text" class="font-medium">0 / 0 天完成</span>
                             </div>
                             <div class="h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                                 <div id="schedule-progress-bar" class="h-full bg-gradient-to-r from-primary to-secondary rounded-full transition-all" style="width: 0%"></div>
                             </div>
                         </div>
-                        <div id="schedule-today-status" class="text-sm font-medium text-primary"></div>
                     </div>
                 </div>
 
@@ -779,9 +774,9 @@
         let currentScheduleType = localStorage.getItem('ht_current_schedule') || 'exercise';
         let scheduleEditMode = false;
         let scheduleData = {
-            exercise: JSON.parse(localStorage.getItem('ht_schedule_exercise') || '{}'),
-            english: JSON.parse(localStorage.getItem('ht_schedule_english') || '{}'),
-            finance: JSON.parse(localStorage.getItem('ht_schedule_finance') || '{}')
+            exercise: { checks: JSON.parse(localStorage.getItem('ht_schedule_checks_exercise') || '[]') },
+            english: { checks: JSON.parse(localStorage.getItem('ht_schedule_checks_english') || '[]') },
+            finance: { checks: JSON.parse(localStorage.getItem('ht_schedule_checks_finance') || '[]') }
         };
         let scheduleChecks = {
             exercise: JSON.parse(localStorage.getItem('ht_schedule_checks_exercise') || '[]'),
@@ -838,13 +833,6 @@
             // Migrate old single-schedule data to new per-schedule format
             const oldSchedule = localStorage.getItem('ht_schedule');
             if (oldSchedule) {
-                try {
-                    const parsed = JSON.parse(oldSchedule);
-                    if (parsed.startDate && !scheduleData.exercise.startDate) {
-                        scheduleData.exercise = parsed;
-                        localStorage.setItem('ht_schedule_exercise', JSON.stringify(parsed));
-                    }
-                } catch (e) {}
                 localStorage.removeItem('ht_schedule');
             }
 
@@ -2160,51 +2148,17 @@
             return weeks;
         }
 
-        function getScheduleDayDate(startDateStr, dayNum) {
-            if (!startDateStr) return null;
-            const start = new Date(startDateStr);
-            const d = new Date(start);
-            d.setDate(d.getDate() + dayNum - 1);
-            return d.toISOString().split('T')[0];
-        }
-
-        function getCurrentScheduleDay() {
-            const config = SCHEDULE_CONFIGS[currentScheduleType];
-            const startDate = scheduleData[currentScheduleType].startDate;
-            if (!startDate) return null;
-            const start = new Date(startDate);
-            const today = new Date();
-            const diffDays = Math.floor((today - start) / (1000 * 60 * 60 * 24));
-            if (diffDays < 0 || diffDays >= config.totalDays) return null;
-            return diffDays + 1;
-        }
-
-        function saveScheduleStartDate() {
-            const date = document.getElementById('schedule-start-date').value;
-            if (date) {
-                scheduleData[currentScheduleType].startDate = date;
-                localStorage.setItem('ht_schedule_' + currentScheduleType, JSON.stringify(scheduleData[currentScheduleType]));
-                renderSchedule();
-            }
-        }
-
         function isScheduleDayChecked(dayNum) {
-            const dateStr = getScheduleDayDate(scheduleData[currentScheduleType].startDate, dayNum);
-            if (!dateStr) return false;
-            return scheduleChecks[currentScheduleType].includes(dateStr);
+            return scheduleChecks[currentScheduleType].includes('day-' + dayNum);
         }
 
         function toggleScheduleDay(dayNum) {
-            // Use today's date for check-in (actual completion time), not planned date
+            // Use today's date for check-in (actual completion time)
             const todayStr = getToday();
-            const plannedDateStr = getScheduleDayDate(scheduleData[currentScheduleType].startDate, dayNum);
-            if (!plannedDateStr) return;
-            
-            // Store mapping: plannedDate -> actualDate for tracking
-            const checkKey = plannedDateStr; // Use planned date as key for schedule display
+            const checkKey = 'day-' + dayNum;
             const checks = scheduleChecks[currentScheduleType];
             const isChecking = !checks.includes(checkKey);
-            
+
             if (isChecking) {
                 scheduleChecks[currentScheduleType].push(checkKey);
             } else {
@@ -2262,7 +2216,6 @@
 
         function renderSchedule() {
             const config = SCHEDULE_CONFIGS[currentScheduleType];
-            const currentData = scheduleData[currentScheduleType];
 
             // Update tab styles
             document.querySelectorAll('.schedule-tab-btn').forEach(btn => {
@@ -2278,55 +2231,15 @@
             // Update title
             document.getElementById('schedule-title').textContent = config.name;
 
-            const startDateInput = document.getElementById('schedule-start-date');
-            if (currentData.startDate) {
-                startDateInput.value = currentData.startDate;
-            } else {
-                startDateInput.value = '';
-            }
-
-            const currentDay = getCurrentScheduleDay();
-            const todayStr = getToday();
-
             // Group flat schedule into weeks
             const weeks = groupScheduleIntoWeeks(config.schedule, config.totalWeeks);
 
-            // Progress
-            let progressText = '未设置开始日期';
-            let progressPercent = 0;
-            if (currentData.startDate) {
-                if (currentDay) {
-                    const week = Math.ceil(currentDay / 7);
-                    progressText = `第 ${week} 周 / ${config.totalWeeks} 周 · Day ${currentDay}`;
-                    progressPercent = Math.round((currentDay / config.totalDays) * 100);
-                } else {
-                    const start = new Date(currentData.startDate);
-                    const today = new Date();
-                    if (today < start) {
-                        const diff = Math.ceil((start - today) / (1000 * 60 * 60 * 24));
-                        progressText = `还有 ${diff} 天开始`;
-                    } else {
-                        progressText = '课程已完成';
-                        progressPercent = 100;
-                    }
-                }
-            }
-            document.getElementById('schedule-progress-text').textContent = progressText;
+            // Progress: count checked days among non-rest days
+            const totalActiveDays = config.schedule.filter(d => d.type !== '休息').length;
+            const checkedDays = config.schedule.filter(d => d.type !== '休息' && isScheduleDayChecked(d.day)).length;
+            const progressPercent = totalActiveDays > 0 ? Math.round((checkedDays / totalActiveDays) * 100) : 0;
+            document.getElementById('schedule-progress-text').textContent = `${checkedDays} / ${totalActiveDays} 天完成`;
             document.getElementById('schedule-progress-bar').style.width = progressPercent + '%';
-
-            // Today status
-            const todayStatus = document.getElementById('schedule-today-status');
-            if (currentDay && config.schedule.length > 0) {
-                const dayData = config.schedule.find(d => d.day === currentDay);
-                if (dayData) {
-                    const checked = isScheduleDayChecked(currentDay);
-                    todayStatus.innerHTML = `<span class="${checked ? 'text-success' : 'text-primary'}">今日: ${dayData.type}${dayData.desc ? ' (' + dayData.desc + ')' : ''} ${checked ? '✓ 已打卡' : ''}</span>`;
-                } else {
-                    todayStatus.textContent = '';
-                }
-            } else {
-                todayStatus.textContent = '';
-            }
 
             // Render grid
             const grid = document.getElementById('schedule-grid');
@@ -2350,10 +2263,9 @@
             grid.innerHTML = weeks.map(week => {
                 const weekChecked = week.days.filter(d => d.type !== '休息').map(d => isScheduleDayChecked(d.day)).filter(Boolean).length;
                 const weekTotal = week.days.filter(d => d.type !== '休息').length;
-                const isCurrentWeek = currentDay && Math.ceil(currentDay / 7) === week.week;
                 const level = config.getLevel(week.week);
                 return `
-                    <div class="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm ${isCurrentWeek && !scheduleEditMode ? 'ring-2 ring-primary' : ''}">
+                    <div class="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm">
                         <div class="flex items-center justify-between mb-4">
                             <div>
                                 <h3 class="font-bold text-lg">第 ${week.week} 周</h3>
@@ -2367,19 +2279,13 @@
                         </div>
                         <div class="space-y-1.5">
                             ${week.days.map(d => {
-                                const dateStr = getScheduleDayDate(currentData.startDate, d.day);
-                                const isToday = dateStr === todayStr;
                                 const checked = isScheduleDayChecked(d.day);
                                 const isRest = d.type === '休息';
-                                const isPast = dateStr && dateStr < todayStr && !isRest;
-                                const isFuture = dateStr && dateStr > todayStr;
                                 const showLabel = d.label || ('Day ' + d.day);
-                                const dayOfWeek = dateStr ? new Date(dateStr).toLocaleDateString('zh-CN', {weekday: 'short'}) : '';
                                 if (scheduleEditMode) {
                                     return `
                                         <div class="flex items-center gap-2 p-2.5 rounded-xl bg-gray-50 dark:bg-gray-700/20">
                                             <div class="w-8 text-center">
-                                                <div class="text-[10px] text-gray-400">${dayOfWeek}</div>
                                                 <div class="text-xs font-bold text-gray-500">${showLabel}</div>
                                             </div>
                                             <input type="text" value="${d.type}" onchange="updateScheduleDay(${d.day}, this.value)" class="flex-1 px-2 py-1 text-sm rounded-lg border dark:border-gray-600 dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-primary">
@@ -2390,17 +2296,16 @@
                                     `;
                                 }
                                 return `
-                                    <div class="flex items-center gap-3 p-2.5 rounded-xl transition-all ${isToday ? 'bg-primary/10 border-2 border-primary' : checked ? 'bg-success/5 border border-success/30' : isRest ? 'bg-gray-50 dark:bg-gray-700/20' : isPast ? 'bg-gray-50 dark:bg-gray-700/20 opacity-60' : 'bg-gray-50 dark:bg-gray-700/20'}">
+                                    <div class="flex items-center gap-3 p-2.5 rounded-xl transition-all ${checked ? 'bg-success/5 border border-success/30' : isRest ? 'bg-gray-50 dark:bg-gray-700/20' : 'bg-gray-50 dark:bg-gray-700/20'}">
                                         <div class="w-8 text-center">
-                                            <div class="text-[10px] text-gray-400">${dayOfWeek}</div>
-                                            <div class="text-xs font-bold ${isToday ? 'text-primary' : 'text-gray-500'}">${showLabel}</div>
+                                            <div class="text-xs font-bold ${checked ? 'text-success' : 'text-gray-500'}">${showLabel}</div>
                                         </div>
                                         <div class="flex-1 min-w-0">
-                                            <div class="text-sm font-medium ${isRest ? 'text-gray-400 line-through' : checked ? 'text-success' : isToday ? 'text-primary' : ''}">${d.type}</div>
+                                            <div class="text-sm font-medium ${isRest ? 'text-gray-400 line-through' : checked ? 'text-success' : ''}">${d.type}</div>
                                             ${d.desc ? '<div class="text-xs text-gray-400 mt-0.5">' + d.desc + '</div>' : ''}
                                         </div>
-                                        ${!isRest && dateStr ? `
-                                            <button onclick="toggleScheduleDay(${d.day})" class="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 transition-all ${checked ? 'bg-success text-white' : isToday ? 'bg-primary text-white hover:bg-primary/80' : 'bg-gray-200 dark:bg-gray-600 text-gray-400 hover:bg-gray-300'}">
+                                        ${!isRest ? `
+                                            <button onclick="toggleScheduleDay(${d.day})" class="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 transition-all ${checked ? 'bg-success text-white' : 'bg-gray-200 dark:bg-gray-600 text-gray-400 hover:bg-gray-300'}">
                                                 <i class="fas fa-check text-xs"></i>
                                             </button>
                                         ` : ''}
@@ -2547,7 +2452,7 @@
             };
 
             // Initialize data
-            scheduleData[id] = JSON.parse(localStorage.getItem('ht_schedule_' + id) || '{}');
+            scheduleData[id] = { checks: JSON.parse(localStorage.getItem('ht_schedule_checks_' + id) || '[]') };
             scheduleChecks[id] = JSON.parse(localStorage.getItem('ht_schedule_checks_' + id) || '[]');
 
             saveCustomSchedules();
@@ -2561,7 +2466,6 @@
             delete SCHEDULE_CONFIGS[id];
             delete scheduleData[id];
             delete scheduleChecks[id];
-            localStorage.removeItem('ht_schedule_' + id);
             localStorage.removeItem('ht_schedule_checks_' + id);
             localStorage.removeItem('ht_schedule_custom_' + id);
             saveCustomSchedules();
@@ -2590,15 +2494,8 @@
         }
 
         function openScheduleSettings() {
-            const currentData = scheduleData[currentScheduleType];
-            const startDate = currentData.startDate || '';
-            const newDate = prompt('设置课程开始日期（YYYY-MM-DD）：', startDate);
-            if (newDate && /^\d{4}-\d{2}-\d{2}$/.test(newDate)) {
-                scheduleData[currentScheduleType].startDate = newDate;
-                localStorage.setItem('ht_schedule_' + currentScheduleType, JSON.stringify(scheduleData[currentScheduleType]));
-                document.getElementById('schedule-start-date').value = newDate;
-                renderSchedule();
-            }
+            // Settings modal simplified - no start date needed
+            alert('课表设置：无需设置开始日期，直接点击每天的内容进行打卡即可。');
         }
 
         // ==================== Utilities ====================
@@ -2625,7 +2522,7 @@
             loadCustomSchedules();
             Object.keys(SCHEDULE_CONFIGS).forEach(type => {
                 if (!scheduleData[type]) {
-                    scheduleData[type] = JSON.parse(localStorage.getItem('ht_schedule_' + type) || '{}');
+                    scheduleData[type] = { checks: JSON.parse(localStorage.getItem('ht_schedule_checks_' + type) || '[]') };
                 }
                 if (!scheduleChecks[type]) {
                     scheduleChecks[type] = JSON.parse(localStorage.getItem('ht_schedule_checks_' + type) || '[]');
