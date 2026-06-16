@@ -594,12 +594,17 @@
     </div>
 
     <!-- Next Streak Reward -->
-    <div id="wishes-streak-reward" class="bg-white dark:bg-gray-800 rounded-xl p-3 mb-4 flex items-center gap-3 shadow-sm border border-gray-100 dark:border-gray-700">
-        <div class="w-8 h-8 rounded-full bg-warning/10 flex items-center justify-center text-warning"><i class="fas fa-fire"></i></div>
-        <div class="flex-1 text-sm">
-            <span class="font-medium">下一个奖励</span>
-            <span class="text-gray-400" id="wishes-next-streak"></span>
+    <div class="flex gap-2 mb-4">
+        <div id="wishes-streak-reward" class="flex-1 bg-white dark:bg-gray-800 rounded-xl p-3 flex items-center gap-3 shadow-sm border border-gray-100 dark:border-gray-700">
+            <div class="w-8 h-8 rounded-full bg-warning/10 flex items-center justify-center text-warning"><i class="fas fa-fire"></i></div>
+            <div class="flex-1 text-sm">
+                <span class="font-medium">下一个奖励</span>
+                <span class="text-gray-400" id="wishes-next-streak"></span>
+            </div>
         </div>
+        <button onclick="openPointsRulesModal()" class="bg-white dark:bg-gray-800 rounded-xl p-3 shadow-sm border border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750 text-sm text-gray-500">
+            <i class="fas fa-cog"></i>
+        </button>
     </div>
 
     <!-- Tabs -->
@@ -619,6 +624,48 @@
     <button onclick="openAddWishModal()" class="w-full mt-3 py-3 rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-600 text-gray-400 hover:border-primary hover:text-primary transition-all text-sm">
         <i class="fas fa-plus mr-1"></i>添加心愿
     </button>
+</div>
+
+<!-- Points Rules Modal -->
+<div id="points-rules-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center" onclick="event.target===this&&closePointsRulesModal()">
+    <div class="bg-white dark:bg-gray-800 rounded-t-2xl sm:rounded-2xl p-5 w-full max-w-md max-h-[85vh] overflow-auto" style="padding-bottom: max(1.25rem, env(safe-area-inset-bottom));" onclick="event.stopPropagation()">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-bold">积分规则设置</h3>
+            <button onclick="closePointsRulesModal()" class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="space-y-3" id="points-rules-list"></div>
+        <div class="flex gap-2 mt-5">
+            <button onclick="resetPointsRulesAction()" class="flex-1 py-2 rounded-xl border dark:border-gray-600 text-sm">恢复默认</button>
+            <button onclick="savePointsRulesAction()" class="flex-1 py-2 rounded-xl bg-primary text-white text-sm">保存</button>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Wish Modal -->
+<div id="edit-wish-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center" onclick="event.target===this&&closeEditWishModal()">
+    <div class="bg-white dark:bg-gray-800 rounded-t-2xl sm:rounded-2xl p-5 w-full max-w-md" style="padding-bottom: max(1.25rem, env(safe-area-inset-bottom));" onclick="event.stopPropagation()">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-bold">编辑心愿</h3>
+            <button onclick="closeEditWishModal()" class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="space-y-4">
+            <div><label class="text-xs text-gray-500 block mb-1">心愿名称</label><input type="text" id="edit-wish-name" class="w-full px-4 py-2.5 rounded-xl border dark:border-gray-700 dark:bg-gray-800 text-sm"></div>
+            <div class="flex gap-2">
+                <div class="flex-1"><label class="text-xs text-gray-500 block mb-1">所需积分</label><input type="number" id="edit-wish-points" class="w-full px-4 py-2.5 rounded-xl border dark:border-gray-700 dark:bg-gray-800 text-sm" min="1"></div>
+                <div class="flex-1"><label class="text-xs text-gray-500 block mb-1">分类</label>
+                    <select id="edit-wish-category" class="w-full px-4 py-2.5 rounded-xl border dark:border-gray-700 dark:bg-gray-800 text-sm">
+                        <option value="small">小愿望</option><option value="medium">中愿望</option><option value="big">大愿望</option>
+                    </select>
+                </div>
+            </div>
+            <div><label class="text-xs text-gray-500 block mb-1">备注</label><input type="text" id="edit-wish-desc" class="w-full px-4 py-2.5 rounded-xl border dark:border-gray-700 dark:bg-gray-800 text-sm"></div>
+        </div>
+        <input type="hidden" id="edit-wish-id">
+        <div class="flex gap-2 mt-5">
+            <button onclick="deleteEditWish()" class="py-2 px-4 rounded-xl bg-danger/10 text-danger text-sm"><i class="fas fa-trash mr-1"></i>删除</button>
+            <button onclick="saveEditWish()" class="flex-1 py-2 rounded-xl bg-primary text-white text-sm">保存修改</button>
+        </div>
+    </div>
 </div>
 
 <!-- Add Wish Modal -->
@@ -2138,6 +2185,7 @@
             const bookshelfBackup = await exportBookshelfBackup();
             const pointsData = getPointsData();
             const wishesData = getWishes();
+            const pointsConfig = getPointsConfig();
             // Export custom schedule configs
             const customSchedules = Object.entries(SCHEDULE_CONFIGS)
                 .filter(([k, v]) => !['exercise', 'english', 'finance'].includes(k))
@@ -2156,6 +2204,7 @@
                 diary: diaryBackup,
                 bookshelf: bookshelfBackup,
                 points: pointsData,
+                pointsConfig: pointsConfig,
                 wishes: wishesData,
                 exportDate: new Date().toISOString()
             };
@@ -2199,6 +2248,10 @@
                     // Restore points data if present
                     if (data.points) savePointsData(data.points);
                     if (data.wishes) saveWishes(data.wishes);
+                    if (data.pointsConfig) {
+                        savePointsConfig(data.pointsConfig);
+                        POINTS_CONFIG = data.pointsConfig;
+                    }
                     // Restore custom schedule configs
                     if (data.customSchedules && data.customSchedules.length > 0) {
                         data.customSchedules.forEach(s => {
@@ -3531,11 +3584,38 @@ function redeemWishAction(id) {
 function editWishAction(id) {
     const wish = getWishes().find(w => w.id === id);
     if (!wish) return;
-    const newPoints = prompt('修改所需积分:', wish.points);
-    if (newPoints === null) return;
-    const p = parseInt(newPoints);
-    if (isNaN(p) || p <= 0) return;
-    updateWish(id, { points: p });
+    document.getElementById('edit-wish-id').value = wish.id;
+    document.getElementById('edit-wish-name').value = wish.name;
+    document.getElementById('edit-wish-points').value = wish.points;
+    document.getElementById('edit-wish-category').value = wish.category || 'small';
+    document.getElementById('edit-wish-desc').value = wish.desc || '';
+    document.getElementById('edit-wish-modal').classList.remove('hidden');
+}
+
+function closeEditWishModal() {
+    document.getElementById('edit-wish-modal').classList.add('hidden');
+}
+
+function saveEditWish() {
+    const id = document.getElementById('edit-wish-id').value;
+    const name = document.getElementById('edit-wish-name').value.trim();
+    const points = parseInt(document.getElementById('edit-wish-points').value) || 0;
+    if (!name || points <= 0) { alert('请填写心愿名称和所需积分'); return; }
+    updateWish(id, {
+        name: name,
+        points: points,
+        category: document.getElementById('edit-wish-category').value,
+        desc: document.getElementById('edit-wish-desc').value.trim()
+    });
+    closeEditWishModal();
+    renderWishesList();
+}
+
+function deleteEditWish() {
+    const id = document.getElementById('edit-wish-id').value;
+    if (!confirm('确定要删除这个心愿吗？')) return;
+    deleteWish(id);
+    closeEditWishModal();
     renderWishesList();
 }
 
@@ -3543,6 +3623,42 @@ function deleteWishAction(id) {
     if (!confirm('确定要删除这个心愿吗？')) return;
     deleteWish(id);
     renderWishesList();
+}
+
+// ==================== 积分规则设置 ====================
+function openPointsRulesModal() {
+    const config = getPointsConfig();
+    const list = document.getElementById('points-rules-list');
+    list.innerHTML = Object.entries(POINTS_RULE_LABELS).map(([key, label]) => `
+        <div class="flex items-center gap-3">
+            <span class="text-sm flex-1">${label}</span>
+            <input type="number" id="rule-${key}" value="${config[key] || 0}" min="0" class="w-20 px-3 py-2 rounded-xl border dark:border-gray-700 dark:bg-gray-800 text-sm text-center">
+            <span class="text-xs text-gray-400">分</span>
+        </div>
+    `).join('');
+    document.getElementById('points-rules-modal').classList.remove('hidden');
+}
+
+function closePointsRulesModal() {
+    document.getElementById('points-rules-modal').classList.add('hidden');
+}
+
+function savePointsRulesAction() {
+    const config = {};
+    Object.keys(POINTS_RULE_LABELS).forEach(key => {
+        config[key] = parseInt(document.getElementById('rule-' + key).value) || 0;
+    });
+    savePointsConfig(config);
+    POINTS_CONFIG = config;
+    closePointsRulesModal();
+    alert('积分规则已保存');
+}
+
+function resetPointsRulesAction() {
+    if (!confirm('确定恢复默认积分规则？')) return;
+    resetPointsConfig();
+    POINTS_CONFIG = { ...DEFAULT_POINTS_CONFIG };
+    openPointsRulesModal(); // Refresh display
 }
     </script>
 </body>

@@ -1,7 +1,7 @@
 // ==================== 积分 & 心愿兑换系统 ====================
 
-// 积分规则配置
-const POINTS_CONFIG = {
+// 默认积分规则
+const DEFAULT_POINTS_CONFIG = {
     habitCheckIn: 5,        // 习惯打卡
     scheduleComplete: 10,    // 课表完成一课
     readingCheckIn: 8,       // 阅读打卡
@@ -10,6 +10,37 @@ const POINTS_CONFIG = {
     streak30: 100,           // 连续30天奖励
     streak90: 300            // 连续90天奖励
 };
+
+// 积分规则标签（用于UI显示）
+const POINTS_RULE_LABELS = {
+    habitCheckIn: '习惯打卡',
+    scheduleComplete: '课表完成',
+    readingCheckIn: '阅读打卡',
+    dailyFirstBonus: '每日首次加成',
+    streak7: '连续7天奖励',
+    streak30: '连续30天奖励',
+    streak90: '连续90天奖励'
+};
+
+// 获取积分规则（支持自定义）
+function getPointsConfig() {
+    const saved = localStorage.getItem('ht_points_config');
+    if (saved) return JSON.parse(saved);
+    return { ...DEFAULT_POINTS_CONFIG };
+}
+
+// 保存积分规则
+function savePointsConfig(config) {
+    localStorage.setItem('ht_points_config', JSON.stringify(config));
+}
+
+// 重置积分规则为默认
+function resetPointsConfig() {
+    localStorage.removeItem('ht_points_config');
+}
+
+// 获取当前积分规则（兼容旧代码中的 POINTS_CONFIG 引用）
+let POINTS_CONFIG = getPointsConfig();
 
 // 心愿分类
 const WISH_CATEGORIES = {
