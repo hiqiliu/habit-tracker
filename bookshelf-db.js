@@ -193,6 +193,7 @@ async function logReading(bookId, pagesRead) {
         await updateBook(bookId, { currentPage: newPage });
         // Auto check-in to habit "阅读"
         await checkInReadingHabit(today);
+        if (typeof addPoints === 'function') addPoints('reading', POINTS_CONFIG.readingCheckIn, '阅读打卡');
     }
 }
 

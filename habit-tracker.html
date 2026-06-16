@@ -19,6 +19,7 @@
     <script src="FINANCE_SCHEDULE.js"></script>
     <script src="diary-db.js"></script>
     <script src="bookshelf-db.js"></script>
+    <script src="points-db.js"></script>
     <script>
         tailwind.config = {
             darkMode: 'class',
@@ -83,6 +84,10 @@
                 <button onclick="showView('bookshelf')" id="nav-bookshelf" class="nav-btn w-full flex items-center px-4 py-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-all">
                     <i class="fas fa-book-reader w-6"></i><span>书架</span>
                 </button>
+                <button onclick="showView('wishes')" id="nav-wishes" class="nav-btn w-full flex items-center px-4 py-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-all">
+                    <i class="fas fa-star w-6"></i><span>心愿兑换</span>
+                    <span id="points-badge" class="ml-auto bg-warning text-white text-xs px-2 py-0.5 rounded-full">0</span>
+                </button>
                 <button onclick="showView('stats')" id="nav-stats" class="nav-btn w-full flex items-center px-4 py-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-all">
                     <i class="fas fa-chart-pie w-6"></i><span>统计分析</span>
                 </button>
@@ -131,6 +136,9 @@
                 </button>
                 <button onclick="showView('bookshelf'); toggleMobileMenu()" class="w-full flex items-center px-4 py-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700">
                     <i class="fas fa-book-reader w-6"></i><span>书架</span>
+                </button>
+                <button onclick="showView('wishes'); toggleMobileMenu()" class="w-full flex items-center px-4 py-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700">
+                    <i class="fas fa-star w-6"></i><span>心愿兑换</span>
                 </button>
                 <button onclick="showView('stats'); toggleMobileMenu()" class="w-full flex items-center px-4 py-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700">
                     <i class="fas fa-chart-pie w-6"></i><span>统计分析</span>
@@ -562,6 +570,81 @@
                 <div id="bookshelf-list"></div>
             </div>
             </div>
+
+<!-- Wishes View -->
+<div id="view-wishes" class="view-section hidden fade-in">
+    <!-- Points Summary -->
+    <div class="bg-gradient-to-r from-warning to-orange-400 rounded-2xl p-5 text-white mb-4 shadow-sm">
+        <div class="flex items-center justify-between">
+            <div>
+                <div class="text-sm opacity-80">可用积分</div>
+                <div class="text-3xl font-bold" id="wishes-total-points">0</div>
+            </div>
+            <div class="text-right">
+                <div class="text-sm opacity-80">累计获得</div>
+                <div class="text-lg font-bold" id="wishes-earned-points">0</div>
+                <div class="text-xs opacity-70 mt-1">已兑换: <span id="wishes-spent-points">0</span></div>
+            </div>
+        </div>
+        <div class="flex gap-4 mt-3 text-xs">
+            <div>本周 <span class="font-bold" id="wishes-week-points">0</span></div>
+            <div>本月 <span class="font-bold" id="wishes-month-points">0</span></div>
+            <div class="ml-auto">连续打卡 <span class="font-bold" id="wishes-streak-days">0</span> 天</div>
+        </div>
+    </div>
+
+    <!-- Next Streak Reward -->
+    <div id="wishes-streak-reward" class="bg-white dark:bg-gray-800 rounded-xl p-3 mb-4 flex items-center gap-3 shadow-sm border border-gray-100 dark:border-gray-700">
+        <div class="w-8 h-8 rounded-full bg-warning/10 flex items-center justify-center text-warning"><i class="fas fa-fire"></i></div>
+        <div class="flex-1 text-sm">
+            <span class="font-medium">下一个奖励</span>
+            <span class="text-gray-400" id="wishes-next-streak"></span>
+        </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="flex gap-2 mb-4">
+        <button onclick="switchWishTab('pending')" id="wish-tab-pending" class="px-4 py-2 rounded-xl bg-primary text-white text-sm">心愿清单</button>
+        <button onclick="switchWishTab('redeemed')" id="wish-tab-redeemed" class="px-4 py-2 rounded-xl bg-gray-200 dark:bg-gray-700 text-sm">已实现</button>
+        <button onclick="switchWishTab('history')" id="wish-tab-history" class="px-4 py-2 rounded-xl bg-gray-200 dark:bg-gray-700 text-sm">积分记录</button>
+    </div>
+
+    <!-- Wish List -->
+    <div id="wishes-list"></div>
+
+    <!-- Points History -->
+    <div id="wishes-history" class="hidden"></div>
+
+    <!-- Add Wish Button -->
+    <button onclick="openAddWishModal()" class="w-full mt-3 py-3 rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-600 text-gray-400 hover:border-primary hover:text-primary transition-all text-sm">
+        <i class="fas fa-plus mr-1"></i>添加心愿
+    </button>
+</div>
+
+<!-- Add Wish Modal -->
+<div id="add-wish-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center" onclick="event.target===this&&closeAddWishModal()">
+    <div class="bg-white dark:bg-gray-800 rounded-t-2xl sm:rounded-2xl p-5 w-full max-w-md" style="padding-bottom: max(1.25rem, env(safe-area-inset-bottom));" onclick="event.stopPropagation()">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-bold">添加心愿</h3>
+            <button onclick="closeAddWishModal()" class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="space-y-4">
+            <div><label class="text-xs text-gray-500 block mb-1">心愿名称 *</label><input type="text" id="wish-name" class="w-full px-4 py-2.5 rounded-xl border dark:border-gray-700 dark:bg-gray-800 text-sm" placeholder="例如：买一杯奶茶"></div>
+            <div class="flex gap-2">
+                <div class="flex-1"><label class="text-xs text-gray-500 block mb-1">所需积分 *</label><input type="number" id="wish-points" class="w-full px-4 py-2.5 rounded-xl border dark:border-gray-700 dark:bg-gray-800 text-sm" placeholder="50" min="1"></div>
+                <div class="flex-1"><label class="text-xs text-gray-500 block mb-1">分类</label>
+                    <select id="wish-category" class="w-full px-4 py-2.5 rounded-xl border dark:border-gray-700 dark:bg-gray-800 text-sm">
+                        <option value="small">小愿望 (≤100)</option>
+                        <option value="medium">中愿望 (100-500)</option>
+                        <option value="big">大愿望 (≥500)</option>
+                    </select>
+                </div>
+            </div>
+            <div><label class="text-xs text-gray-500 block mb-1">备注（可选）</label><input type="text" id="wish-desc" class="w-full px-4 py-2.5 rounded-xl border dark:border-gray-700 dark:bg-gray-800 text-sm" placeholder="补充说明"></div>
+        </div>
+        <button onclick="saveWish()" class="w-full mt-4 py-3 rounded-xl bg-primary text-white font-medium hover:bg-primary/90"><i class="fas fa-plus mr-1"></i>添加心愿</button>
+    </div>
+</div>
         </main>
 
 <!-- Add Book Modal -->
@@ -894,6 +977,9 @@
             if (view === 'stats') renderStats();
             if (view === 'bookshelf') {
                 renderBookshelf();
+            }
+            if (view === 'wishes') {
+                renderWishesView();
             }
         }
 
@@ -1514,6 +1600,7 @@
                     item.checks = item.checks.filter(d => d !== today);
                 } else {
                     item.checks.push(today);
+                    addPoints('habit', POINTS_CONFIG.habitCheckIn, '习惯打卡: ' + item.title);
                 }
             }
             
@@ -2049,6 +2136,8 @@
         async function exportData() {
             const diaryBackup = await exportDiaryBackup();
             const bookshelfBackup = await exportBookshelfBackup();
+            const pointsData = getPointsData();
+            const wishesData = getWishes();
             // Export custom schedule configs
             const customSchedules = Object.entries(SCHEDULE_CONFIGS)
                 .filter(([k, v]) => !['exercise', 'english', 'finance'].includes(k))
@@ -2066,6 +2155,8 @@
                 customScheduleContent,
                 diary: diaryBackup,
                 bookshelf: bookshelfBackup,
+                points: pointsData,
+                wishes: wishesData,
                 exportDate: new Date().toISOString()
             };
             const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -2105,6 +2196,9 @@
                     if (data.bookshelf && data.bookshelf.books) {
                         await importBookshelfBackup(data.bookshelf);
                     }
+                    // Restore points data if present
+                    if (data.points) savePointsData(data.points);
+                    if (data.wishes) saveWishes(data.wishes);
                     // Restore custom schedule configs
                     if (data.customSchedules && data.customSchedules.length > 0) {
                         data.customSchedules.forEach(s => {
@@ -2221,6 +2315,8 @@
 
             // Sync to habit using TODAY's date (actual completion time)
             syncScheduleToHabit(todayStr, isChecking);
+
+            if (isChecking) addPoints('schedule', POINTS_CONFIG.scheduleComplete, '课表完成: ' + (SCHEDULE_CONFIGS[currentScheduleType]?.name || ''));
 
             renderSchedule();
         }
@@ -2584,6 +2680,9 @@
             renderScheduleTabs();
 
             showView('dashboard');
+
+            // 初始化积分显示
+            updatePointsDisplay();
 
             // 注册 Service Worker
             if ('serviceWorker' in navigator) {
@@ -3252,6 +3351,198 @@ async function openBookshelfStats() {
 
 function closeBookshelfStats() {
     document.getElementById('bookshelf-stats-modal').classList.add('hidden');
+}
+
+// ==================== 心愿兑换 - UI逻辑 ====================
+let wishTab = 'pending';
+
+function switchWishTab(tab) {
+    wishTab = tab;
+    ['pending', 'redeemed', 'history'].forEach(t => {
+        const btn = document.getElementById('wish-tab-' + t);
+        btn.className = 'px-4 py-2 rounded-xl ' + (t === tab ? 'bg-primary text-white' : 'bg-gray-200 dark:bg-gray-700') + ' text-sm';
+    });
+    document.getElementById('wishes-list').classList.toggle('hidden', tab === 'history');
+    document.getElementById('wishes-history').classList.toggle('hidden', tab !== 'history');
+    
+    if (tab === 'pending') renderWishesList();
+    else if (tab === 'redeemed') renderRedeemedWishes();
+    else renderPointsHistory();
+}
+
+function renderWishesView() {
+    const data = getPointsData();
+    document.getElementById('wishes-total-points').textContent = getAvailablePoints();
+    document.getElementById('wishes-earned-points').textContent = data.total;
+    document.getElementById('wishes-spent-points').textContent = data.spent;
+    document.getElementById('wishes-week-points').textContent = getPointsPeriod('week');
+    document.getElementById('wishes-month-points').textContent = getPointsPeriod('month');
+    document.getElementById('wishes-streak-days').textContent = data.streakDays;
+    
+    // Next streak reward
+    const next = getNextStreakReward();
+    const streakEl = document.getElementById('wishes-streak-reward');
+    if (next) {
+        document.getElementById('wishes-next-streak').textContent = `还差 ${next.days - data.streakDays} 天 (+${next.points}分)`;
+        streakEl.classList.remove('hidden');
+    } else {
+        streakEl.classList.add('hidden');
+    }
+    
+    updatePointsDisplay();
+    switchWishTab(wishTab);
+}
+
+function renderWishesList() {
+    const list = document.getElementById('wishes-list');
+    const wishes = getWishes().filter(w => w.status === 'pending');
+    const available = getAvailablePoints();
+    
+    if (wishes.length === 0) {
+        list.innerHTML = '<div class="text-center py-8 text-gray-400"><i class="fas fa-star text-3xl mb-2 block"></i>还没有心愿<br>添加一个心愿，用积分兑换吧！</div>';
+        return;
+    }
+    
+    list.innerHTML = wishes.sort((a, b) => a.points - b.points).map(w => {
+        const cat = WISH_CATEGORIES[w.category] || WISH_CATEGORIES['small'];
+        const canRedeem = available >= w.points;
+        const pct = Math.min(100, Math.round(available / w.points * 100));
+        
+        return `
+        <div class="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm mb-2 border border-gray-100 dark:border-gray-700">
+            <div class="flex items-start gap-3">
+                <div class="w-10 h-10 rounded-xl flex items-center justify-center text-white flex-shrink-0" style="background: ${cat.color}">
+                    <i class="fas ${cat.icon}"></i>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <div class="font-semibold text-sm">${escapeHtml(w.name)}</div>
+                    <div class="text-xs text-gray-400">${cat.label}${w.desc ? ' · ' + escapeHtml(w.desc) : ''}</div>
+                    <div class="mt-2">
+                        <div class="flex justify-between text-xs mb-1">
+                            <span class="text-warning font-bold">${w.points} 积分</span>
+                            <span class="${canRedeem ? 'text-success' : 'text-gray-400'}">${pct}%</span>
+                        </div>
+                        <div class="h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                            <div class="h-full rounded-full transition-all ${canRedeem ? 'bg-success' : 'bg-warning'}" style="width: ${pct}%"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex gap-1 flex-shrink-0">
+                    <button onclick="redeemWishAction('${w.id}')" class="w-8 h-8 rounded-lg ${canRedeem ? 'bg-success/10 text-success hover:bg-success/20' : 'bg-gray-100 dark:bg-gray-700 text-gray-300'} flex items-center justify-center text-xs" ${canRedeem ? '' : 'disabled'} title="兑换"><i class="fas fa-check"></i></button>
+                    <button onclick="editWishAction('${w.id}')" class="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-xs hover:bg-gray-200"><i class="fas fa-pen"></i></button>
+                    <button onclick="deleteWishAction('${w.id}')" class="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-xs hover:bg-gray-200 text-danger"><i class="fas fa-trash"></i></button>
+                </div>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function renderRedeemedWishes() {
+    const list = document.getElementById('wishes-list');
+    const wishes = getWishes().filter(w => w.status === 'redeemed');
+    
+    if (wishes.length === 0) {
+        list.innerHTML = '<div class="text-center py-8 text-gray-400"><i class="fas fa-trophy text-3xl mb-2 block"></i>还没有实现的心愿</div>';
+        return;
+    }
+    
+    list.innerHTML = wishes.sort((a, b) => new Date(b.redeemedAt) - new Date(a.redeemedAt)).map(w => {
+        const cat = WISH_CATEGORIES[w.category] || WISH_CATEGORIES['small'];
+        return `
+        <div class="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm mb-2 border border-gray-100 dark:border-gray-700 opacity-70">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl flex items-center justify-center text-white flex-shrink-0" style="background: ${cat.color}">
+                    <i class="fas ${cat.icon}"></i>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <div class="font-semibold text-sm line-through">${escapeHtml(w.name)}</div>
+                    <div class="text-xs text-gray-400">${w.points} 积分 · ${new Date(w.redeemedAt).toLocaleDateString('zh-CN')}</div>
+                </div>
+                <span class="text-success text-xs"><i class="fas fa-check-circle"></i></span>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function renderPointsHistory() {
+    const list = document.getElementById('wishes-history');
+    const data = getPointsData();
+    const history = [...data.history].reverse().slice(0, 50);
+    
+    if (history.length === 0) {
+        list.innerHTML = '<div class="text-center py-8 text-gray-400">暂无积分记录</div>';
+        return;
+    }
+    
+    list.innerHTML = history.map(h => {
+        const isEarn = h.points > 0;
+        const isRedeem = h.points < 0;
+        return `
+        <div class="flex items-center gap-3 py-2 border-b dark:border-gray-700/50 last:border-0">
+            <div class="w-7 h-7 rounded-full ${isEarn ? 'bg-success/10 text-success' : isRedeem ? 'bg-danger/10 text-danger' : 'bg-warning/10 text-warning'} flex items-center justify-center text-xs">
+                <i class="fas ${isEarn ? 'fa-plus' : isRedeem ? 'fa-minus' : 'fa-fire'}"></i>
+            </div>
+            <div class="flex-1 min-w-0">
+                <div class="text-sm">${escapeHtml(h.desc)}</div>
+                <div class="text-[10px] text-gray-400">${h.date}</div>
+            </div>
+            <span class="text-sm font-bold ${isEarn ? 'text-success' : isRedeem ? 'text-danger' : 'text-warning'}">${isEarn ? '+' : ''}${h.points}</span>
+        </div>`;
+    }).join('');
+}
+
+function openAddWishModal() {
+    document.getElementById('wish-name').value = '';
+    document.getElementById('wish-points').value = '';
+    document.getElementById('wish-category').value = 'small';
+    document.getElementById('wish-desc').value = '';
+    document.getElementById('add-wish-modal').classList.remove('hidden');
+}
+
+function closeAddWishModal() {
+    document.getElementById('add-wish-modal').classList.add('hidden');
+}
+
+function saveWish() {
+    const name = document.getElementById('wish-name').value.trim();
+    const points = parseInt(document.getElementById('wish-points').value) || 0;
+    if (!name || points <= 0) { alert('请填写心愿名称和所需积分'); return; }
+    addWish({
+        name: name,
+        points: points,
+        category: document.getElementById('wish-category').value,
+        desc: document.getElementById('wish-desc').value.trim()
+    });
+    closeAddWishModal();
+    renderWishesList();
+}
+
+function redeemWishAction(id) {
+    if (!confirm('确定要兑换这个心愿吗？')) return;
+    const success = redeemWish(id);
+    if (success) {
+        alert('兑换成功！');
+        renderWishesView();
+    } else {
+        alert('积分不足！');
+    }
+}
+
+function editWishAction(id) {
+    const wish = getWishes().find(w => w.id === id);
+    if (!wish) return;
+    const newPoints = prompt('修改所需积分:', wish.points);
+    if (newPoints === null) return;
+    const p = parseInt(newPoints);
+    if (isNaN(p) || p <= 0) return;
+    updateWish(id, { points: p });
+    renderWishesList();
+}
+
+function deleteWishAction(id) {
+    if (!confirm('确定要删除这个心愿吗？')) return;
+    deleteWish(id);
+    renderWishesList();
 }
     </script>
 </body>
