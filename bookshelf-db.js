@@ -193,7 +193,9 @@ async function logReading(bookId, pagesRead) {
         await updateBook(bookId, { currentPage: newPage });
         // Auto check-in to habit "阅读"
         await checkInReadingHabit(today);
-        if (typeof addPoints === 'function') addPoints('reading', POINTS_CONFIG.readingCheckIn, '阅读打卡');
+        if (typeof addPoints === 'function' && book.category !== '小说') {
+            addPoints('reading', POINTS_CONFIG.readingCheckIn, '阅读打卡: ' + (book.title || ''));
+        }
     }
 }
 
