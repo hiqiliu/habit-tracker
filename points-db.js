@@ -3,6 +3,8 @@
 // 默认积分规则
 const DEFAULT_POINTS_CONFIG = {
     habitCheckIn: 5,        // 习惯打卡
+    todoComplete: 3,         // 待办完成
+    logRecord: 4,            // 记录型打卡
     scheduleComplete: 10,    // 课表完成一课
     readingCheckIn: 8,       // 阅读打卡
     dailyFirstBonus: 3,     // 每日首次打卡加成
@@ -14,6 +16,8 @@ const DEFAULT_POINTS_CONFIG = {
 // 积分规则标签（用于UI显示）
 const POINTS_RULE_LABELS = {
     habitCheckIn: '习惯打卡',
+    todoComplete: '待办完成',
+    logRecord: '记录型打卡',
     scheduleComplete: '课表完成',
     readingCheckIn: '阅读打卡',
     dailyFirstBonus: '每日首次加成',

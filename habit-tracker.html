@@ -1640,6 +1640,7 @@
             if (item.type === 'todo') {
                 item.completed = !item.completed;
                 item.completedAt = item.completed ? new Date().toISOString() : null;
+                if (item.completed) addPoints('todo', POINTS_CONFIG.todoComplete, '待办完成: ' + item.title);
             } else {
                 const today = getToday();
                 if (!item.checks) item.checks = [];
@@ -1672,6 +1673,7 @@
             const now = new Date().toISOString();
             if (!item.checks) item.checks = [];
             item.checks.push(now);
+            addPoints('log', POINTS_CONFIG.logRecord, '记录: ' + item.title);
             saveData();
             if (currentView === 'items') renderItems();
             if (currentView === 'dashboard') renderDashboard();
