@@ -15,7 +15,8 @@ self.addEventListener('install', event => {
                 './FINANCE_SCHEDULE.js',
                 './diary-db.js',
                 './bookshelf-db.js',
-                './points-db.js'
+                './points-db.js',
+                './food-db.js'
             ]);
         }).then(() => self.skipWaiting())
     );

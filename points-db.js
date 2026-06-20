@@ -10,7 +10,8 @@ const DEFAULT_POINTS_CONFIG = {
     dailyFirstBonus: 3,     // 每日首次打卡加成
     streak7: 20,             // 连续7天奖励
     streak30: 100,           // 连续30天奖励
-    streak90: 300            // 连续90天奖励
+    streak90: 300,           // 连续90天奖励
+    foodLog: 2               // 饮食记录
 };
 
 // 积分规则标签（用于UI显示）
@@ -23,7 +24,8 @@ const POINTS_RULE_LABELS = {
     dailyFirstBonus: '每日首次加成',
     streak7: '连续7天奖励',
     streak30: '连续30天奖励',
-    streak90: '连续90天奖励'
+    streak90: '连续90天奖励',
+    foodLog: '饮食记录'
 };
 
 // 获取积分规则（支持自定义）
