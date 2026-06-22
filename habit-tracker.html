@@ -3473,9 +3473,20 @@
                 reader.onload = async (ev) => {
                     try {
                         const data = JSON.parse(ev.target.result);
+                        // Full backup format (from exportDiaryBackup)
                         if (data.version && data.notebooks && data.entries) {
                             await importDiaryBackup(data);
                             alert('日记导入成功！');
+                            renderDiaryNotebooks();
+                            renderDiary();
+                        }
+                        // Single notebook export format (from exportDiaryNotebook)
+                        else if (data.name && data.entries) {
+                            const notebook = await createNotebook(data.name + ' (导入)');
+                            for (const entry of data.entries) {
+                                await saveEntry(notebook.id, entry);
+                            }
+                            alert('日记导入成功！共导入 ' + data.entries.length + ' 条记录');
                             renderDiaryNotebooks();
                             renderDiary();
                         } else {
