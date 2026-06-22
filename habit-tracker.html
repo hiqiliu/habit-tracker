@@ -2032,14 +2032,17 @@
                                         ${t.priority === 'high' ? '<span class="text-[10px] bg-danger/10 text-danger px-1 rounded">高</span>' : ''}
                                     </div>
                                 `).join('')}
-                                ${dayHabits.map(h => `
+                                ${dayHabits.map(h => {
+                                    const note = h.checkNotes ? h.checkNotes[dateStr] : null;
+                                    return `
                                     <div class="flex items-center gap-2 text-sm">
                                         <div class="w-5 h-5 rounded flex items-center justify-center text-white text-xs" style="background: ${h.color}"><i class="fas ${h.icon}"></i></div>
                                         <span>${escapeHtml(h.title)}</span>
                                         <span class="text-xs text-success">✓ 已打卡</span>
                                     </div>
-                                    ${h.checkNotes && h.checkNotes[dateStr] ? `<div class="text-xs text-gray-500 ml-7"><i class="fas fa-sticky-note mr-1 text-warning"></i>${escapeHtml(h.checkNotes[dateStr])}</div>` : ''}
-                                `).join('')}
+                                    ${note ? `<div class="text-xs text-gray-500 ml-7"><i class="fas fa-sticky-note mr-1 text-warning"></i>${escapeHtml(note)}</div>` : ''}
+                                    `;
+                                }).join('')}
                                 ${dayLogs.map(l => {
                                     const dayChecks = l.checks.filter(c => c.startsWith(dateStr));
                                     return `
@@ -2621,9 +2624,9 @@
                     const scheduleConfig = SCHEDULE_CONFIGS[currentScheduleType];
                     if (scheduleConfig && scheduleConfig.schedule && dayNum != null) {
                         const dayData = scheduleConfig.schedule.find(d => d.day === dayNum);
-                        if (dayData && dayData.content) {
+                        if (dayData && dayData.type) {
                             if (!habit.checkNotes) habit.checkNotes = {};
-                            habit.checkNotes[dateStr] = dayData.content;
+                            habit.checkNotes[dateStr] = dayData.type;
                         }
                     }
                 }
