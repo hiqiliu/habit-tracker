@@ -662,6 +662,31 @@
     </div>
 </div>
 
+<!-- Schedule Settings Modal -->
+<div id="schedule-settings-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center" onclick="event.target===this&&closeScheduleSettings()">
+    <div class="bg-white dark:bg-gray-800 rounded-t-2xl sm:rounded-2xl p-5 w-full max-w-md max-h-[85vh] overflow-auto" style="padding-bottom: max(1.25rem, env(safe-area-inset-bottom));" onclick="event.stopPropagation()">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-bold">打卡同步设置</h3>
+            <button onclick="closeScheduleSettings()" class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"><i class="fas fa-times"></i></button>
+        </div>
+        <p class="text-xs text-gray-400 mb-4">课表打卡时自动同步到以下习惯</p>
+        <div class="space-y-4">
+            <div><label class="text-xs text-gray-500 block mb-1">习惯名称</label><input type="text" id="sched-set-habit-name" class="w-full px-4 py-2.5 rounded-xl border dark:border-gray-700 dark:bg-gray-800 text-sm" placeholder="如：运动"></div>
+            <div><label class="text-xs text-gray-500 block mb-1">所属项目</label><input type="text" id="sched-set-habit-project" class="w-full px-4 py-2.5 rounded-xl border dark:border-gray-700 dark:bg-gray-800 text-sm" placeholder="如：健康"></div>
+            <div class="flex gap-4">
+                <div class="flex-1"><label class="text-xs text-gray-500 block mb-1">颜色</label>
+                    <div class="flex items-center gap-2">
+                        <input type="color" id="sched-set-habit-color" class="w-10 h-10 rounded-lg border-0 cursor-pointer" onchange="updateSchedSetColor()">
+                        <div id="sched-set-color-preview" class="w-6 h-6 rounded-full"></div>
+                    </div>
+                </div>
+                <div class="flex-1"><label class="text-xs text-gray-500 block mb-1">图标</label><input type="text" id="sched-set-habit-icon" class="w-full px-4 py-2.5 rounded-xl border dark:border-gray-700 dark:bg-gray-800 text-sm" placeholder="fa-dumbbell"></div>
+            </div>
+        </div>
+        <button onclick="saveScheduleSettings()" class="w-full mt-5 py-3 rounded-xl bg-primary text-white font-medium hover:bg-primary/90"><i class="fas fa-save mr-1"></i>保存</button>
+    </div>
+</div>
+
 <!-- Edit Wish Modal -->
 <div id="edit-wish-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center" onclick="event.target===this&&closeEditWishModal()">
     <div class="bg-white dark:bg-gray-800 rounded-t-2xl sm:rounded-2xl p-5 w-full max-w-md" style="padding-bottom: max(1.25rem, env(safe-area-inset-bottom));" onclick="event.stopPropagation()">
@@ -2593,6 +2618,17 @@
             if (names.finance) SCHEDULE_CONFIGS.finance.name = names.finance;
         }
 
+        // Load custom habit sync rules
+        const savedRules = localStorage.getItem('ht_schedule_habit_rules');
+        if (savedRules) {
+            const rules = JSON.parse(savedRules);
+            ['exercise', 'english', 'finance'].forEach(type => {
+                if (rules[type]) {
+                    Object.assign(SCHEDULE_CONFIGS[type], rules[type]);
+                }
+            });
+        }
+
         // Helper: group flat schedule array into weeks
         function groupScheduleIntoWeeks(flatSchedule, totalWeeks) {
             const weeks = [];
@@ -2863,6 +2899,11 @@
                 english: SCHEDULE_CONFIGS.english.name,
                 finance: SCHEDULE_CONFIGS.finance.name
             }));
+            localStorage.setItem('ht_schedule_habit_rules', JSON.stringify({
+                exercise: { habitName: SCHEDULE_CONFIGS.exercise.habitName, habitProject: SCHEDULE_CONFIGS.exercise.habitProject, habitIcon: SCHEDULE_CONFIGS.exercise.habitIcon, habitColor: SCHEDULE_CONFIGS.exercise.habitColor },
+                english: { habitName: SCHEDULE_CONFIGS.english.habitName, habitProject: SCHEDULE_CONFIGS.english.habitProject, habitIcon: SCHEDULE_CONFIGS.english.habitIcon, habitColor: SCHEDULE_CONFIGS.english.habitColor },
+                finance: { habitName: SCHEDULE_CONFIGS.finance.habitName, habitProject: SCHEDULE_CONFIGS.finance.habitProject, habitIcon: SCHEDULE_CONFIGS.finance.habitIcon, habitColor: SCHEDULE_CONFIGS.finance.habitColor }
+            }));
         }
 
         function resetScheduleData() {
@@ -2978,8 +3019,32 @@
         }
 
         function openScheduleSettings() {
-            // Settings modal simplified - no start date needed
-            alert('课表设置：无需设置开始日期，直接点击每天的内容进行打卡即可。');
+            const config = SCHEDULE_CONFIGS[currentScheduleType];
+            document.getElementById('sched-set-habit-name').value = config.habitName || '';
+            document.getElementById('sched-set-habit-project').value = config.habitProject || '';
+            document.getElementById('sched-set-habit-color').value = config.habitColor || '#6366f1';
+            document.getElementById('sched-set-habit-icon').value = config.habitIcon || 'fa-star';
+            document.getElementById('sched-set-color-preview').style.background = config.habitColor || '#6366f1';
+            document.getElementById('schedule-settings-modal').classList.remove('hidden');
+        }
+
+        function closeScheduleSettings() {
+            document.getElementById('schedule-settings-modal').classList.add('hidden');
+        }
+
+        function saveScheduleSettings() {
+            const config = SCHEDULE_CONFIGS[currentScheduleType];
+            config.habitName = document.getElementById('sched-set-habit-name').value.trim() || config.habitName;
+            config.habitProject = document.getElementById('sched-set-habit-project').value.trim() || config.habitProject;
+            config.habitColor = document.getElementById('sched-set-habit-color').value;
+            config.habitIcon = document.getElementById('sched-set-habit-icon').value;
+            saveScheduleData();
+            closeScheduleSettings();
+        }
+
+        function updateSchedSetColor() {
+            const color = document.getElementById('sched-set-habit-color').value;
+            document.getElementById('sched-set-color-preview').style.background = color;
         }
 
         // ==================== Utilities ====================
