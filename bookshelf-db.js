@@ -1,6 +1,6 @@
 // ==================== 书架 - IndexedDB 数据库 ====================
 const BOOKSHELF_DB_NAME = 'BookshelfDB';
-const BOOKSHELF_DB_VERSION = 1;
+const BOOKSHELF_DB_VERSION = 2;
 
 function openBookshelfDB() {
     return new Promise((resolve, reject) => {
@@ -38,11 +38,16 @@ async function addBook(book) {
     const store = tx.objectStore('books');
     const data = {
         title: book.title || '',
+        mediaType: book.mediaType || 'book', // 'book' | 'movie' | 'tv'
         author: book.author || '',
+        director: book.director || '',
+        cast: book.cast || '',
         category: book.category || '其他',
         totalPages: book.totalPages || 0,
         currentPage: book.currentPage || 0,
-        status: book.status || 'to_read', // to_read | reading | finished
+        episodes: book.episodes || 0,
+        currentEpisode: book.currentEpisode || 0,
+        status: book.status || 'todo', // todo | doing | done
         rating: book.rating || 0,
         review: book.review || '',
         cover: book.cover || null,
@@ -189,7 +194,7 @@ async function logReading(bookId, pagesRead) {
     // Update book current page
     const book = await getBook(bookId);
     if (book) {
-        const newPage = Math.min(book.currentPage + (pagesRead || 0), book.totalPages);
+        const newPage = Math.min((book.currentPage || 0) + (pagesRead || 0), book.totalPages || 999999);
         await updateBook(bookId, { currentPage: newPage });
         // Auto check-in to habit "阅读"
         await checkInReadingHabit(today);
@@ -240,14 +245,14 @@ async function checkInReadingHabit(dateStr) {
 async function getYearlyStats(year) {
     const books = await getAllBooks();
     const yearBooks = books.filter(b => {
-        if (b.status === 'finished' && b.finishedAt) return b.finishedAt.startsWith(year);
-        if (b.status === 'reading' && b.startedAt) return b.startedAt.startsWith(year);
+        if ((b.status === 'done' || b.status === 'finished') && b.finishedAt) return b.finishedAt.startsWith(year);
+        if ((b.status === 'doing' || b.status === 'reading') && b.startedAt) return b.startedAt.startsWith(year);
         return b.addedAt.startsWith(year);
     });
 
-    const finished = yearBooks.filter(b => b.status === 'finished');
-    const reading = yearBooks.filter(b => b.status === 'reading');
-    const toRead = yearBooks.filter(b => b.status === 'to_read');
+    const finished = yearBooks.filter(b => b.status === 'done' || b.status === 'finished');
+    const reading = yearBooks.filter(b => b.status === 'doing' || b.status === 'reading');
+    const toRead = yearBooks.filter(b => b.status === 'todo' || b.status === 'to_read');
 
     // Category distribution
     const categoryMap = {};
@@ -288,20 +293,25 @@ async function getYearlyStats(year) {
 async function exportBookshelfBackup() {
     const books = await getAllBooks();
     const backup = {
-        version: 1,
+        version: 2,
         exportedAt: new Date().toISOString(),
         books: []
     };
-    
+
     for (const book of books) {
         const notes = await getBookNotes(book.id);
         const logs = await getReadingLogs(book.id);
         backup.books.push({
             title: book.title,
+            mediaType: book.mediaType || 'book',
             author: book.author,
+            director: book.director,
+            cast: book.cast,
             category: book.category,
             totalPages: book.totalPages,
             currentPage: book.currentPage,
+            episodes: book.episodes,
+            currentEpisode: book.currentEpisode,
             status: book.status,
             rating: book.rating,
             review: book.review,
@@ -313,21 +323,26 @@ async function exportBookshelfBackup() {
             logs: logs.map(l => ({ date: l.date, pagesRead: l.pagesRead }))
         });
     }
-    
+
     return backup;
 }
 
 // ==================== 导入备份 ====================
 async function importBookshelfBackup(backup) {
     if (!backup || !backup.books) return;
-    
+
     for (const book of backup.books) {
         const newBook = await addBook({
             title: book.title,
+            mediaType: book.mediaType || 'book',
             author: book.author,
+            director: book.director,
+            cast: book.cast,
             category: book.category,
             totalPages: book.totalPages,
             currentPage: book.currentPage,
+            episodes: book.episodes,
+            currentEpisode: book.currentEpisode,
             status: book.status,
             rating: book.rating,
             review: book.review,
@@ -335,14 +350,14 @@ async function importBookshelfBackup(backup) {
             startedAt: book.startedAt,
             finishedAt: book.finishedAt
         });
-        
+
         // Add notes
         if (book.notes && book.notes.length > 0) {
             for (const note of book.notes) {
                 await addBookNote(newBook.id, note.content);
             }
         }
-        
+
         // Add reading logs
         if (book.logs && book.logs.length > 0) {
             for (const log of book.logs) {
@@ -378,7 +393,7 @@ const BOOK_CATEGORIES = {
 };
 
 const BOOK_STATUS_CONFIG = {
-    'to_read': { label: '待阅读', icon: 'fa-clock', color: '#f59e0b' },
-    'reading': { label: '阅读中', icon: 'fa-book-open', color: '#6366f1' },
-    'finished': { label: '已完成', icon: 'fa-check-circle', color: '#22c55e' }
+    'todo': { label: '待看', icon: 'fa-clock', color: '#f59e0b' },
+    'doing': { label: '正在看', icon: 'fa-play-circle', color: '#6366f1' },
+    'done': { label: '已看完', icon: 'fa-check-circle', color: '#22c55e' }
 };

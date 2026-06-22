@@ -83,7 +83,7 @@
                     <i class="fas fa-book w-6"></i><span>五年日记</span>
                 </button>
                 <button onclick="showView('bookshelf')" id="nav-bookshelf" class="nav-btn w-full flex items-center px-4 py-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-all">
-                    <i class="fas fa-book-reader w-6"></i><span>书架</span>
+                    <i class="fas fa-book-reader w-6"></i><span>书影</span>
                 </button>
                 <button onclick="showView('wishes')" id="nav-wishes" class="nav-btn w-full flex items-center px-4 py-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-all">
                     <i class="fas fa-star w-6"></i><span>心愿兑换</span>
@@ -139,7 +139,7 @@
                     <i class="fas fa-book w-6"></i><span>五年日记</span>
                 </button>
                 <button onclick="showView('bookshelf'); toggleMobileMenu()" class="w-full flex items-center px-4 py-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700">
-                    <i class="fas fa-book-reader w-6"></i><span>书架</span>
+                    <i class="fas fa-book-reader w-6"></i><span>书影</span>
                 </button>
                 <button onclick="showView('wishes'); toggleMobileMenu()" class="w-full flex items-center px-4 py-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700">
                     <i class="fas fa-star w-6"></i><span>心愿兑换</span>
@@ -351,7 +351,10 @@
                 </div>
 
                 <div class="flex justify-between items-center mb-6">
-                    <h2 class="text-2xl font-bold" id="schedule-title">运动课表</h2>
+                    <div class="flex items-center gap-2">
+                        <h2 class="text-2xl font-bold" id="schedule-title">运动课表</h2>
+                        <button onclick="editScheduleName()" class="text-gray-400 hover:text-primary p-1" title="修改名称"><i class="fas fa-pen text-sm"></i></button>
+                    </div>
                     <div class="flex gap-2">
                         <button onclick="toggleScheduleEditMode()" id="schedule-edit-btn" class="bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 px-4 py-2 rounded-xl transition-all">
                             <i class="fas fa-edit mr-1"></i>编辑
@@ -565,17 +568,24 @@
             <!-- Bookshelf View -->
             <div id="view-bookshelf" class="view-section hidden fade-in">
                 <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
-                    <h2 class="text-xl sm:text-2xl font-bold">书架</h2>
+                    <h2 class="text-xl sm:text-2xl font-bold">书影</h2>
                     <div class="flex gap-2">
                         <button onclick="openBookshelfStats()" class="text-xs sm:text-sm px-3 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 flex-1 sm:flex-none"><i class="fas fa-chart-bar mr-1"></i>统计</button>
-                        <button onclick="openAddBookModal()" class="bg-primary hover:bg-primary/90 text-white px-3 py-2 rounded-xl text-xs sm:text-sm flex-1 sm:flex-none"><i class="fas fa-plus mr-1"></i>添加书籍</button>
+                        <button onclick="openAddBookModal()" class="bg-primary hover:bg-primary/90 text-white px-3 py-2 rounded-xl text-xs sm:text-sm flex-1 sm:flex-none"><i class="fas fa-plus mr-1"></i>添加</button>
                     </div>
+                </div>
+                <!-- Media Type Tabs -->
+                <div class="flex gap-1.5 sm:gap-2 mb-3 overflow-auto pb-1">
+                    <button onclick="switchMediaTypeTab('all')" id="media-tab-all" class="px-3 sm:px-4 py-2 rounded-xl bg-primary text-white text-xs sm:text-sm whitespace-nowrap flex-1 sm:flex-none">全部</button>
+                    <button onclick="switchMediaTypeTab('book')" id="media-tab-book" class="px-3 sm:px-4 py-2 rounded-xl bg-gray-200 dark:bg-gray-700 text-xs sm:text-sm whitespace-nowrap flex-1 sm:flex-none">书籍</button>
+                    <button onclick="switchMediaTypeTab('movie')" id="media-tab-movie" class="px-3 sm:px-4 py-2 rounded-xl bg-gray-200 dark:bg-gray-700 text-xs sm:text-sm whitespace-nowrap flex-1 sm:flex-none">影视</button>
+                    <button onclick="switchMediaTypeTab('tv')" id="media-tab-tv" class="px-3 sm:px-4 py-2 rounded-xl bg-gray-200 dark:bg-gray-700 text-xs sm:text-sm whitespace-nowrap flex-1 sm:flex-none">剧集</button>
                 </div>
                 <!-- Status Tabs -->
                 <div class="flex gap-1.5 sm:gap-2 mb-4 overflow-auto pb-1">
-                    <button onclick="switchBookTab('reading')" id="book-tab-reading" class="px-3 sm:px-4 py-2 rounded-xl bg-primary text-white text-xs sm:text-sm whitespace-nowrap flex-1 sm:flex-none">阅读中</button>
-                    <button onclick="switchBookTab('to_read')" id="book-tab-to_read" class="px-3 sm:px-4 py-2 rounded-xl bg-gray-200 dark:bg-gray-700 text-xs sm:text-sm whitespace-nowrap flex-1 sm:flex-none">待阅读</button>
-                    <button onclick="switchBookTab('finished')" id="book-tab-finished" class="px-3 sm:px-4 py-2 rounded-xl bg-gray-200 dark:bg-gray-700 text-xs sm:text-sm whitespace-nowrap flex-1 sm:flex-none">已完成</button>
+                    <button onclick="switchBookTab('doing')" id="book-tab-doing" class="px-3 sm:px-4 py-2 rounded-xl bg-primary text-white text-xs sm:text-sm whitespace-nowrap flex-1 sm:flex-none">正在看</button>
+                    <button onclick="switchBookTab('todo')" id="book-tab-todo" class="px-3 sm:px-4 py-2 rounded-xl bg-gray-200 dark:bg-gray-700 text-xs sm:text-sm whitespace-nowrap flex-1 sm:flex-none">待看</button>
+                    <button onclick="switchBookTab('done')" id="book-tab-done" class="px-3 sm:px-4 py-2 rounded-xl bg-gray-200 dark:bg-gray-700 text-xs sm:text-sm whitespace-nowrap flex-1 sm:flex-none">已看完</button>
                 </div>
                 <!-- Book List -->
                 <div id="bookshelf-list"></div>
@@ -803,27 +813,41 @@
 <div id="add-book-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center" onclick="event.target===this&&closeAddBookModal()">
     <div class="bg-white dark:bg-gray-800 rounded-t-2xl sm:rounded-2xl p-5 w-full max-w-md max-h-[85vh] overflow-auto" style="padding-bottom: max(1.25rem, env(safe-area-inset-bottom));" onclick="event.stopPropagation()">
         <div class="flex justify-between items-center mb-4">
-            <h3 class="text-lg font-bold" id="add-book-modal-title">添加书籍</h3>
+            <h3 class="text-lg font-bold" id="add-book-modal-title">添加</h3>
             <button onclick="closeAddBookModal()" class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"><i class="fas fa-times"></i></button>
         </div>
         <div class="space-y-4">
-            <div><label class="text-xs text-gray-500 block mb-1">书名 *</label><input type="text" id="book-title" class="w-full px-4 py-2.5 rounded-xl border dark:border-gray-700 dark:bg-gray-800 text-sm" placeholder="书名"></div>
-            <div><label class="text-xs text-gray-500 block mb-1">作者</label><input type="text" id="book-author" class="w-full px-4 py-2.5 rounded-xl border dark:border-gray-700 dark:bg-gray-800 text-sm" placeholder="作者"></div>
+            <div>
+                <label class="text-xs text-gray-500 block mb-1">类型</label>
+                <select id="book-media-type" class="w-full px-4 py-2.5 rounded-xl border dark:border-gray-700 dark:bg-gray-800 text-sm" onchange="onMediaTypeChange()">
+                    <option value="book">书籍</option>
+                    <option value="movie">影视</option>
+                    <option value="tv">剧集</option>
+                </select>
+            </div>
+            <div><label class="text-xs text-gray-500 block mb-1">名称 *</label><input type="text" id="book-title" class="w-full px-4 py-2.5 rounded-xl border dark:border-gray-700 dark:bg-gray-800 text-sm" placeholder="名称"></div>
+            <div id="field-author"><label class="text-xs text-gray-500 block mb-1">作者</label><input type="text" id="book-author" class="w-full px-4 py-2.5 rounded-xl border dark:border-gray-700 dark:bg-gray-800 text-sm" placeholder="作者"></div>
+            <div id="field-director" class="hidden"><label class="text-xs text-gray-500 block mb-1">导演</label><input type="text" id="book-director" class="w-full px-4 py-2.5 rounded-xl border dark:border-gray-700 dark:bg-gray-800 text-sm" placeholder="导演"></div>
+            <div id="field-cast" class="hidden"><label class="text-xs text-gray-500 block mb-1">主演</label><input type="text" id="book-cast" class="w-full px-4 py-2.5 rounded-xl border dark:border-gray-700 dark:bg-gray-800 text-sm" placeholder="主演"></div>
             <div class="flex gap-2">
-                <div class="flex-1"><label class="text-xs text-gray-500 block mb-1">类型</label>
+                <div class="flex-1"><label class="text-xs text-gray-500 block mb-1">分类</label>
                     <select id="book-category" class="w-full px-4 py-2.5 rounded-xl border dark:border-gray-700 dark:bg-gray-800 text-sm">
                         <option value="小说">小说</option><option value="非虚构">非虚构</option><option value="技术">技术</option><option value="历史">历史</option><option value="哲学">哲学</option><option value="心理">心理</option><option value="经济">经济</option><option value="科学">科学</option><option value="艺术">艺术</option><option value="传记">传记</option><option value="其他">其他</option>
                     </select>
                 </div>
                 <div class="flex-1"><label class="text-xs text-gray-500 block mb-1">状态</label>
                     <select id="book-status" class="w-full px-4 py-2.5 rounded-xl border dark:border-gray-700 dark:bg-gray-800 text-sm">
-                        <option value="to_read">待阅读</option><option value="reading">阅读中</option><option value="finished">已完成</option>
+                        <option value="todo">待看</option><option value="doing">正在看</option><option value="done">已看完</option>
                     </select>
                 </div>
             </div>
-            <div class="flex gap-2">
+            <div class="flex gap-2" id="field-pages">
                 <div class="flex-1"><label class="text-xs text-gray-500 block mb-1">总页数</label><input type="number" id="book-total-pages" class="w-full px-4 py-2.5 rounded-xl border dark:border-gray-700 dark:bg-gray-800 text-sm" placeholder="0" min="0"></div>
                 <div class="flex-1"><label class="text-xs text-gray-500 block mb-1">当前页</label><input type="number" id="book-current-page" class="w-full px-4 py-2.5 rounded-xl border dark:border-gray-700 dark:bg-gray-800 text-sm" placeholder="0" min="0"></div>
+            </div>
+            <div class="flex gap-2 hidden" id="field-episodes">
+                <div class="flex-1"><label class="text-xs text-gray-500 block mb-1">总集数</label><input type="number" id="book-episodes" class="w-full px-4 py-2.5 rounded-xl border dark:border-gray-700 dark:bg-gray-800 text-sm" placeholder="0" min="0"></div>
+                <div class="flex-1"><label class="text-xs text-gray-500 block mb-1">当前集</label><input type="number" id="book-current-episode" class="w-full px-4 py-2.5 rounded-xl border dark:border-gray-700 dark:bg-gray-800 text-sm" placeholder="0" min="0"></div>
             </div>
             <div><label class="text-xs text-gray-500 block mb-1">评分 (1-5)</label>
                 <div class="flex gap-2" id="book-rating-stars">
@@ -2560,6 +2584,15 @@
             }
         };
 
+        // Load custom schedule names
+        const savedNames = localStorage.getItem('ht_schedule_names');
+        if (savedNames) {
+            const names = JSON.parse(savedNames);
+            if (names.exercise) SCHEDULE_CONFIGS.exercise.name = names.exercise;
+            if (names.english) SCHEDULE_CONFIGS.english.name = names.english;
+            if (names.finance) SCHEDULE_CONFIGS.finance.name = names.finance;
+        }
+
         // Helper: group flat schedule array into weeks
         function groupScheduleIntoWeeks(flatSchedule, totalWeeks) {
             const weeks = [];
@@ -2777,6 +2810,16 @@
             }
         }
 
+        function editScheduleName() {
+            const config = SCHEDULE_CONFIGS[currentScheduleType];
+            const newName = prompt('修改课表名称:', config.name);
+            if (newName && newName.trim()) {
+                config.name = newName.trim();
+                saveScheduleData();
+                renderSchedule();
+            }
+        }
+
         function toggleScheduleEditMode() {
             scheduleEditMode = !scheduleEditMode;
             renderSchedule();
@@ -2815,6 +2858,11 @@
         function saveScheduleData() {
             const config = SCHEDULE_CONFIGS[currentScheduleType];
             localStorage.setItem('ht_schedule_custom_' + currentScheduleType, JSON.stringify(config.schedule));
+            localStorage.setItem('ht_schedule_names', JSON.stringify({
+                exercise: SCHEDULE_CONFIGS.exercise.name,
+                english: SCHEDULE_CONFIGS.english.name,
+                finance: SCHEDULE_CONFIGS.finance.name
+            }));
         }
 
         function resetScheduleData() {
@@ -3347,58 +3395,118 @@
         }
 
 // ==================== 书架 - UI逻辑 ====================
-let bookTab = 'reading';
+let bookTab = 'doing';
+let mediaTypeTab = 'all';
 let selectedBookRating = 0;
 
 function switchBookTab(tab) {
     bookTab = tab;
-    ['reading', 'to_read', 'finished'].forEach(t => {
+    ['doing', 'todo', 'done'].forEach(t => {
         const btn = document.getElementById('book-tab-' + t);
-        btn.className = 'px-4 py-2 rounded-xl ' + (t === tab ? 'bg-primary text-white' : 'bg-gray-200 dark:bg-gray-700') + ' text-sm';
+        if (btn) btn.className = 'px-3 sm:px-4 py-2 rounded-xl ' + (t === tab ? 'bg-primary text-white' : 'bg-gray-200 dark:bg-gray-700') + ' text-xs sm:text-sm whitespace-nowrap flex-1 sm:flex-none';
     });
     renderBookshelf();
 }
 
+function switchMediaTypeTab(type) {
+    mediaTypeTab = type;
+    ['all', 'book', 'movie', 'tv'].forEach(t => {
+        const btn = document.getElementById('media-tab-' + t);
+        if (btn) btn.className = 'px-3 sm:px-4 py-2 rounded-xl ' + (t === type ? 'bg-primary text-white' : 'bg-gray-200 dark:bg-gray-700') + ' text-xs sm:text-sm whitespace-nowrap flex-1 sm:flex-none';
+    });
+    renderBookshelf();
+}
+
+function getMediaTypeLabel(mt) {
+    if (mt === 'movie') return '影视';
+    if (mt === 'tv') return '剧集';
+    return '书籍';
+}
+
+function getMediaIcon(mt) {
+    if (mt === 'movie') return 'fa-film';
+    if (mt === 'tv') return 'fa-tv';
+    return 'fa-book';
+}
+
 async function renderBookshelf() {
     const list = document.getElementById('bookshelf-list');
-    const books = await getBooksByStatus(bookTab);
-    
+    let books = await getBooksByStatus(bookTab);
+
+    // Filter by media type
+    if (mediaTypeTab !== 'all') {
+        books = books.filter(b => (b.mediaType || 'book') === mediaTypeTab);
+    }
+
     if (books.length === 0) {
         const cfg = BOOK_STATUS_CONFIG[bookTab];
-        list.innerHTML = `<div class="text-center py-12 text-gray-400"><i class="fas ${cfg.icon} text-4xl mb-3 block"></i>暂无${cfg.label}的书籍</div>`;
+        list.innerHTML = `<div class="text-center py-12 text-gray-400"><i class="fas ${cfg.icon} text-4xl mb-3 block"></i>暂无${cfg.label}的内容</div>`;
         return;
     }
-    
+
     list.innerHTML = books.map(b => {
+        const mt = b.mediaType || 'book';
         const cat = BOOK_CATEGORIES[b.category] || BOOK_CATEGORIES['其他'];
-        const progress = b.totalPages > 0 ? Math.round(b.currentPage / b.totalPages * 100) : 0;
+        const pageProgress = b.totalPages > 0 ? Math.round(b.currentPage / b.totalPages * 100) : 0;
+        const epProgress = b.episodes > 0 ? Math.round(b.currentEpisode / b.episodes * 100) : 0;
         const stars = b.rating > 0 ? '★'.repeat(b.rating) + '☆'.repeat(5 - b.rating) : '';
-        
+        const isDoing = b.status === 'doing' || b.status === 'reading';
+        const isDone = b.status === 'done' || b.status === 'finished';
+
+        let progressHtml = '';
+        if (mt === 'book' && isDoing) {
+            progressHtml = `
+                <div class="mt-1.5 sm:mt-2">
+                    <div class="flex justify-between text-[10px] sm:text-xs text-gray-500 mb-0.5">
+                        <span>${b.currentPage || 0}/${b.totalPages || 0} 页</span>
+                        <span>${pageProgress}%</span>
+                    </div>
+                    <div class="h-1 sm:h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                        <div class="h-full bg-primary rounded-full transition-all" style="width: ${pageProgress}%"></div>
+                    </div>
+                </div>`;
+        } else if (mt === 'tv' && isDoing) {
+            progressHtml = `
+                <div class="mt-1.5 sm:mt-2">
+                    <div class="flex justify-between text-[10px] sm:text-xs text-gray-500 mb-0.5">
+                        <span>第 ${b.currentEpisode || 0}/${b.episodes || 0} 集</span>
+                        <span>${epProgress}%</span>
+                    </div>
+                    <div class="h-1 sm:h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                        <div class="h-full bg-primary rounded-full transition-all" style="width: ${epProgress}%"></div>
+                    </div>
+                </div>`;
+        }
+
+        let metaHtml = '';
+        if (mt === 'book') {
+            metaHtml = `<div class="text-[10px] sm:text-xs text-gray-400">${escapeHtml(b.author || '')} · ${b.category}</div>`;
+        } else {
+            metaHtml = `<div class="text-[10px] sm:text-xs text-gray-400">${escapeHtml(b.director || '')}${b.director && b.cast ? ' / ' : ''}${escapeHtml(b.cast || '')}</div>`;
+        }
+
+        let quickAction = '';
+        if (mt === 'book' && isDoing) {
+            quickAction = `<button onclick="event.stopPropagation(); quickLogReading(${b.id})" class="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center text-[10px] sm:text-xs hover:bg-primary/20" title="记录阅读"><i class="fas fa-plus"></i></button>`;
+        } else if (mt === 'tv' && isDoing) {
+            quickAction = `<button onclick="event.stopPropagation(); quickLogEpisode(${b.id})" class="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center text-[10px] sm:text-xs hover:bg-primary/20" title="记录进度"><i class="fas fa-plus"></i></button>`;
+        }
+
         return `
         <div class="bg-white dark:bg-gray-800 rounded-2xl p-3 sm:p-4 shadow-sm mb-2 sm:mb-3 hover:shadow-md transition-all cursor-pointer border border-gray-100 dark:border-gray-700" onclick="openBookDetail(${b.id})">
             <div class="flex items-start gap-2.5 sm:gap-3">
                 <div class="w-9 h-12 sm:w-10 sm:h-14 rounded-lg flex items-center justify-center text-white flex-shrink-0 text-sm sm:text-base" style="background: ${cat.color}">
-                    <i class="fas ${cat.icon}"></i>
+                    <i class="fas ${getMediaIcon(mt)}"></i>
                 </div>
                 <div class="flex-1 min-w-0">
                     <div class="font-semibold text-sm sm:text-base truncate">${escapeHtml(b.title)}</div>
-                    <div class="text-[10px] sm:text-xs text-gray-400">${escapeHtml(b.author)} · ${b.category}</div>
-                    ${b.status === 'reading' ? `
-                        <div class="mt-1.5 sm:mt-2">
-                            <div class="flex justify-between text-[10px] sm:text-xs text-gray-500 mb-0.5">
-                                <span>${b.currentPage}/${b.totalPages} 页</span>
-                                <span>${progress}%</span>
-                            </div>
-                            <div class="h-1 sm:h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                                <div class="h-full bg-primary rounded-full transition-all" style="width: ${progress}%"></div>
-                            </div>
-                        </div>
-                    ` : ''}
-                    ${b.status === 'finished' && stars ? `<div class="text-[10px] sm:text-xs text-warning mt-0.5 sm:mt-1">${stars}</div>` : ''}
+                    ${metaHtml}
+                    ${progressHtml}
+                    ${isDone && stars ? `<div class="text-[10px] sm:text-xs text-warning mt-0.5 sm:mt-1">${stars}</div>` : ''}
                     ${b.review ? `<div class="text-[10px] sm:text-xs text-gray-500 mt-0.5 sm:mt-1 truncate">"${escapeHtml(b.review)}"</div>` : ''}
                 </div>
                 <div class="flex gap-1 flex-shrink-0">
-                    ${b.status === 'reading' ? `<button onclick="event.stopPropagation(); quickLogReading(${b.id})" class="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center text-[10px] sm:text-xs hover:bg-primary/20" title="记录阅读"><i class="fas fa-plus"></i></button>` : ''}
+                    ${quickAction}
                     <button onclick="event.stopPropagation(); editBook(${b.id})" class="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-[10px] sm:text-xs hover:bg-gray-200"><i class="fas fa-pen"></i></button>
                 </div>
             </div>
@@ -3406,14 +3514,43 @@ async function renderBookshelf() {
     }).join('');
 }
 
+function onMediaTypeChange() {
+    const mt = document.getElementById('book-media-type').value;
+    if (mt === 'book') {
+        document.getElementById('field-author').classList.remove('hidden');
+        document.getElementById('field-director').classList.add('hidden');
+        document.getElementById('field-cast').classList.add('hidden');
+        document.getElementById('field-pages').classList.remove('hidden');
+        document.getElementById('field-episodes').classList.add('hidden');
+    } else if (mt === 'movie') {
+        document.getElementById('field-author').classList.add('hidden');
+        document.getElementById('field-director').classList.remove('hidden');
+        document.getElementById('field-cast').classList.remove('hidden');
+        document.getElementById('field-pages').classList.add('hidden');
+        document.getElementById('field-episodes').classList.add('hidden');
+    } else if (mt === 'tv') {
+        document.getElementById('field-author').classList.add('hidden');
+        document.getElementById('field-director').classList.remove('hidden');
+        document.getElementById('field-cast').classList.remove('hidden');
+        document.getElementById('field-pages').classList.add('hidden');
+        document.getElementById('field-episodes').classList.remove('hidden');
+    }
+}
+
 function openAddBookModal() {
-    document.getElementById('add-book-modal-title').textContent = '添加书籍';
+    document.getElementById('add-book-modal-title').textContent = '添加';
+    document.getElementById('book-media-type').value = 'book';
+    onMediaTypeChange();
     document.getElementById('book-title').value = '';
     document.getElementById('book-author').value = '';
+    document.getElementById('book-director').value = '';
+    document.getElementById('book-cast').value = '';
     document.getElementById('book-category').value = '小说';
-    document.getElementById('book-status').value = 'to_read';
+    document.getElementById('book-status').value = 'todo';
     document.getElementById('book-total-pages').value = '';
     document.getElementById('book-current-page').value = '0';
+    document.getElementById('book-episodes').value = '';
+    document.getElementById('book-current-episode').value = '0';
     document.getElementById('book-review').value = '';
     document.getElementById('book-edit-id').value = '';
     selectedBookRating = 0;
@@ -3442,13 +3579,20 @@ function updateRatingStars() {
 async function editBook(id) {
     const book = await getBook(id);
     if (!book) return;
-    document.getElementById('add-book-modal-title').textContent = '编辑书籍';
+    const mt = book.mediaType || 'book';
+    document.getElementById('add-book-modal-title').textContent = '编辑' + getMediaTypeLabel(mt);
+    document.getElementById('book-media-type').value = mt;
+    onMediaTypeChange();
     document.getElementById('book-title').value = book.title;
-    document.getElementById('book-author').value = book.author;
+    document.getElementById('book-author').value = book.author || '';
+    document.getElementById('book-director').value = book.director || '';
+    document.getElementById('book-cast').value = book.cast || '';
     document.getElementById('book-category').value = book.category;
     document.getElementById('book-status').value = book.status;
     document.getElementById('book-total-pages').value = book.totalPages || '';
     document.getElementById('book-current-page').value = book.currentPage || 0;
+    document.getElementById('book-episodes').value = book.episodes || '';
+    document.getElementById('book-current-episode').value = book.currentEpisode || 0;
     document.getElementById('book-review').value = book.review || '';
     document.getElementById('book-edit-id').value = book.id;
     selectedBookRating = book.rating || 0;
@@ -3459,28 +3603,35 @@ async function editBook(id) {
 
 async function saveBook() {
     const title = document.getElementById('book-title').value.trim();
-    if (!title) { alert('请输入书名'); return; }
-    
+    if (!title) { alert('请输入名称'); return; }
+
     const editId = document.getElementById('book-edit-id').value;
+    const mt = document.getElementById('book-media-type').value;
+    const status = document.getElementById('book-status').value;
     const data = {
         title: title,
+        mediaType: mt,
         author: document.getElementById('book-author').value.trim(),
+        director: document.getElementById('book-director').value.trim(),
+        cast: document.getElementById('book-cast').value.trim(),
         category: document.getElementById('book-category').value,
-        status: document.getElementById('book-status').value,
+        status: status,
         totalPages: parseInt(document.getElementById('book-total-pages').value) || 0,
         currentPage: parseInt(document.getElementById('book-current-page').value) || 0,
+        episodes: parseInt(document.getElementById('book-episodes').value) || 0,
+        currentEpisode: parseInt(document.getElementById('book-current-episode').value) || 0,
         rating: selectedBookRating,
         review: document.getElementById('book-review').value.trim()
     };
-    
+
     if (editId) {
         await updateBook(parseInt(editId), data);
     } else {
-        if (data.status === 'reading') data.startedAt = new Date().toISOString();
-        if (data.status === 'finished') data.finishedAt = new Date().toISOString();
+        if (status === 'doing' || status === 'reading') data.startedAt = new Date().toISOString();
+        if (status === 'done' || status === 'finished') data.finishedAt = new Date().toISOString();
         await addBook(data);
     }
-    
+
     closeAddBookModal();
     renderBookshelf();
 }
@@ -3493,51 +3644,102 @@ async function quickLogReading(bookId) {
     renderDashboard();
 }
 
+async function quickLogEpisode(bookId) {
+    const eps = prompt('今天看了几集？（留空记为0集）');
+    if (eps === null) return;
+    const epsNum = parseInt(eps) || 0;
+    const book = await getBook(bookId);
+    if (book) {
+        const newEp = Math.min((book.currentEpisode || 0) + epsNum, book.episodes || 9999);
+        await updateBook(bookId, { currentEpisode: newEp });
+        // Auto check-in to habit "观影" or "追剧"
+        const today = new Date().toISOString().split('T')[0];
+        const watchHabit = items.find(i => i.type === 'habit' && (i.title === '观影' || i.title === '追剧' || i.title === '看电视'));
+        if (watchHabit) {
+            if (!watchHabit.checks) watchHabit.checks = [];
+            if (!watchHabit.checks.includes(today)) {
+                watchHabit.checks.push(today);
+                if (typeof saveData === 'function') saveData();
+            }
+        }
+        renderBookshelf();
+        renderDashboard();
+    }
+}
+
 // ==================== 书籍详情 + 笔记 ====================
 async function openBookDetail(id) {
     const book = await getBook(id);
     if (!book) return;
     const notes = await getBookNotes(id);
+    const mt = book.mediaType || 'book';
     const cat = BOOK_CATEGORIES[book.category] || BOOK_CATEGORIES['其他'];
-    const progress = book.totalPages > 0 ? Math.round(book.currentPage / book.totalPages * 100) : 0;
+    const pageProgress = book.totalPages > 0 ? Math.round(book.currentPage / book.totalPages * 100) : 0;
+    const epProgress = book.episodes > 0 ? Math.round(book.currentEpisode / book.episodes * 100) : 0;
     const stars = book.rating > 0 ? '★'.repeat(book.rating) + '☆'.repeat(5 - book.rating) : '';
-    
+    const isDoing = book.status === 'doing' || book.status === 'reading';
+    const isDone = book.status === 'done' || book.status === 'finished';
+
     document.getElementById('book-detail-title').textContent = book.title;
-    
+
+    let metaLine = '';
+    if (mt === 'book') {
+        metaLine = `${escapeHtml(book.author || '')} · ${book.category}`;
+    } else {
+        metaLine = `${escapeHtml(book.director || '')}${book.director && book.cast ? ' / ' : ''}${escapeHtml(book.cast || '')}`;
+    }
+
+    let progressHtml = '';
+    if (mt === 'book' && isDoing) {
+        progressHtml = `
+            <div class="mb-4">
+                <div class="flex justify-between text-sm mb-1"><span>阅读进度</span><span>${book.currentPage || 0}/${book.totalPages || 0} 页 (${pageProgress}%)</span></div>
+                <div class="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden"><div class="h-full bg-primary rounded-full" style="width: ${pageProgress}%"></div></div>
+            </div>`;
+    } else if (mt === 'tv' && isDoing) {
+        progressHtml = `
+            <div class="mb-4">
+                <div class="flex justify-between text-sm mb-1"><span>观看进度</span><span>第 ${book.currentEpisode || 0}/${book.episodes || 0} 集 (${epProgress}%)</span></div>
+                <div class="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden"><div class="h-full bg-primary rounded-full" style="width: ${epProgress}%"></div></div>
+            </div>`;
+    }
+
+    let actionBtn = '';
+    if (mt === 'book' && isDoing) {
+        actionBtn = `<button onclick="quickLogReading(${book.id}); closeBookDetail();" class="flex-1 py-2 rounded-xl bg-primary text-white text-sm"><i class="fas fa-book-open mr-1"></i>记录阅读</button>`;
+    } else if (mt === 'tv' && isDoing) {
+        actionBtn = `<button onclick="quickLogEpisode(${book.id}); closeBookDetail();" class="flex-1 py-2 rounded-xl bg-primary text-white text-sm"><i class="fas fa-tv mr-1"></i>记录进度</button>`;
+    }
+
     let html = `
         <div class="flex items-center gap-3 mb-4">
             <div class="w-12 h-16 rounded-lg flex items-center justify-center text-white" style="background: ${cat.color}">
-                <i class="fas ${cat.icon} text-lg"></i>
+                <i class="fas ${getMediaIcon(mt)} text-lg"></i>
             </div>
             <div>
                 <div class="font-bold">${escapeHtml(book.title)}</div>
-                <div class="text-sm text-gray-400">${escapeHtml(book.author)} · ${book.category}</div>
-                <div class="text-xs mt-1"><span class="px-2 py-0.5 rounded-full text-white text-xs" style="background: ${BOOK_STATUS_CONFIG[book.status].color}">${BOOK_STATUS_CONFIG[book.status].label}</span></div>
+                <div class="text-sm text-gray-400">${metaLine}</div>
+                <div class="text-xs mt-1"><span class="px-2 py-0.5 rounded-full text-white text-xs" style="background: ${BOOK_STATUS_CONFIG[book.status]?.color || '#6366f1'}">${BOOK_STATUS_CONFIG[book.status]?.label || book.status}</span></div>
             </div>
         </div>
-        ${book.status === 'reading' ? `
-            <div class="mb-4">
-                <div class="flex justify-between text-sm mb-1"><span>阅读进度</span><span>${book.currentPage}/${book.totalPages} 页 (${progress}%)</span></div>
-                <div class="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden"><div class="h-full bg-primary rounded-full" style="width: ${progress}%"></div></div>
-            </div>
-        ` : ''}
+        ${progressHtml}
         ${stars ? `<div class="text-warning mb-2">${stars}</div>` : ''}
         ${book.review ? `<div class="text-sm text-gray-600 dark:text-gray-300 mb-4 italic">"${escapeHtml(book.review)}"</div>` : ''}
         <div class="flex gap-2 mb-4">
             <button onclick="editBook(${book.id}); closeBookDetail();" class="flex-1 py-2 rounded-xl bg-gray-100 dark:bg-gray-700 text-sm"><i class="fas fa-pen mr-1"></i>编辑</button>
-            ${book.status === 'reading' ? `<button onclick="quickLogReading(${book.id}); closeBookDetail();" class="flex-1 py-2 rounded-xl bg-primary text-white text-sm"><i class="fas fa-book-open mr-1"></i>记录阅读</button>` : ''}
+            ${actionBtn}
             <button onclick="deleteBookConfirm(${book.id})" class="py-2 px-4 rounded-xl bg-danger/10 text-danger text-sm"><i class="fas fa-trash"></i></button>
         </div>
         <hr class="dark:border-gray-700 mb-4">
         <div class="flex justify-between items-center mb-3">
-            <h4 class="font-semibold">阅读笔记 (${notes.length})</h4>
+            <h4 class="font-semibold">笔记 (${notes.length})</h4>
         </div>
         <div class="mb-3">
             <textarea id="new-note-content" rows="2" class="w-full px-4 py-2.5 rounded-xl border dark:border-gray-700 dark:bg-gray-800 text-sm resize-none" placeholder="写一条笔记..."></textarea>
             <button onclick="saveBookNote(${book.id})" class="mt-2 w-full py-2 rounded-xl bg-primary text-white text-sm"><i class="fas fa-plus mr-1"></i>添加笔记</button>
         </div>
         <div class="space-y-2">
-            ${notes.length === 0 ? '<p class="text-sm text-gray-400 text-center py-4">暂无笔记</p>' : 
+            ${notes.length === 0 ? '<p class="text-sm text-gray-400 text-center py-4">暂无笔记</p>' :
                 notes.map(n => `
                     <div class="bg-gray-50 dark:bg-gray-700/30 rounded-xl p-3">
                         <div class="text-sm">${escapeHtml(n.content)}</div>
@@ -3547,7 +3749,7 @@ async function openBookDetail(id) {
                 `).join('')}
         </div>
     `;
-    
+
     document.getElementById('book-detail-content').innerHTML = html;
     document.getElementById('book-detail-modal').classList.remove('hidden');
 }
@@ -3570,7 +3772,7 @@ async function deleteBookNoteConfirm(noteId, bookId) {
 }
 
 async function deleteBookConfirm(id) {
-    if (!confirm('确定要删除这本书吗？相关笔记也会被删除。')) return;
+    if (!confirm('确定要删除吗？相关笔记也会被删除。')) return;
     await deleteBook(id);
     closeBookDetail();
     renderBookshelf();
@@ -3580,10 +3782,10 @@ async function deleteBookConfirm(id) {
 async function openBookshelfStats() {
     const year = new Date().getFullYear().toString();
     const stats = await getYearlyStats(year);
-    
+
     const catEntries = Object.entries(stats.categoryMap).sort((a, b) => b[1] - a[1]);
     const monthEntries = Object.entries(stats.monthlyMap).sort();
-    
+
     let html = `
         <div class="text-center mb-4">
             <div class="text-3xl font-bold text-primary">${stats.totalFinished}</div>
@@ -3592,7 +3794,7 @@ async function openBookshelfStats() {
         <div class="grid grid-cols-3 gap-3 mb-4">
             <div class="bg-gray-50 dark:bg-gray-700/30 rounded-xl p-3 text-center">
                 <div class="text-lg font-bold">${stats.totalReading}</div>
-                <div class="text-[10px] text-gray-400">阅读中</div>
+                <div class="text-[10px] text-gray-400">进行中</div>
             </div>
             <div class="bg-gray-50 dark:bg-gray-700/30 rounded-xl p-3 text-center">
                 <div class="text-lg font-bold">${stats.totalPages}</div>
@@ -3604,7 +3806,7 @@ async function openBookshelfStats() {
             </div>
         </div>
         ${catEntries.length > 0 ? `
-            <h4 class="font-semibold text-sm mb-2">阅读类型分布</h4>
+            <h4 class="font-semibold text-sm mb-2">类型分布</h4>
             <div class="space-y-1.5 mb-4">
                 ${catEntries.map(([cat, count]) => {
                     const c = BOOK_CATEGORIES[cat] || BOOK_CATEGORIES['其他'];
@@ -3613,7 +3815,7 @@ async function openBookshelfStats() {
                         <i class="fas ${c.icon} w-4" style="color: ${c.color}"></i>
                         <span class="w-12">${cat}</span>
                         <div class="flex-1 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden"><div class="h-full rounded-full" style="width: ${pct}%; background: ${c.color}"></div></div>
-                        <span class="text-xs text-gray-400 w-8 text-right">${count}本</span>
+                        <span class="text-xs text-gray-400 w-8 text-right">${count}</span>
                     </div>`;
                 }).join('')}
             </div>
@@ -3625,13 +3827,13 @@ async function openBookshelfStats() {
                     <div class="flex items-center gap-2 text-sm">
                         <span class="w-16 text-xs">${month}</span>
                         <div class="flex-1 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden"><div class="h-full bg-primary rounded-full" style="width: ${Math.min(count * 20, 100)}%"></div></div>
-                        <span class="text-xs text-gray-400 w-8 text-right">${count}本</span>
+                        <span class="text-xs text-gray-400 w-8 text-right">${count}</span>
                     </div>
                 `).join('')}
             </div>
-        ` : '<p class="text-sm text-gray-400 text-center">本年暂无完成的书籍</p>'}
+        ` : '<p class="text-sm text-gray-400 text-center">本年暂无完成的内容</p>'}
     `;
-    
+
     document.getElementById('bookshelf-stats-content').innerHTML = html;
     document.getElementById('bookshelf-stats-modal').classList.remove('hidden');
 }
