@@ -1945,7 +1945,8 @@
             for (let i = 0; i < 7; i++) {
                 const d = new Date(today);
                 d.setDate(d.getDate() - today.getDay() + i);
-                weekDates.push(d.toISOString().split('T')[0]);
+                const ds = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+                weekDates.push(ds);
             }
             const mealsByDate = {};
             for (const dateStr of weekDates) {
@@ -1958,7 +1959,7 @@
             for (let i = 0; i < 7; i++) {
                 const d = new Date(today);
                 d.setDate(d.getDate() - today.getDay() + i);
-                const dateStr = d.toISOString().split('T')[0];
+                const dateStr = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
                 const isToday = dateStr === todayStr;
                 const dayLabel = d.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric', weekday: 'short' });
                 
