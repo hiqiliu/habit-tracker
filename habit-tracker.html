@@ -1228,6 +1228,7 @@
                                     </label>
                                     <div class="flex-1 min-w-0">
                                         <div class="text-sm font-medium ${done ? 'line-through text-gray-400' : ''} truncate">${escapeHtml(h.title)}</div>
+                                        ${h.checkNotes && h.checkNotes[today] ? `<div class="text-xs text-gray-500 mt-0.5"><i class="fas fa-sticky-note mr-1 text-warning"></i>${escapeHtml(h.checkNotes[today])}</div>` : ''}
                                     </div>
                                     ${streak > 0 ? `<div class="flex items-center gap-0.5 text-warning text-xs"><i class="fas fa-fire ${streak > 0 ? 'streak-flame' : ''}"></i><span class="font-bold">${streak}</span></div>` : ''}
                                 </div>
@@ -1445,6 +1446,7 @@
                                     <span class="text-xs text-gray-400">天</span>
                                 </div>
                             </div>
+                            ${item.checkNotes && item.checkNotes[today] ? `<div class="text-xs text-gray-500 mb-2"><i class="fas fa-sticky-note mr-1 text-warning"></i>${escapeHtml(item.checkNotes[today])}</div>` : ''}
                             <div class="flex gap-1 mt-auto">
                                 ${weekProgress.map((p, i) => `
                                     <div class="flex-1 h-2 rounded-full ${p ? 'bg-primary' : 'bg-gray-200 dark:bg-gray-700'}" title="${getWeekDayName(i)}"></div>
@@ -1743,7 +1745,7 @@
         function toggleItem(id) {
             const item = items.find(i => i.id === id);
             if (!item) return;
-            
+
             if (item.type === 'todo') {
                 item.completed = !item.completed;
                 item.completedAt = item.completed ? new Date().toISOString() : null;
@@ -1753,12 +1755,20 @@
                 if (!item.checks) item.checks = [];
                 if (item.checks.includes(today)) {
                     item.checks = item.checks.filter(d => d !== today);
+                    // Also remove check note
+                    if (item.checkNotes) delete item.checkNotes[today];
                 } else {
                     item.checks.push(today);
                     addPoints('habit', POINTS_CONFIG.habitCheckIn, '习惯打卡: ' + item.title);
+                    // Prompt for note (optional)
+                    const note = prompt('备注（可选，如：芭杆沙漏腰30分钟）：');
+                    if (note && note.trim()) {
+                        if (!item.checkNotes) item.checkNotes = {};
+                        item.checkNotes[today] = note.trim();
+                    }
                 }
             }
-            
+
             saveData();
             if (currentView === 'items') renderItems();
             if (currentView === 'dashboard') renderDashboard();
@@ -1988,6 +1998,7 @@
                                         <span>${escapeHtml(h.title)}</span>
                                         <span class="text-xs text-success">✓ 已打卡</span>
                                     </div>
+                                    ${h.checkNotes && h.checkNotes[dateStr] ? `<div class="text-xs text-gray-500 ml-7"><i class="fas fa-sticky-note mr-1 text-warning"></i>${escapeHtml(h.checkNotes[dateStr])}</div>` : ''}
                                 `).join('')}
                                 ${dayLogs.map(l => `
                                     <div class="flex items-center gap-2 text-sm">
@@ -2139,7 +2150,14 @@
             const dayHabits = items.filter(item => item.type === 'habit' && isHabitDone(item.id, dateStr));
             const dayLogs = items.filter(item => item.type === 'log' && item.checks && item.checks.some(c => c.startsWith(dateStr)));
             const logText = dayLogs.map(l => `${l.title} x${l.checks.filter(c => c.startsWith(dateStr)).length}`).join('\n') || '无';
-            alert(`${dateStr}\n\n待办：${dayTodos.map(t => (t.completed ? '✓' : '○') + ' ' + t.title).join('\n') || '无'}\n\n习惯：${dayHabits.map(h => '✓ ' + h.title).join('\n') || '无'}\n\n记录：${logText}`);
+            const habitText = dayHabits.map(h => {
+                let text = '✓ ' + h.title;
+                if (h.checkNotes && h.checkNotes[dateStr]) {
+                    text += ' (' + h.checkNotes[dateStr] + ')';
+                }
+                return text;
+            }).join('\n') || '无';
+            alert(`${dateStr}\n\n待办：${dayTodos.map(t => (t.completed ? '✓' : '○') + ' ' + t.title).join('\n') || '无'}\n\n习惯：${habitText}\n\n记录：${logText}`);
         }
 
         // ==================== Stats ====================
@@ -2523,14 +2541,14 @@
             localStorage.setItem('ht_schedule_checks_' + currentScheduleType, JSON.stringify(scheduleChecks[currentScheduleType]));
 
             // Sync to habit using TODAY's date (actual completion time)
-            syncScheduleToHabit(todayStr, isChecking);
+            syncScheduleToHabit(todayStr, isChecking, dayNum);
 
             if (isChecking) addPoints('schedule', POINTS_CONFIG.scheduleComplete, '课表完成: ' + (SCHEDULE_CONFIGS[currentScheduleType]?.name || ''));
 
             renderSchedule();
         }
 
-        function syncScheduleToHabit(dateStr, isChecked) {
+        function syncScheduleToHabit(dateStr, isChecked, dayNum) {
             const config = SCHEDULE_CONFIGS[currentScheduleType];
             let habit = items.find(i => i.type === 'habit' && i.title === config.habitName);
             if (!habit) {
@@ -2555,9 +2573,22 @@
             if (isChecked) {
                 if (!habit.checks.includes(dateStr)) {
                     habit.checks.push(dateStr);
+                    // Save schedule day content as check note
+                    const scheduleConfig = SCHEDULE_CONFIGS[currentScheduleType];
+                    if (scheduleConfig && scheduleConfig.weeks && dayNum != null) {
+                        for (const week of scheduleConfig.weeks) {
+                            const dayData = week.days.find(d => d.day === dayNum);
+                            if (dayData && dayData.content) {
+                                if (!habit.checkNotes) habit.checkNotes = {};
+                                habit.checkNotes[dateStr] = dayData.content;
+                                break;
+                            }
+                        }
+                    }
                 }
             } else {
                 habit.checks = habit.checks.filter(d => d !== dateStr);
+                if (habit.checkNotes) delete habit.checkNotes[dateStr];
             }
             saveData();
             if (currentView === 'items') renderItems();
@@ -4128,20 +4159,27 @@ function renderRetroCheckinList(dateStr) {
 function toggleRetroCheckin(itemId, dateStr) {
     const item = items.find(i => i.id === itemId);
     if (!item) return;
-    
+
     if (!item.checks) item.checks = [];
     const isChecked = item.checks.includes(dateStr);
-    
+
     if (isChecked) {
         item.checks = item.checks.filter(d => d !== dateStr);
+        if (item.checkNotes) delete item.checkNotes[dateStr];
     } else {
         item.checks.push(dateStr);
         // Only add points if not today (today's check-in already adds points via toggleItem)
         if (dateStr !== getToday()) {
             addPoints('habit_retro', POINTS_CONFIG.habitCheckIn, '补打卡: ' + item.title);
         }
+        // Prompt for note (optional)
+        const note = prompt('备注（可选，如：芭杆沙漏腰30分钟）：');
+        if (note && note.trim()) {
+            if (!item.checkNotes) item.checkNotes = {};
+            item.checkNotes[dateStr] = note.trim();
+        }
     }
-    
+
     saveData();
     renderRetroCheckinList(dateStr);
     if (currentView === 'calendar') renderCalendar();
