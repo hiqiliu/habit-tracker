@@ -435,6 +435,9 @@
             <button onclick="exportDiaryNotebook()" class="text-sm px-3 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300">
                 <i class="fas fa-download mr-1"></i>导出
             </button>
+            <button onclick="importDiaryNotebook()" class="text-sm px-3 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300">
+                <i class="fas fa-upload mr-1"></i>导入
+            </button>
             <button onclick="deleteDiaryNotebook()" class="text-sm px-3 py-2 rounded-lg bg-danger/10 text-danger hover:bg-danger/20">
                 <i class="fas fa-trash mr-1"></i>
             </button>
@@ -3457,6 +3460,34 @@
             a.download = `五年日记_${nb ? nb.name : '备份'}_${new Date().toISOString().split('T')[0]}.json`;
             a.click();
             URL.revokeObjectURL(url);
+        }
+
+        async function importDiaryNotebook() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            input.onchange = async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = async (ev) => {
+                    try {
+                        const data = JSON.parse(ev.target.result);
+                        if (data.version && data.notebooks && data.entries) {
+                            await importDiaryBackup(data);
+                            alert('日记导入成功！');
+                            renderDiaryNotebooks();
+                            renderDiary();
+                        } else {
+                            alert('文件格式不正确');
+                        }
+                    } catch (err) {
+                        alert('导入失败: ' + err.message);
+                    }
+                };
+                reader.readAsText(file);
+            };
+            input.click();
         }
 
 // ==================== 书架 - UI逻辑 ====================
