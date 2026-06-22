@@ -279,6 +279,7 @@
                     <button onclick="filterItems('log')" id="filter-log" class="filter-btn px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-sm whitespace-nowrap">记录</button>
                     <button onclick="filterItems('today')" id="filter-today" class="filter-btn px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-sm whitespace-nowrap">今天</button>
                     <button onclick="filterItems('completed')" id="filter-completed" class="filter-btn px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-sm whitespace-nowrap">已完成</button>
+                    <button onclick="filterItems('archived')" id="filter-archived" class="filter-btn px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-sm whitespace-nowrap">归档</button>
                 </div>
 
                 <!-- Projects -->
@@ -1201,8 +1202,9 @@
             const today = getToday();
             document.getElementById('dashboard-date').textContent = new Date().toLocaleDateString('zh-CN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
-            const todayTodos = items.filter(i => i.type === 'todo' && i.due === today && !i.completed);
-            const doneTodos = items.filter(i => i.type === 'todo' && i.due === today && i.completed);
+            const visibleItems = items.filter(i => !i.archived);
+            const todayTodos = visibleItems.filter(i => i.type === 'todo' && i.due === today && !i.completed);
+            const doneTodos = visibleItems.filter(i => i.type === 'todo' && i.due === today && i.completed);
             const totalTodos = todayTodos.length + doneTodos.length;
             const todoRate = totalTodos > 0 ? Math.round(doneTodos.length / totalTodos * 100) : 0;
             document.getElementById('dash-todo-count').textContent = totalTodos;
@@ -1215,7 +1217,7 @@
             document.getElementById('dash-habit-done').textContent = doneHabits.length;
 
             let bestStreak = 0;
-            items.filter(i => i.type === 'habit').forEach(h => {
+            visibleItems.filter(i => i.type === 'habit').forEach(h => {
                 const s = calculateStreak(h);
                 if (s > bestStreak) bestStreak = s;
             });
@@ -1295,7 +1297,7 @@
             habitList.innerHTML = habitHtml;
 
             // Render today's log items card
-            const logItems = items.filter(i => i.type === 'log');
+            const logItems = visibleItems.filter(i => i.type === 'log');
             const logList = document.getElementById('dash-log-list');
             let logHtml = '';
             if (logItems.length === 0) {
@@ -1348,7 +1350,7 @@
                 const dateStr = d.toISOString().split('T')[0];
                 const isToday = i === todayDay;
                 
-                const dayTodos = items.filter(item => item.type === 'todo' && item.due === dateStr);
+                const dayTodos = items.filter(item => !item.archived && item.type === 'todo' && item.due === dateStr);
                 const doneCount = dayTodos.filter(t => t.completed).length;
                 const totalCount = dayTodos.length;
                 totalAll += totalCount;
@@ -1393,21 +1395,26 @@
             let filtered = [...items];
             const today = getToday();
 
-            if (currentFilter === 'todo') {
-                filtered = filtered.filter(i => i.type === 'todo');
-            } else if (currentFilter === 'habit') {
-                filtered = filtered.filter(i => i.type === 'habit');
-            } else if (currentFilter === 'log') {
-                filtered = filtered.filter(i => i.type === 'log');
-            } else if (currentFilter === 'today') {
-                filtered = filtered.filter(i => {
-                    if (i.type === 'todo') return i.due === today;
-                    if (i.type === 'habit') return getTodayHabits().some(h => h.id === i.id);
-                    if (i.type === 'log') return true;
-                    return false;
-                });
-            } else if (currentFilter === 'completed') {
-                filtered = filtered.filter(i => i.type === 'todo' && i.completed);
+            if (currentFilter === 'archived') {
+                filtered = filtered.filter(i => i.archived);
+            } else {
+                filtered = filtered.filter(i => !i.archived);
+                if (currentFilter === 'todo') {
+                    filtered = filtered.filter(i => i.type === 'todo');
+                } else if (currentFilter === 'habit') {
+                    filtered = filtered.filter(i => i.type === 'habit');
+                } else if (currentFilter === 'log') {
+                    filtered = filtered.filter(i => i.type === 'log');
+                } else if (currentFilter === 'today') {
+                    filtered = filtered.filter(i => {
+                        if (i.type === 'todo') return i.due === today;
+                        if (i.type === 'habit') return getTodayHabits().some(h => h.id === i.id);
+                        if (i.type === 'log') return true;
+                        return false;
+                    });
+                } else if (currentFilter === 'completed') {
+                    filtered = filtered.filter(i => i.type === 'todo' && i.completed);
+                }
             }
 
             if (currentProjectFilter) {
@@ -1435,13 +1442,14 @@
                 return;
             }
 
+            const isArchivedView = currentFilter === 'archived';
             container.innerHTML = filtered.map(item => {
                 if (item.type === 'todo') {
                     return `
-                        <div class="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm transition-all hover:shadow-md flex flex-col">
+                        <div class="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm transition-all hover:shadow-md flex flex-col ${item.archived ? 'opacity-60 grayscale' : ''}">
                             <div class="flex items-start justify-between mb-3">
                                 <div class="flex items-center gap-2 flex-1 min-w-0">
-                                    <input type="checkbox" ${item.completed ? 'checked' : ''} onchange="toggleItem('${item.id}')" class="w-5 h-5 rounded accent-primary flex-shrink-0 mt-0.5">
+                                    <input type="checkbox" ${item.completed ? 'checked' : ''} onchange="toggleItem('${item.id}')" class="w-5 h-5 rounded accent-primary flex-shrink-0 mt-0.5" ${item.archived ? 'disabled' : ''}>
                                     <div class="font-medium ${item.completed ? 'line-through text-gray-400' : ''} truncate">${escapeHtml(item.title)}</div>
                                 </div>
                                 <div class="flex items-center gap-1 flex-shrink-0 ml-2">
@@ -1449,9 +1457,15 @@
                                     <button onclick="editItem('${item.id}')" class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 hover:text-primary transition-all">
                                         <i class="fas fa-edit text-sm"></i>
                                     </button>
+                                    ${isArchivedView ? `
+                                    <button onclick="unarchiveItem('${item.id}')" class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 hover:text-success transition-all" title="恢复">
+                                        <i class="fas fa-undo text-sm"></i>
+                                    </button>
+                                    ` : `
                                     <button onclick="deleteItem('${item.id}')" class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 hover:text-danger transition-all">
                                         <i class="fas fa-trash text-sm"></i>
                                     </button>
+                                    `}
                                 </div>
                             </div>
                             <div class="flex flex-wrap gap-1.5 mt-auto text-xs text-gray-400">
@@ -1459,6 +1473,7 @@
                                 ${item.project ? `<span class="bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded">${escapeHtml(item.project)}</span>` : ''}
                                 ${item.due ? `<span><i class="far fa-calendar mr-1"></i>${item.due}</span>` : ''}
                                 ${item.note ? `<span><i class="far fa-sticky-note mr-1"></i>有备注</span>` : ''}
+                                ${item.archived ? '<span class="bg-gray-200 dark:bg-gray-600 px-2 py-0.5 rounded text-gray-500"><i class="fas fa-archive mr-1"></i>已归档</span>' : ''}
                             </div>
                         </div>
                     `;
@@ -1467,7 +1482,7 @@
                     const streak = calculateStreak(item);
                     const weekProgress = getWeekProgress(item);
                     return `
-                        <div class="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm transition-all hover:shadow-md flex flex-col">
+                        <div class="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm transition-all hover:shadow-md flex flex-col ${item.archived ? 'opacity-60 grayscale' : ''}">
                             <div class="flex items-center justify-between mb-3">
                                 <div class="flex items-center gap-2">
                                     <div class="w-10 h-10 rounded-xl flex items-center justify-center text-white text-lg" style="background: ${item.color}">
@@ -1482,14 +1497,20 @@
                                     <button onclick="editItem('${item.id}')" class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 hover:text-primary transition-all">
                                         <i class="fas fa-edit text-sm"></i>
                                     </button>
+                                    ${isArchivedView ? `
+                                    <button onclick="unarchiveItem('${item.id}')" class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 hover:text-success transition-all" title="恢复">
+                                        <i class="fas fa-undo text-sm"></i>
+                                    </button>
+                                    ` : `
                                     <button onclick="deleteItem('${item.id}')" class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 hover:text-danger transition-all">
                                         <i class="fas fa-trash text-sm"></i>
                                     </button>
+                                    `}
                                 </div>
                             </div>
                             <div class="flex items-center justify-between mb-3">
                                 <label class="flex items-center gap-2 cursor-pointer">
-                                    <input type="checkbox" ${done ? 'checked' : ''} onchange="toggleItem('${item.id}')" class="habit-check sr-only">
+                                    <input type="checkbox" ${done ? 'checked' : ''} onchange="toggleItem('${item.id}')" class="habit-check sr-only" ${item.archived ? 'disabled' : ''}>
                                     <div class="w-12 h-7 rounded-full transition-all ${done ? 'bg-primary' : 'bg-gray-300 dark:bg-gray-600'} relative">
                                         <div class="w-5 h-5 rounded-full bg-white absolute top-1 transition-all ${done ? 'left-6' : 'left-1'}"></div>
                                     </div>
@@ -1507,13 +1528,14 @@
                                     <div class="flex-1 h-2 rounded-full ${p ? 'bg-primary' : 'bg-gray-200 dark:bg-gray-700'}" title="${getWeekDayName(i)}"></div>
                                 `).join('')}
                             </div>
+                            ${item.archived ? '<div class="mt-2 text-xs text-gray-400"><i class="fas fa-archive mr-1"></i>已归档</div>' : ''}
                         </div>
                     `;
                 } else if (item.type === 'log') {
                     const todayCount = getTodayLogCount(item);
                     const totalCount = item.checks ? item.checks.length : 0;
                     return `
-                        <div class="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm transition-all hover:shadow-md flex flex-col">
+                        <div class="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm transition-all hover:shadow-md flex flex-col ${item.archived ? 'opacity-60 grayscale' : ''}">
                             <div class="flex items-center justify-between mb-3">
                                 <div class="flex items-center gap-2">
                                     <div class="w-10 h-10 rounded-xl flex items-center justify-center text-white text-lg" style="background: ${item.color}">
@@ -1528,9 +1550,15 @@
                                     <button onclick="editItem('${item.id}')" class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 hover:text-primary transition-all">
                                         <i class="fas fa-edit text-sm"></i>
                                     </button>
+                                    ${isArchivedView ? `
+                                    <button onclick="unarchiveItem('${item.id}')" class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 hover:text-success transition-all" title="恢复">
+                                        <i class="fas fa-undo text-sm"></i>
+                                    </button>
+                                    ` : `
                                     <button onclick="deleteItem('${item.id}')" class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 hover:text-danger transition-all">
                                         <i class="fas fa-trash text-sm"></i>
                                     </button>
+                                    `}
                                 </div>
                             </div>
                             <div class="flex items-center justify-between mt-auto">
@@ -1544,7 +1572,7 @@
                                         <div class="text-xs text-gray-400">总计</div>
                                     </div>
                                 </div>
-                                <button onclick="recordItem('${item.id}')" class="px-4 py-2 rounded-xl text-white font-bold text-base transition-all hover:scale-105 active:scale-95" style="background: ${item.color}">
+                                <button onclick="recordItem('${item.id}')" class="px-4 py-2 rounded-xl text-white font-bold text-base transition-all hover:scale-105 active:scale-95" style="background: ${item.color}" ${item.archived ? 'disabled' : ''}>
                                     +1
                                 </button>
                             </div>
@@ -1558,6 +1586,7 @@
                                 `).reverse().join('')}
                             </div>
                             ` : ''}
+                            ${item.archived ? '<div class="mt-2 text-xs text-gray-400"><i class="fas fa-archive mr-1"></i>已归档</div>' : ''}
                         </div>
                     `;
                 }
@@ -1841,11 +1870,32 @@
         }
 
         function deleteItem(id) {
-            if (confirm('确定删除这个事项吗？')) {
-                items = items.filter(i => i.id !== id);
+            const item = items.find(i => i.id === id);
+            if (!item) return;
+            if (item.archived) {
+                // Permanently delete if already archived
+                if (confirm('确定永久删除这个事项吗？此操作不可恢复。')) {
+                    items = items.filter(i => i.id !== id);
+                    saveData();
+                    if (currentView === 'items') renderItems();
+                    if (currentView === 'dashboard') renderDashboard();
+                }
+            } else {
+                if (confirm('确定归档这个事项吗？归档后事项将隐藏，但历史记录会保留。')) {
+                    item.archived = true;
+                    saveData();
+                    if (currentView === 'items') renderItems();
+                    if (currentView === 'dashboard') renderDashboard();
+                }
+            }
+        }
+
+        function unarchiveItem(id) {
+            const item = items.find(i => i.id === id);
+            if (item) {
+                item.archived = false;
                 saveData();
-                if (currentView === 'items') renderItems();
-                if (currentView === 'dashboard') renderDashboard();
+                renderItems();
             }
         }
 
@@ -1923,6 +1973,7 @@
             const dayOfWeek = today.getDay();
             return items.filter(i => {
                 if (i.type !== 'habit') return false;
+                if (i.archived) return false;
                 if (i.frequency === 'daily') return true;
                 if (i.frequency === 'weekly' && i.weekDays) {
                     return i.weekDays.includes(dayOfWeek);
@@ -2090,21 +2141,23 @@
                                 ${dayHabits.map(h => {
                                     const note = h.checkNotes ? h.checkNotes[dateStr] : null;
                                     return `
-                                    <div class="flex items-center gap-2 text-sm">
+                                    <div class="flex items-center gap-2 text-sm ${h.archived ? 'opacity-50 grayscale' : ''}">
                                         <div class="w-5 h-5 rounded flex items-center justify-center text-white text-xs" style="background: ${h.color}"><i class="fas ${h.icon}"></i></div>
                                         <span>${escapeHtml(h.title)}</span>
                                         <span class="text-xs text-success">✓ 已打卡</span>
+                                        ${h.archived ? '<span class="text-[10px] text-gray-400 ml-1"><i class="fas fa-archive"></i></span>' : ''}
                                     </div>
-                                    ${note ? `<div class="text-xs text-gray-500 ml-7"><i class="fas fa-sticky-note mr-1 text-warning"></i>${escapeHtml(note)}</div>` : ''}
+                                    ${note ? `<div class="text-xs text-gray-500 ml-7 ${h.archived ? 'opacity-50' : ''}"><i class="fas fa-sticky-note mr-1 text-warning"></i>${escapeHtml(note)}</div>` : ''}
                                     `;
                                 }).join('')}
                                 ${dayLogs.map(l => {
                                     const dayChecks = l.checks.filter(c => c.startsWith(dateStr));
                                     return `
-                                    <div class="flex items-center gap-2 text-sm">
+                                    <div class="flex items-center gap-2 text-sm ${l.archived ? 'opacity-50 grayscale' : ''}">
                                         <div class="w-5 h-5 rounded flex items-center justify-center text-white text-xs" style="background: ${l.color}"><i class="fas ${l.icon}"></i></div>
                                         <span>${escapeHtml(l.title)}</span>
                                         <span class="text-xs text-gray-400">x${dayChecks.length}</span>
+                                        ${l.archived ? '<span class="text-[10px] text-gray-400 ml-1"><i class="fas fa-archive"></i></span>' : ''}
                                         ${dayChecks.length > 0 ? `<button onclick="deleteLogCheckByDate('${l.id}', '${dateStr}')" class="text-[10px] text-gray-300 hover:text-danger ml-1"><i class="fas fa-minus-circle"></i></button>` : ''}
                                     </div>
                                     `;
@@ -2184,8 +2237,8 @@
                         ${isPast ? '<div class="text-[8px] text-primary/60"><i class="fas fa-calendar-plus"></i></div>' : ''}
                         <div class="flex gap-1 mt-1 flex-wrap">
                             ${dayTodos.map(t => `<div class="w-2 h-2 rounded-full ${t.completed ? 'bg-success' : 'bg-warning'}"></div>`).join('')}
-                            ${dayHabits.map(h => `<div class="w-2 h-2 rounded-full" style="background: ${h.color}"></div>`).join('')}
-                            ${dayLogs.map(l => `<div class="w-2 h-2 rounded-full" style="background: ${l.color}"></div>`).join('')}
+                            ${dayHabits.map(h => `<div class="w-2 h-2 rounded-full ${h.archived ? 'opacity-40 grayscale' : ''}" style="background: ${h.color}"></div>`).join('')}
+                            ${dayLogs.map(l => `<div class="w-2 h-2 rounded-full ${l.archived ? 'opacity-40 grayscale' : ''}" style="background: ${l.color}"></div>`).join('')}
                             ${dayMeals.map(m => {
                                 const mt = MEAL_TYPES[m.mealType] || MEAL_TYPES['lunch'];
                                 return `<div class="w-2 h-2 rounded-full" style="background: ${mt.color}"></div>`;
@@ -2269,8 +2322,8 @@
                 const d = new Date();
                 d.setDate(d.getDate() - i);
                 const dateStr = d.toISOString().split('T')[0];
-                const dayTodos = items.filter(item => item.type === 'todo' && item.due === dateStr);
-                const dayHabits = items.filter(item => item.type === 'habit' && isHabitDone(item.id, dateStr));
+                const dayTodos = items.filter(item => !item.archived && item.type === 'todo' && item.due === dateStr);
+                const dayHabits = items.filter(item => !item.archived && item.type === 'habit' && isHabitDone(item.id, dateStr));
                 total += dayTodos.length + getTodayHabits().length;
                 done += dayTodos.filter(t => t.completed).length + dayHabits.length;
             }
@@ -2287,7 +2340,7 @@
                 d.setDate(d.getDate() - i);
                 const dateStr = d.toISOString().split('T')[0];
                 labels.push(d.getDate() + '日');
-                const doneHabits = items.filter(item => item.type === 'habit' && isHabitDone(item.id, dateStr)).length;
+                const doneHabits = items.filter(item => !item.archived && item.type === 'habit' && isHabitDone(item.id, dateStr)).length;
                 data.push(doneHabits);
             }
 
@@ -2316,7 +2369,7 @@
 
             // Habit pie chart
             const pieCtx = document.getElementById('habit-pie-chart').getContext('2d');
-            const habitItems = items.filter(i => i.type === 'habit');
+            const habitItems = items.filter(i => i.type === 'habit' && !i.archived);
             const habitRates = habitItems.map(h => {
                 const today = new Date();
                 let possibleDays = 0;
@@ -2363,7 +2416,7 @@
                 d.setDate(d.getDate() - i);
                 const dateStr = d.toISOString().split('T')[0];
                 todoLabels.push(d.getDate() + '日');
-                const dayTodos = items.filter(item => item.type === 'todo' && item.due === dateStr);
+                const dayTodos = items.filter(item => !item.archived && item.type === 'todo' && item.due === dateStr);
                 todoDone.push(dayTodos.filter(t => t.completed).length);
                 todoTotal.push(dayTodos.length);
             }
@@ -2412,7 +2465,7 @@
             const logCtx = document.getElementById('log-stats-chart').getContext('2d');
             const logLabels = [];
             const logData = [];
-            const logItemsAll = items.filter(i => i.type === 'log');
+            const logItemsAll = items.filter(i => i.type === 'log' && !i.archived);
             for (let i = 6; i >= 0; i--) {
                 const d = new Date();
                 d.setDate(d.getDate() - i);
@@ -4489,15 +4542,15 @@ function onRetroDateChange() {
 
 function renderRetroCheckinList(dateStr) {
     const list = document.getElementById('retro-checkin-list');
-    const habits = items.filter(i => i.type === 'habit');
-    
+    const habits = items.filter(i => i.type === 'habit' && !i.archived);
+
     if (habits.length === 0) {
         list.innerHTML = '<p class="text-center text-gray-400 py-4">暂无习惯</p>';
         return;
     }
-    
+
     const isToday = dateStr === getToday();
-    
+
     list.innerHTML = habits.map(item => {
         const checked = item.checks && item.checks.includes(dateStr);
         return `
