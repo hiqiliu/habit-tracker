@@ -3943,55 +3943,67 @@ async function openBookshelfStats() {
     const year = new Date().getFullYear().toString();
     const stats = await getYearlyStats(year);
 
-    const catEntries = Object.entries(stats.categoryMap).sort((a, b) => b[1] - a[1]);
-    const monthEntries = Object.entries(stats.monthlyMap).sort();
+    function renderMediaStats(mediaStats, title, icon, color, isBook) {
+        const catEntries = Object.entries(mediaStats.categoryMap).sort((a, b) => b[1] - a[1]);
+        const monthEntries = Object.entries(mediaStats.monthlyMap).sort();
+        const hasData = mediaStats.finished.length > 0 || mediaStats.reading.length > 0;
+
+        return `
+        <div class="mb-5 ${hasData ? '' : 'opacity-60'}">
+            <div class="flex items-center gap-2 mb-3">
+                <i class="fas ${icon}" style="color: ${color}"></i>
+                <h4 class="font-bold text-sm">${title}</h4>
+                <span class="text-xs text-gray-400 ml-auto">已完成 ${mediaStats.finished.length}</span>
+            </div>
+            <div class="grid grid-cols-3 gap-2 mb-3">
+                <div class="bg-gray-50 dark:bg-gray-700/30 rounded-xl p-2 text-center">
+                    <div class="text-base font-bold">${mediaStats.reading.length}</div>
+                    <div class="text-[10px] text-gray-400">进行中</div>
+                </div>
+                <div class="bg-gray-50 dark:bg-gray-700/30 rounded-xl p-2 text-center">
+                    <div class="text-base font-bold">${isBook ? mediaStats.totalPages : (isBook === false ? mediaStats.totalEpisodes : mediaStats.totalPages)}</div>
+                    <div class="text-[10px] text-gray-400">${isBook ? '总页数' : (isBook === false ? '总集数' : '数量')}</div>
+                </div>
+                <div class="bg-gray-50 dark:bg-gray-700/30 rounded-xl p-2 text-center">
+                    <div class="text-base font-bold">${mediaStats.avgRating}</div>
+                    <div class="text-[10px] text-gray-400">均分</div>
+                </div>
+            </div>
+            ${catEntries.length > 0 ? `
+                <div class="space-y-1 mb-3">
+                    ${catEntries.map(([cat, count]) => {
+                        const c = BOOK_CATEGORIES[cat] || BOOK_CATEGORIES['其他'];
+                        const pct = mediaStats.finished.length > 0 ? Math.round(count / mediaStats.finished.length * 100) : 0;
+                        return `<div class="flex items-center gap-2 text-xs">
+                            <i class="fas ${c.icon} w-3" style="color: ${c.color}"></i>
+                            <span class="w-10">${cat}</span>
+                            <div class="flex-1 h-1 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden"><div class="h-full rounded-full" style="width: ${pct}%; background: ${c.color}"></div></div>
+                            <span class="text-[10px] text-gray-400 w-6 text-right">${count}</span>
+                        </div>`;
+                    }).join('')}
+                </div>
+            ` : ''}
+            ${monthEntries.length > 0 ? `
+                <div class="space-y-1">
+                    ${monthEntries.map(([month, count]) => `
+                        <div class="flex items-center gap-2 text-xs">
+                            <span class="w-12 text-[10px]">${month}</span>
+                            <div class="flex-1 h-1 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden"><div class="h-full rounded-full" style="width: ${Math.min(count * 20, 100)}%; background: ${color}"></div></div>
+                            <span class="text-[10px] text-gray-400 w-6 text-right">${count}</span>
+                        </div>
+                    `).join('')}
+                </div>
+            ` : '<p class="text-xs text-gray-400 text-center">本年暂无完成的内容</p>'}
+        </div>
+        `;
+    }
 
     let html = `
-        <div class="text-center mb-4">
-            <div class="text-3xl font-bold text-primary">${stats.totalFinished}</div>
-            <div class="text-sm text-gray-400">本年已完成</div>
-        </div>
-        <div class="grid grid-cols-3 gap-3 mb-4">
-            <div class="bg-gray-50 dark:bg-gray-700/30 rounded-xl p-3 text-center">
-                <div class="text-lg font-bold">${stats.totalReading}</div>
-                <div class="text-[10px] text-gray-400">进行中</div>
-            </div>
-            <div class="bg-gray-50 dark:bg-gray-700/30 rounded-xl p-3 text-center">
-                <div class="text-lg font-bold">${stats.totalPages}</div>
-                <div class="text-[10px] text-gray-400">总页数</div>
-            </div>
-            <div class="bg-gray-50 dark:bg-gray-700/30 rounded-xl p-3 text-center">
-                <div class="text-lg font-bold">${stats.avgRating}</div>
-                <div class="text-[10px] text-gray-400">均分</div>
-            </div>
-        </div>
-        ${catEntries.length > 0 ? `
-            <h4 class="font-semibold text-sm mb-2">类型分布</h4>
-            <div class="space-y-1.5 mb-4">
-                ${catEntries.map(([cat, count]) => {
-                    const c = BOOK_CATEGORIES[cat] || BOOK_CATEGORIES['其他'];
-                    const pct = Math.round(count / stats.totalFinished * 100);
-                    return `<div class="flex items-center gap-2 text-sm">
-                        <i class="fas ${c.icon} w-4" style="color: ${c.color}"></i>
-                        <span class="w-12">${cat}</span>
-                        <div class="flex-1 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden"><div class="h-full rounded-full" style="width: ${pct}%; background: ${c.color}"></div></div>
-                        <span class="text-xs text-gray-400 w-8 text-right">${count}</span>
-                    </div>`;
-                }).join('')}
-            </div>
-        ` : ''}
-        ${monthEntries.length > 0 ? `
-            <h4 class="font-semibold text-sm mb-2">月度完成</h4>
-            <div class="space-y-1.5">
-                ${monthEntries.map(([month, count]) => `
-                    <div class="flex items-center gap-2 text-sm">
-                        <span class="w-16 text-xs">${month}</span>
-                        <div class="flex-1 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden"><div class="h-full bg-primary rounded-full" style="width: ${Math.min(count * 20, 100)}%"></div></div>
-                        <span class="text-xs text-gray-400 w-8 text-right">${count}</span>
-                    </div>
-                `).join('')}
-            </div>
-        ` : '<p class="text-sm text-gray-400 text-center">本年暂无完成的内容</p>'}
+        ${renderMediaStats(stats.bookStats, '书籍', 'fa-book', '#6366f1', true)}
+        <hr class="border-gray-200 dark:border-gray-700 mb-5">
+        ${renderMediaStats(stats.movieStats, '影视', 'fa-film', '#ef4444', false)}
+        <hr class="border-gray-200 dark:border-gray-700 mb-5">
+        ${renderMediaStats(stats.tvStats, '剧集', 'fa-tv', '#10b981', null)}
     `;
 
     document.getElementById('bookshelf-stats-content').innerHTML = html;

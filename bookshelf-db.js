@@ -250,42 +250,43 @@ async function getYearlyStats(year) {
         return b.addedAt.startsWith(year);
     });
 
-    const finished = yearBooks.filter(b => b.status === 'done' || b.status === 'finished');
-    const reading = yearBooks.filter(b => b.status === 'doing' || b.status === 'reading');
-    const toRead = yearBooks.filter(b => b.status === 'todo' || b.status === 'to_read');
+    // Split by media type
+    const booksOnly = yearBooks.filter(b => !b.mediaType || b.mediaType === 'book');
+    const movies = yearBooks.filter(b => b.mediaType === 'movie');
+    const tvShows = yearBooks.filter(b => b.mediaType === 'tv');
 
-    // Category distribution
-    const categoryMap = {};
-    finished.forEach(b => {
-        categoryMap[b.category] = (categoryMap[b.category] || 0) + 1;
-    });
+    function getStats(list) {
+        const finished = list.filter(b => b.status === 'done' || b.status === 'finished');
+        const reading = list.filter(b => b.status === 'doing' || b.status === 'reading');
+        const toRead = list.filter(b => b.status === 'todo' || b.status === 'to_read');
 
-    // Total pages read
-    const totalPages = finished.reduce((sum, b) => sum + (b.totalPages || 0), 0);
+        const categoryMap = {};
+        finished.forEach(b => {
+            categoryMap[b.category] = (categoryMap[b.category] || 0) + 1;
+        });
 
-    // Average rating
-    const rated = finished.filter(b => b.rating > 0);
-    const avgRating = rated.length > 0 ? (rated.reduce((sum, b) => sum + b.rating, 0) / rated.length).toFixed(1) : 0;
+        const totalPages = finished.reduce((sum, b) => sum + (b.totalPages || 0), 0);
+        const totalEpisodes = finished.reduce((sum, b) => sum + (b.episodes || 0), 0);
+        const rated = finished.filter(b => b.rating > 0);
+        const avgRating = rated.length > 0 ? (rated.reduce((sum, b) => sum + b.rating, 0) / rated.length).toFixed(1) : 0;
 
-    // Monthly reading count
-    const monthlyMap = {};
-    finished.forEach(b => {
-        if (b.finishedAt) {
-            const month = b.finishedAt.substring(0, 7);
-            monthlyMap[month] = (monthlyMap[month] || 0) + 1;
-        }
-    });
+        const monthlyMap = {};
+        finished.forEach(b => {
+            if (b.finishedAt) {
+                const month = b.finishedAt.substring(0, 7);
+                monthlyMap[month] = (monthlyMap[month] || 0) + 1;
+            }
+        });
+
+        return { finished, reading, toRead, totalPages, totalEpisodes, avgRating, categoryMap, monthlyMap };
+    }
 
     return {
         year: year,
-        totalFinished: finished.length,
-        totalReading: reading.length,
-        totalToRead: toRead.length,
-        totalPages: totalPages,
-        avgRating: avgRating,
-        categoryMap: categoryMap,
-        monthlyMap: monthlyMap,
-        books: yearBooks
+        bookStats: getStats(booksOnly),
+        movieStats: getStats(movies),
+        tvStats: getStats(tvShows),
+        allBooks: yearBooks
     };
 }
 
