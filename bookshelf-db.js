@@ -231,7 +231,7 @@ async function checkInReadingHabit(dateStr) {
         if (!readingHabit.checks) readingHabit.checks = [];
         if (!readingHabit.checks.includes(dateStr)) {
             readingHabit.checks.push(dateStr);
-            saveItems();
+            if (typeof saveData === 'function') saveData();
         }
     }
 }

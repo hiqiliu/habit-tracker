@@ -863,7 +863,7 @@
     </div>
 
     <!-- Item Modal -->
-    <div id="item-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+    <div id="item-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onclick="event.target===this&&closeItemModal()">
         <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 w-full max-w-md max-h-[90vh] overflow-auto">
             <h3 class="text-xl font-bold mb-4" id="item-modal-title">新建事项</h3>
             <input type="hidden" id="item-id">
@@ -1091,7 +1091,8 @@
         }
 
         function getToday() {
-            return new Date().toISOString().split('T')[0];
+            const d = new Date();
+            return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
         }
 
         // ==================== Theme ====================
@@ -3981,7 +3982,7 @@ async function saveMeal() {
     } else {
         await addMeal(data);
         // Add points for food logging
-        addPoints('food', 2, '饮食记录');
+        addPoints('food', POINTS_CONFIG.foodLog, '饮食记录');
     }
     
     closeAddMealModal();

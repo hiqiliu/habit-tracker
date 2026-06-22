@@ -147,15 +147,20 @@ function updateStreak(data, today) {
     }
 }
 
+function toDateStr(d) {
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+
 // 获取积分趋势（按天汇总）
 function getPointsTrend(days) {
     const data = getPointsData();
     const trend = {};
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - days);
+    const cutoffStr = toDateStr(cutoff);
     
     data.history.forEach(h => {
-        if (h.date >= cutoff.toISOString().split('T')[0]) {
+        if (h.date >= cutoffStr) {
             trend[h.date] = (trend[h.date] || 0) + h.points;
         }
     });
@@ -176,7 +181,7 @@ function getPointsPeriod(period) {
         start = new Date(now.getFullYear(), now.getMonth(), 1);
     }
     
-    const startStr = start.toISOString().split('T')[0];
+    const startStr = toDateStr(start);
     return data.history
         .filter(h => h.date >= startStr && h.points > 0)
         .reduce((sum, h) => sum + h.points, 0);
