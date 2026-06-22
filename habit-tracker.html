@@ -2575,14 +2575,11 @@
                     habit.checks.push(dateStr);
                     // Save schedule day content as check note
                     const scheduleConfig = SCHEDULE_CONFIGS[currentScheduleType];
-                    if (scheduleConfig && scheduleConfig.weeks && dayNum != null) {
-                        for (const week of scheduleConfig.weeks) {
-                            const dayData = week.days.find(d => d.day === dayNum);
-                            if (dayData && dayData.content) {
-                                if (!habit.checkNotes) habit.checkNotes = {};
-                                habit.checkNotes[dateStr] = dayData.content;
-                                break;
-                            }
+                    if (scheduleConfig && scheduleConfig.schedule && dayNum != null) {
+                        const dayData = scheduleConfig.schedule.find(d => d.day === dayNum);
+                        if (dayData && dayData.content) {
+                            if (!habit.checkNotes) habit.checkNotes = {};
+                            habit.checkNotes[dateStr] = dayData.content;
                         }
                     }
                 }
