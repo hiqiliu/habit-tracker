@@ -42,6 +42,7 @@ async function addMeal(meal) {
     const store = tx.objectStore('meals');
     const data = {
         date: meal.date || getToday(),
+        time: meal.time || '',
         mealType: meal.mealType || 'lunch',
         selfCooked: meal.selfCooked || 'self',
         location: meal.location || '',

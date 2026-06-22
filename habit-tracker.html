@@ -739,8 +739,11 @@
             <button onclick="closeAddMealModal()" class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"><i class="fas fa-times"></i></button>
         </div>
         <div class="space-y-4">
-            <!-- Date -->
-            <div><label class="text-xs text-gray-500 block mb-1">日期</label><input type="date" id="meal-date" class="w-full px-4 py-2.5 rounded-xl border dark:border-gray-700 dark:bg-gray-800 text-sm"></div>
+            <!-- Date & Time -->
+            <div class="flex gap-2">
+                <div class="flex-1"><label class="text-xs text-gray-500 block mb-1">日期</label><input type="date" id="meal-date" class="w-full px-4 py-2.5 rounded-xl border dark:border-gray-700 dark:bg-gray-800 text-sm"></div>
+                <div class="flex-1"><label class="text-xs text-gray-500 block mb-1">时间</label><input type="time" id="meal-time" class="w-full px-4 py-2.5 rounded-xl border dark:border-gray-700 dark:bg-gray-800 text-sm"></div>
+            </div>
             <!-- Meal Type -->
             <div><label class="text-xs text-gray-500 block mb-1">餐次</label>
                 <div class="grid grid-cols-4 gap-2" id="meal-type-selector">
@@ -3940,6 +3943,7 @@ async function renderFoodDiary() {
                     <div class="flex items-center gap-2 mb-1">
                         <span class="font-semibold text-sm">${mt.label}</span>
                         <span class="text-[10px] px-1.5 py-0.5 rounded-full text-white" style="background: ${ck.color}"><i class="fas ${ck.icon} mr-0.5"></i>${ck.label}</span>
+                        ${m.time ? `<span class="text-[10px] text-gray-400">${m.time}</span>` : ''}
                         ${stars ? `<span class="text-xs text-warning">${stars}</span>` : ''}
                     </div>
                     ${m.location ? `<div class="text-xs text-gray-500"><i class="fas fa-map-marker-alt mr-1"></i>${escapeHtml(m.location)}</div>` : ''}
@@ -3959,6 +3963,8 @@ async function renderFoodDiary() {
 function openAddMealModal() {
     document.getElementById('add-meal-modal-title').textContent = '记录一餐';
     document.getElementById('meal-date').value = foodCurrentDate;
+    const now = new Date();
+    document.getElementById('meal-time').value = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
     document.getElementById('meal-location').value = '';
     document.getElementById('meal-companion').value = '';
     document.getElementById('meal-tags').value = '';
@@ -4043,6 +4049,7 @@ async function saveMeal() {
     
     const data = {
         date: date,
+        time: document.getElementById('meal-time').value,
         mealType: selectedMealType,
         selfCooked: selectedCooked,
         location: document.getElementById('meal-location').value.trim(),
@@ -4070,7 +4077,7 @@ async function editMeal(id) {
     if (!meal) return;
     document.getElementById('add-meal-modal-title').textContent = '编辑记录';
     document.getElementById('meal-date').value = meal.date;
-    document.getElementById('meal-location').value = meal.location || '';
+    document.getElementById('meal-time').value = meal.time || '';
     document.getElementById('meal-companion').value = meal.companion || '';
     document.getElementById('meal-tags').value = (meal.tags || []).join(', ');
     document.getElementById('meal-content').value = meal.content || '';
