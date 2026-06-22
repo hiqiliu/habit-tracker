@@ -3677,8 +3677,9 @@ function renderPointsHistory() {
     }
     
     list.innerHTML = history.map(h => {
-        const isEarn = h.points > 0;
-        const isRedeem = h.points < 0;
+        const pts = typeof h.points === 'number' ? h.points : 0;
+        const isEarn = pts > 0;
+        const isRedeem = pts < 0;
         return `
         <div class="flex items-center gap-3 py-2 border-b dark:border-gray-700/50 last:border-0">
             <div class="w-7 h-7 rounded-full ${isEarn ? 'bg-success/10 text-success' : isRedeem ? 'bg-danger/10 text-danger' : 'bg-warning/10 text-warning'} flex items-center justify-center text-xs">
@@ -3688,7 +3689,7 @@ function renderPointsHistory() {
                 <div class="text-sm">${escapeHtml(h.desc)}</div>
                 <div class="text-[10px] text-gray-400">${h.date}</div>
             </div>
-            <span class="text-sm font-bold ${isEarn ? 'text-success' : isRedeem ? 'text-danger' : 'text-warning'}">${isEarn ? '+' : ''}${h.points}</span>
+            <span class="text-sm font-bold ${isEarn ? 'text-success' : isRedeem ? 'text-danger' : 'text-warning'}">${isEarn ? '+' : ''}${pts}</span>
         </div>`;
     }).join('');
 }

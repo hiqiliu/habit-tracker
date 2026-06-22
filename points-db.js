@@ -28,10 +28,13 @@ const POINTS_RULE_LABELS = {
     foodLog: '饮食记录'
 };
 
-// 获取积分规则（支持自定义）
+// 获取积分规则（支持自定义，自动合并新增字段）
 function getPointsConfig() {
     const saved = localStorage.getItem('ht_points_config');
-    if (saved) return JSON.parse(saved);
+    if (saved) {
+        const parsed = JSON.parse(saved);
+        return { ...DEFAULT_POINTS_CONFIG, ...parsed };
+    }
     return { ...DEFAULT_POINTS_CONFIG };
 }
 
