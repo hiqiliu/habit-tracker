@@ -3574,8 +3574,11 @@ function switchWishTab(tab) {
 
 function renderWishesView() {
     const data = getPointsData();
-    document.getElementById('wishes-total-points').textContent = getAvailablePoints();
-    document.getElementById('wishes-earned-points').textContent = data.total;
+    // Calculate total from history to handle data inconsistency
+    const historyTotal = data.history.reduce((sum, h) => sum + (typeof h.points === 'number' ? h.points : 0), 0);
+    const earned = Math.max(data.total, historyTotal); // Use whichever is larger
+    document.getElementById('wishes-total-points').textContent = earned - data.spent;
+    document.getElementById('wishes-earned-points').textContent = earned;
     document.getElementById('wishes-spent-points').textContent = data.spent;
     document.getElementById('wishes-week-points').textContent = getPointsPeriod('week');
     document.getElementById('wishes-month-points').textContent = getPointsPeriod('month');
