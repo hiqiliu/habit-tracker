@@ -3531,7 +3531,10 @@
                             await importDiaryBackup(data);
                             alert('日记导入成功！');
                             renderDiaryNotebooks();
-                            renderDiary();
+                            if (currentDiaryId) {
+                                if (diaryTab === 'fiveyear') renderFiveYearView();
+                                else renderTimelineView();
+                            }
                         }
                         // Single notebook export format (from exportDiaryNotebook)
                         else if (data.name && data.entries) {
@@ -3541,7 +3544,10 @@
                             }
                             alert('日记导入成功！共导入 ' + data.entries.length + ' 条记录');
                             renderDiaryNotebooks();
-                            renderDiary();
+                            if (currentDiaryId) {
+                                if (diaryTab === 'fiveyear') renderFiveYearView();
+                                else renderTimelineView();
+                            }
                         } else {
                             alert('文件格式不正确');
                         }
