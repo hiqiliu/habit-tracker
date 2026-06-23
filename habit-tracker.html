@@ -90,7 +90,7 @@
                     <span id="points-badge" class="ml-auto bg-warning text-white text-xs px-2 py-0.5 rounded-full">0</span>
                 </button>
                 <button onclick="showView('food')" id="nav-food" class="nav-btn w-full flex items-center px-4 py-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-all">
-                    <i class="fas fa-utensils w-6"></i><span>饮食日记</span>
+                    <i class="fas fa-heart-pulse w-6"></i><span>健康日记</span>
                 </button>
                 <button onclick="showView('stats')" id="nav-stats" class="nav-btn w-full flex items-center px-4 py-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-all">
                     <i class="fas fa-chart-pie w-6"></i><span>统计分析</span>
@@ -145,7 +145,7 @@
                     <i class="fas fa-star w-6"></i><span>心愿兑换</span>
                 </button>
                 <button onclick="showView('food'); toggleMobileMenu()" class="w-full flex items-center px-4 py-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700">
-                    <i class="fas fa-utensils w-6"></i><span>饮食日记</span>
+                    <i class="fas fa-heart-pulse w-6"></i><span>健康日记</span>
                 </button>
                 <button onclick="showView('stats'); toggleMobileMenu()" class="w-full flex items-center px-4 py-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700">
                     <i class="fas fa-chart-pie w-6"></i><span>统计分析</span>
@@ -742,13 +742,13 @@
         <button onclick="saveWish()" class="w-full mt-4 py-3 rounded-xl bg-primary text-white font-medium hover:bg-primary/90"><i class="fas fa-plus mr-1"></i>添加心愿</button>
     </div>
 </div>
-<!-- Food Diary View -->
+<!-- Health Diary View -->
 <div id="view-food" class="view-section hidden fade-in">
     <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
-        <h2 class="text-xl sm:text-2xl font-bold">饮食日记</h2>
+        <h2 class="text-xl sm:text-2xl font-bold">健康日记</h2>
         <div class="flex gap-2">
             <button onclick="openFoodStatsModal()" class="text-xs sm:text-sm px-3 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 flex-1 sm:flex-none"><i class="fas fa-chart-pie mr-1"></i>统计</button>
-            <button onclick="openAddMealModal()" class="bg-primary hover:bg-primary/90 text-white px-3 py-2 rounded-xl text-xs sm:text-sm flex-1 sm:flex-none"><i class="fas fa-plus mr-1"></i>记录一餐</button>
+            <button onclick="openAddMealModal()" class="bg-primary hover:bg-primary/90 text-white px-3 py-2 rounded-xl text-xs sm:text-sm flex-1 sm:flex-none"><i class="fas fa-plus mr-1"></i>记录</button>
         </div>
     </div>
     <!-- Date Navigation -->
@@ -756,25 +756,27 @@
         <button onclick="foodDateNav(-1)" class="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-700 flex items-center justify-center hover:bg-gray-200"><i class="fas fa-chevron-left text-xs"></i></button>
         <div class="text-center">
             <div class="text-sm font-bold" id="food-current-date"></div>
-            <div class="text-xs text-gray-400" id="food-meal-count">0 餐</div>
+            <div class="text-xs text-gray-400" id="food-meal-count">0 条</div>
         </div>
         <button onclick="foodDateNav(1)" class="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-700 flex items-center justify-center hover:bg-gray-200"><i class="fas fa-chevron-right text-xs"></i></button>
     </div>
-    <!-- Meals List -->
+    <!-- Daily Summary -->
+    <div id="health-daily-summary" class="grid grid-cols-3 gap-2 mb-4"></div>
+    <!-- Records List -->
     <div id="food-meals-list"></div>
     <!-- Empty State -->
     <div id="food-empty-state" class="hidden text-center py-12 text-gray-400">
-        <i class="fas fa-utensils text-4xl mb-3 block"></i>
+        <i class="fas fa-heart-pulse text-4xl mb-3 block"></i>
         <div>今天还没有记录</div>
-        <button onclick="openAddMealModal()" class="mt-3 text-primary text-sm">+ 记录一餐</button>
+        <button onclick="openAddMealModal()" class="mt-3 text-primary text-sm">+ 添加记录</button>
     </div>
 </div>
 
-<!-- Add/Edit Meal Modal -->
+<!-- Add/Edit Health Record Modal -->
 <div id="add-meal-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center" onclick="event.target===this&&closeAddMealModal()">
     <div class="bg-white dark:bg-gray-800 rounded-t-2xl sm:rounded-2xl p-5 w-full max-w-md max-h-[85vh] overflow-auto" style="padding-bottom: max(1.25rem, env(safe-area-inset-bottom));" onclick="event.stopPropagation()">
         <div class="flex justify-between items-center mb-4">
-            <h3 class="text-lg font-bold" id="add-meal-modal-title">记录一餐</h3>
+            <h3 class="text-lg font-bold" id="add-meal-modal-title">添加记录</h3>
             <button onclick="closeAddMealModal()" class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"><i class="fas fa-times"></i></button>
         </div>
         <div class="space-y-4">
@@ -783,54 +785,100 @@
                 <div class="flex-1"><label class="text-xs text-gray-500 block mb-1">日期</label><input type="date" id="meal-date" class="w-full px-4 py-2.5 rounded-xl border dark:border-gray-700 dark:bg-gray-800 text-sm"></div>
                 <div class="flex-1"><label class="text-xs text-gray-500 block mb-1">时间</label><input type="time" id="meal-time" class="w-full px-4 py-2.5 rounded-xl border dark:border-gray-700 dark:bg-gray-800 text-sm"></div>
             </div>
-            <!-- Meal Type -->
-            <div><label class="text-xs text-gray-500 block mb-1">餐次</label>
-                <div class="grid grid-cols-4 gap-2" id="meal-type-selector">
-                    <button onclick="selectMealType('breakfast')" data-type="breakfast" class="meal-type-btn py-2 rounded-xl text-xs text-center border dark:border-gray-700 hover:border-primary"><i class="fas fa-sun mr-1"></i>早餐</button>
-                    <button onclick="selectMealType('lunch')" data-type="lunch" class="meal-type-btn py-2 rounded-xl text-xs text-center border dark:border-gray-700 hover:border-primary"><i class="fas fa-cloud-sun mr-1"></i>午餐</button>
-                    <button onclick="selectMealType('dinner')" data-type="dinner" class="meal-type-btn py-2 rounded-xl text-xs text-center border dark:border-gray-700 hover:border-primary"><i class="fas fa-moon mr-1"></i>晚餐</button>
-                    <button onclick="selectMealType('snack')" data-type="snack" class="meal-type-btn py-2 rounded-xl text-xs text-center border dark:border-gray-700 hover:border-primary"><i class="fas fa-cookie-bite mr-1"></i>加餐</button>
+            <!-- Category Selector -->
+            <div><label class="text-xs text-gray-500 block mb-1">分类</label>
+                <div class="grid grid-cols-3 gap-2" id="health-category-selector">
+                    <button onclick="selectHealthCategory('meal')" data-cat="meal" class="health-cat-btn py-2 rounded-xl text-xs text-center border dark:border-gray-700 hover:border-primary"><i class="fas fa-utensils mr-1"></i>饮食</button>
+                    <button onclick="selectHealthCategory('water')" data-cat="water" class="health-cat-btn py-2 rounded-xl text-xs text-center border dark:border-gray-700 hover:border-primary"><i class="fas fa-droplet mr-1"></i>饮水</button>
+                    <button onclick="selectHealthCategory('coffee')" data-cat="coffee" class="health-cat-btn py-2 rounded-xl text-xs text-center border dark:border-gray-700 hover:border-primary"><i class="fas fa-mug-hot mr-1"></i>咖啡/茶</button>
+                    <button onclick="selectHealthCategory('bowel')" data-cat="bowel" class="health-cat-btn py-2 rounded-xl text-xs text-center border dark:border-gray-700 hover:border-primary"><i class="fas fa-toilet mr-1"></i>排泄</button>
+                    <button onclick="selectHealthCategory('care')" data-cat="care" class="health-cat-btn py-2 rounded-xl text-xs text-center border dark:border-gray-700 hover:border-primary"><i class="fas fa-spa mr-1"></i>护理</button>
+                    <button onclick="selectHealthCategory('sleep')" data-cat="sleep" class="health-cat-btn py-2 rounded-xl text-xs text-center border dark:border-gray-700 hover:border-primary"><i class="fas fa-bed mr-1"></i>睡眠</button>
                 </div>
             </div>
-            <!-- Self Cooked -->
-            <div><label class="text-xs text-gray-500 block mb-1">用餐方式</label>
-                <div class="grid grid-cols-4 gap-2" id="meal-cooked-selector">
-                    <button onclick="selectCooked('self')" data-cooked="self" class="cooked-btn py-2 rounded-xl text-xs text-center border dark:border-gray-700 hover:border-primary"><i class="fas fa-home mr-1"></i>自己做</button>
-                    <button onclick="selectCooked('outside')" data-cooked="outside" class="cooked-btn py-2 rounded-xl text-xs text-center border dark:border-gray-700 hover:border-primary"><i class="fas fa-utensils mr-1"></i>外食</button>
-                    <button onclick="selectCooked('delivery')" data-cooked="delivery" class="cooked-btn py-2 rounded-xl text-xs text-center border dark:border-gray-700 hover:border-primary"><i class="fas fa-motorcycle mr-1"></i>外卖</button>
-                    <button onclick="selectCooked('other')" data-cooked="other" class="cooked-btn py-2 rounded-xl text-xs text-center border dark:border-gray-700 hover:border-primary"><i class="fas fa-ellipsis-h mr-1"></i>其他</button>
+            <!-- Dynamic Fields: Meal -->
+            <div id="fields-meal" class="space-y-4">
+                <div><label class="text-xs text-gray-500 block mb-1">餐次</label>
+                    <div class="grid grid-cols-4 gap-2" id="meal-type-selector">
+                        <button onclick="selectMealType('breakfast')" data-type="breakfast" class="meal-type-btn py-2 rounded-xl text-xs text-center border dark:border-gray-700 hover:border-primary"><i class="fas fa-sun mr-1"></i>早餐</button>
+                        <button onclick="selectMealType('lunch')" data-type="lunch" class="meal-type-btn py-2 rounded-xl text-xs text-center border dark:border-gray-700 hover:border-primary"><i class="fas fa-cloud-sun mr-1"></i>午餐</button>
+                        <button onclick="selectMealType('dinner')" data-type="dinner" class="meal-type-btn py-2 rounded-xl text-xs text-center border dark:border-gray-700 hover:border-primary"><i class="fas fa-moon mr-1"></i>晚餐</button>
+                        <button onclick="selectMealType('snack')" data-type="snack" class="meal-type-btn py-2 rounded-xl text-xs text-center border dark:border-gray-700 hover:border-primary"><i class="fas fa-cookie-bite mr-1"></i>加餐</button>
+                    </div>
                 </div>
-            </div>
-            <!-- Location -->
-            <div><label class="text-xs text-gray-500 block mb-1">地点</label><input type="text" id="meal-location" class="w-full px-4 py-2.5 rounded-xl border dark:border-gray-700 dark:bg-gray-800 text-sm" placeholder="在哪里吃的？"></div>
-            <!-- Companion -->
-            <div><label class="text-xs text-gray-500 block mb-1">同伴</label><input type="text" id="meal-companion" class="w-full px-4 py-2.5 rounded-xl border dark:border-gray-700 dark:bg-gray-800 text-sm" placeholder="和谁一起？"></div>
-            <!-- Rating -->
-            <div><label class="text-xs text-gray-500 block mb-1">评价</label>
-                <div class="flex gap-2" id="meal-rating-stars">
-                    <button onclick="setMealRating(1)" data-star="1" class="text-2xl text-gray-300 hover:text-warning">★</button>
-                    <button onclick="setMealRating(2)" data-star="2" class="text-2xl text-gray-300 hover:text-warning">★</button>
-                    <button onclick="setMealRating(3)" data-star="3" class="text-2xl text-gray-300 hover:text-warning">★</button>
-                    <button onclick="setMealRating(4)" data-star="4" class="text-2xl text-gray-300 hover:text-warning">★</button>
-                    <button onclick="setMealRating(5)" data-star="5" class="text-2xl text-gray-300 hover:text-warning">★</button>
+                <div><label class="text-xs text-gray-500 block mb-1">用餐方式</label>
+                    <div class="grid grid-cols-4 gap-2" id="meal-cooked-selector">
+                        <button onclick="selectCooked('self')" data-cooked="self" class="cooked-btn py-2 rounded-xl text-xs text-center border dark:border-gray-700 hover:border-primary"><i class="fas fa-home mr-1"></i>自己做</button>
+                        <button onclick="selectCooked('outside')" data-cooked="outside" class="cooked-btn py-2 rounded-xl text-xs text-center border dark:border-gray-700 hover:border-primary"><i class="fas fa-utensils mr-1"></i>外食</button>
+                        <button onclick="selectCooked('delivery')" data-cooked="delivery" class="cooked-btn py-2 rounded-xl text-xs text-center border dark:border-gray-700 hover:border-primary"><i class="fas fa-motorcycle mr-1"></i>外卖</button>
+                        <button onclick="selectCooked('other')" data-cooked="other" class="cooked-btn py-2 rounded-xl text-xs text-center border dark:border-gray-700 hover:border-primary"><i class="fas fa-ellipsis-h mr-1"></i>其他</button>
+                    </div>
                 </div>
+                <div><label class="text-xs text-gray-500 block mb-1">地点</label><input type="text" id="meal-location" class="w-full px-4 py-2.5 rounded-xl border dark:border-gray-700 dark:bg-gray-800 text-sm" placeholder="在哪里吃的？"></div>
+                <div><label class="text-xs text-gray-500 block mb-1">同伴</label><input type="text" id="meal-companion" class="w-full px-4 py-2.5 rounded-xl border dark:border-gray-700 dark:bg-gray-800 text-sm" placeholder="和谁一起？"></div>
+                <div><label class="text-xs text-gray-500 block mb-1">评价</label>
+                    <div class="flex gap-2" id="meal-rating-stars">
+                        <button onclick="setMealRating(1)" data-star="1" class="text-2xl text-gray-300 hover:text-warning">★</button>
+                        <button onclick="setMealRating(2)" data-star="2" class="text-2xl text-gray-300 hover:text-warning">★</button>
+                        <button onclick="setMealRating(3)" data-star="3" class="text-2xl text-gray-300 hover:text-warning">★</button>
+                        <button onclick="setMealRating(4)" data-star="4" class="text-2xl text-gray-300 hover:text-warning">★</button>
+                        <button onclick="setMealRating(5)" data-star="5" class="text-2xl text-gray-300 hover:text-warning">★</button>
+                    </div>
+                </div>
+                <div><label class="text-xs text-gray-500 block mb-1">标签（逗号分隔）</label><input type="text" id="meal-tags" class="w-full px-4 py-2.5 rounded-xl border dark:border-gray-700 dark:bg-gray-800 text-sm" placeholder="健康, 尝试新店, 放纵..."></div>
+                <div><label class="text-xs text-gray-500 block mb-1">备注</label><textarea id="meal-content" rows="2" class="w-full px-4 py-2.5 rounded-xl border dark:border-gray-700 dark:bg-gray-800 text-sm resize-none" placeholder="吃了什么？感觉如何？"></textarea></div>
             </div>
-            <!-- Tags -->
-            <div><label class="text-xs text-gray-500 block mb-1">标签（逗号分隔）</label><input type="text" id="meal-tags" class="w-full px-4 py-2.5 rounded-xl border dark:border-gray-700 dark:bg-gray-800 text-sm" placeholder="健康, 尝试新店, 放纵..."></div>
-            <!-- Content -->
-            <div><label class="text-xs text-gray-500 block mb-1">备注</label><textarea id="meal-content" rows="2" class="w-full px-4 py-2.5 rounded-xl border dark:border-gray-700 dark:bg-gray-800 text-sm resize-none" placeholder="吃了什么？感觉如何？"></textarea></div>
+            <!-- Dynamic Fields: Water -->
+            <div id="fields-water" class="space-y-4 hidden">
+                <div><label class="text-xs text-gray-500 block mb-1">饮水量 (ml)</label><input type="number" id="water-amount" class="w-full px-4 py-2.5 rounded-xl border dark:border-gray-700 dark:bg-gray-800 text-sm" placeholder="例如：250" min="0"></div>
+                <div><label class="text-xs text-gray-500 block mb-1">备注</label><textarea id="water-note" rows="2" class="w-full px-4 py-2.5 rounded-xl border dark:border-gray-700 dark:bg-gray-800 text-sm resize-none" placeholder="温水、冰水、柠檬水..."></textarea></div>
+            </div>
+            <!-- Dynamic Fields: Coffee -->
+            <div id="fields-coffee" class="space-y-4 hidden">
+                <div><label class="text-xs text-gray-500 block mb-1">杯数</label><input type="number" id="coffee-amount" class="w-full px-4 py-2.5 rounded-xl border dark:border-gray-700 dark:bg-gray-800 text-sm" placeholder="例如：1" min="0" step="0.5"></div>
+                <div><label class="text-xs text-gray-500 block mb-1">备注</label><textarea id="coffee-note" rows="2" class="w-full px-4 py-2.5 rounded-xl border dark:border-gray-700 dark:bg-gray-800 text-sm resize-none" placeholder="美式、拿铁、绿茶..."></textarea></div>
+            </div>
+            <!-- Dynamic Fields: Bowel -->
+            <div id="fields-bowel" class="space-y-4 hidden">
+                <div><label class="text-xs text-gray-500 block mb-1">备注</label><textarea id="bowel-note" rows="2" class="w-full px-4 py-2.5 rounded-xl border dark:border-gray-700 dark:bg-gray-800 text-sm resize-none" placeholder="情况如何..."></textarea></div>
+                <div><label class="text-xs text-gray-500 block mb-1">标签（逗号分隔）</label><input type="text" id="bowel-tags" class="w-full px-4 py-2.5 rounded-xl border dark:border-gray-700 dark:bg-gray-800 text-sm" placeholder="正常, 腹泻, 便秘..."></div>
+            </div>
+            <!-- Dynamic Fields: Care -->
+            <div id="fields-care" class="space-y-4 hidden">
+                <div><label class="text-xs text-gray-500 block mb-1">护理内容</label><input type="text" id="care-content" class="w-full px-4 py-2.5 rounded-xl border dark:border-gray-700 dark:bg-gray-800 text-sm" placeholder="护肤、洗澡、理发、美甲..."></div>
+                <div><label class="text-xs text-gray-500 block mb-1">备注</label><textarea id="care-note" rows="2" class="w-full px-4 py-2.5 rounded-xl border dark:border-gray-700 dark:bg-gray-800 text-sm resize-none" placeholder="详细说明..."></textarea></div>
+            </div>
+            <!-- Dynamic Fields: Sleep -->
+            <div id="fields-sleep" class="space-y-4 hidden">
+                <div class="flex gap-2">
+                    <div class="flex-1"><label class="text-xs text-gray-500 block mb-1">入睡时间</label><input type="time" id="sleep-bedtime" class="w-full px-4 py-2.5 rounded-xl border dark:border-gray-700 dark:bg-gray-800 text-sm"></div>
+                    <div class="flex-1"><label class="text-xs text-gray-500 block mb-1">醒来时间</label><input type="time" id="sleep-waketime" class="w-full px-4 py-2.5 rounded-xl border dark:border-gray-700 dark:bg-gray-800 text-sm"></div>
+                </div>
+                <div><label class="text-xs text-gray-500 block mb-1">睡眠质量</label>
+                    <div class="flex gap-2" id="sleep-quality-stars">
+                        <button onclick="setSleepQuality(1)" data-sq="1" class="text-2xl text-gray-300 hover:text-primary">★</button>
+                        <button onclick="setSleepQuality(2)" data-sq="2" class="text-2xl text-gray-300 hover:text-primary">★</button>
+                        <button onclick="setSleepQuality(3)" data-sq="3" class="text-2xl text-gray-300 hover:text-primary">★</button>
+                        <button onclick="setSleepQuality(4)" data-sq="4" class="text-2xl text-gray-300 hover:text-primary">★</button>
+                        <button onclick="setSleepQuality(5)" data-sq="5" class="text-2xl text-gray-300 hover:text-primary">★</button>
+                    </div>
+                    <div class="text-xs text-gray-400 mt-1" id="sleep-quality-label"></div>
+                </div>
+                <div><label class="text-xs text-gray-500 block mb-1">备注</label><textarea id="sleep-note" rows="2" class="w-full px-4 py-2.5 rounded-xl border dark:border-gray-700 dark:bg-gray-800 text-sm resize-none" placeholder="做梦、夜醒、精神状态..."></textarea></div>
+            </div>
         </div>
         <input type="hidden" id="meal-edit-id">
         <input type="hidden" id="meal-rating-value" value="0">
+        <input type="hidden" id="sleep-quality-value" value="0">
         <button onclick="saveMeal()" class="w-full mt-4 py-3 rounded-xl bg-primary text-white font-medium hover:bg-primary/90"><i class="fas fa-save mr-1"></i>保存</button>
     </div>
 </div>
 
-<!-- Food Stats Modal -->
+<!-- Health Stats Modal -->
 <div id="food-stats-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onclick="event.target===this&&closeFoodStatsModal()">
     <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 w-full max-w-md max-h-[90vh] overflow-auto" onclick="event.stopPropagation()">
         <div class="flex justify-between items-center mb-4">
-            <h3 class="text-lg font-bold">月度饮食统计</h3>
+            <h3 class="text-lg font-bold">月度健康统计</h3>
             <button onclick="closeFoodStatsModal()" class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"><i class="fas fa-times"></i></button>
         </div>
         <div id="food-stats-content"></div>
@@ -4290,11 +4338,13 @@ function resetPointsRulesAction() {
     openPointsRulesModal(); // Refresh display
 }
 
-// ==================== 饮食日记 - UI逻辑 ====================
+// ==================== 健康日记 - UI逻辑 ====================
 let foodCurrentDate = getToday();
 let selectedMealType = 'lunch';
 let selectedCooked = 'self';
 let selectedMealRating = 0;
+let selectedHealthCategory = 'meal';
+let selectedSleepQuality = 0;
 
 function foodDateNav(offset) {
     const d = new Date(foodCurrentDate);
@@ -4305,42 +4355,96 @@ function foodDateNav(offset) {
 
 async function renderFoodDiary() {
     document.getElementById('food-current-date').textContent = foodCurrentDate;
-    const meals = await getMealsByDate(foodCurrentDate);
-    document.getElementById('food-meal-count').textContent = meals.length + ' 餐';
-    
+    const records = await getMealsByDate(foodCurrentDate);
+    document.getElementById('food-meal-count').textContent = records.length + ' 条';
+
     const list = document.getElementById('food-meals-list');
     const empty = document.getElementById('food-empty-state');
-    
-    if (meals.length === 0) {
+    const summary = document.getElementById('health-daily-summary');
+
+    // Daily summary
+    const waterTotal = records.filter(r => r.category === 'water').reduce((s, r) => s + (parseInt(r.amount) || 0), 0);
+    const coffeeTotal = records.filter(r => r.category === 'coffee').reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
+    const sleepRec = records.find(r => r.category === 'sleep');
+    let sleepDuration = '';
+    if (sleepRec && sleepRec.bedTime && sleepRec.wakeTime) {
+        const dur = calcSleepDuration(sleepRec.bedTime, sleepRec.wakeTime);
+        const h = Math.floor(dur);
+        const m = Math.round((dur - h) * 60);
+        sleepDuration = h + '小时' + (m > 0 ? m + '分' : '');
+    }
+
+    let summaryHtml = '';
+    if (waterTotal > 0) summaryHtml += `<div class="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-2 text-center"><div class="text-sm font-bold text-blue-500">${waterTotal}ml</div><div class="text-[10px] text-gray-400">饮水</div></div>`;
+    if (coffeeTotal > 0) summaryHtml += `<div class="bg-amber-50 dark:bg-amber-900/20 rounded-xl p-2 text-center"><div class="text-sm font-bold text-amber-600">${coffeeTotal}杯</div><div class="text-[10px] text-gray-400">咖啡/茶</div></div>`;
+    if (sleepDuration) summaryHtml += `<div class="bg-indigo-50 dark:bg-indigo-900/20 rounded-xl p-2 text-center"><div class="text-sm font-bold text-indigo-500">${sleepDuration}</div><div class="text-[10px] text-gray-400">睡眠</div></div>`;
+    summary.innerHTML = summaryHtml;
+
+    if (records.length === 0) {
         list.innerHTML = '';
         empty.classList.remove('hidden');
         return;
     }
-    
+
     empty.classList.add('hidden');
-    list.innerHTML = meals.map(m => {
+    list.innerHTML = records.map(m => {
+        const cat = HEALTH_CATEGORIES[m.category || 'meal'];
         const mt = MEAL_TYPES[m.mealType] || MEAL_TYPES['lunch'];
         const ck = COOKED_OPTIONS[m.selfCooked] || COOKED_OPTIONS['self'];
         const stars = m.rating > 0 ? '★'.repeat(m.rating) + '☆'.repeat(5 - m.rating) : '';
         const tags = m.tags && m.tags.length > 0 ? m.tags.map(t => `<span class="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary">${escapeHtml(t)}</span>`).join(' ') : '';
-        
+
+        let detailHtml = '';
+        if (m.category === 'meal' || !m.category) {
+            detailHtml = `
+                ${m.location ? `<div class="text-xs text-gray-500"><i class="fas fa-map-marker-alt mr-1"></i>${escapeHtml(m.location)}</div>` : ''}
+                ${m.companion ? `<div class="text-xs text-gray-500"><i class="fas fa-user mr-1"></i>${escapeHtml(m.companion)}</div>` : ''}
+                ${m.content ? `<div class="text-xs text-gray-600 dark:text-gray-300 mt-1">${escapeHtml(m.content)}</div>` : ''}
+                ${tags ? `<div class="flex flex-wrap gap-1 mt-1.5">${tags}</div>` : ''}`;
+        } else if (m.category === 'water') {
+            detailHtml = `<div class="text-sm text-blue-500 font-medium">${m.amount || 0} ml</div>${m.note ? `<div class="text-xs text-gray-500">${escapeHtml(m.note)}</div>` : ''}`;
+        } else if (m.category === 'coffee') {
+            detailHtml = `<div class="text-sm text-amber-600 font-medium">${m.amount || 0} 杯</div>${m.note ? `<div class="text-xs text-gray-500">${escapeHtml(m.note)}</div>` : ''}`;
+        } else if (m.category === 'bowel') {
+            detailHtml = `${m.note ? `<div class="text-xs text-gray-600 dark:text-gray-300">${escapeHtml(m.note)}</div>` : ''}${tags ? `<div class="flex flex-wrap gap-1 mt-1">${tags}</div>` : ''}`;
+        } else if (m.category === 'care') {
+            detailHtml = `${m.content ? `<div class="text-sm font-medium text-pink-500">${escapeHtml(m.content)}</div>` : ''}${m.note ? `<div class="text-xs text-gray-500">${escapeHtml(m.note)}</div>` : ''}`;
+        } else if (m.category === 'sleep') {
+            let durHtml = '';
+            if (m.bedTime && m.wakeTime) {
+                const dur = calcSleepDuration(m.bedTime, m.wakeTime);
+                const h = Math.floor(dur);
+                const min = Math.round((dur - h) * 60);
+                durHtml = `<span class="text-sm font-medium text-indigo-500">${h}小时${min > 0 ? min + '分' : ''}</span>`;
+            }
+            const sq = m.quality > 0 ? `<span class="text-xs text-primary">${'★'.repeat(m.quality)}</span>` : '';
+            detailHtml = `<div class="flex items-center gap-2">${durHtml} ${sq}</div>${m.note ? `<div class="text-xs text-gray-500">${escapeHtml(m.note)}</div>` : ''}`;
+        }
+
+        let headerHtml = '';
+        if (m.category === 'meal' || !m.category) {
+            headerHtml = `
+                <span class="font-semibold text-sm">${mt.label}</span>
+                <span class="text-[10px] px-1.5 py-0.5 rounded-full text-white" style="background: ${ck.color}"><i class="fas ${ck.icon} mr-0.5"></i>${ck.label}</span>
+                ${m.time ? `<span class="text-[10px] text-gray-400">${m.time}</span>` : ''}
+                ${stars ? `<span class="text-xs text-warning">${stars}</span>` : ''}`;
+        } else {
+            headerHtml = `
+                <span class="font-semibold text-sm">${cat.label}</span>
+                ${m.time ? `<span class="text-[10px] text-gray-400">${m.time}</span>` : ''}`;
+        }
+
         return `
         <div class="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm mb-2 border border-gray-100 dark:border-gray-700">
             <div class="flex items-start gap-3">
-                <div class="w-10 h-10 rounded-xl flex items-center justify-center text-white flex-shrink-0" style="background: ${mt.color}">
-                    <i class="fas ${mt.icon}"></i>
+                <div class="w-10 h-10 rounded-xl flex items-center justify-center text-white flex-shrink-0" style="background: ${cat.color}">
+                    <i class="fas ${cat.icon}"></i>
                 </div>
                 <div class="flex-1 min-w-0">
-                    <div class="flex items-center gap-2 mb-1">
-                        <span class="font-semibold text-sm">${mt.label}</span>
-                        <span class="text-[10px] px-1.5 py-0.5 rounded-full text-white" style="background: ${ck.color}"><i class="fas ${ck.icon} mr-0.5"></i>${ck.label}</span>
-                        ${m.time ? `<span class="text-[10px] text-gray-400">${m.time}</span>` : ''}
-                        ${stars ? `<span class="text-xs text-warning">${stars}</span>` : ''}
+                    <div class="flex items-center gap-2 mb-1 flex-wrap">
+                        ${headerHtml}
                     </div>
-                    ${m.location ? `<div class="text-xs text-gray-500"><i class="fas fa-map-marker-alt mr-1"></i>${escapeHtml(m.location)}</div>` : ''}
-                    ${m.companion ? `<div class="text-xs text-gray-500"><i class="fas fa-user mr-1"></i>${escapeHtml(m.companion)}</div>` : ''}
-                    ${m.content ? `<div class="text-xs text-gray-600 dark:text-gray-300 mt-1">${escapeHtml(m.content)}</div>` : ''}
-                    ${tags ? `<div class="flex flex-wrap gap-1 mt-1.5">${tags}</div>` : ''}
+                    ${detailHtml}
                 </div>
                 <div class="flex gap-1 flex-shrink-0">
                     <button onclick="editMeal(${m.id})" class="w-7 h-7 rounded-lg bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-[10px] hover:bg-gray-200"><i class="fas fa-pen"></i></button>
@@ -4351,23 +4455,68 @@ async function renderFoodDiary() {
     }).join('');
 }
 
+function selectHealthCategory(cat) {
+    selectedHealthCategory = cat;
+    updateHealthCategoryUI();
+    // Show/hide dynamic fields
+    ['meal', 'water', 'coffee', 'bowel', 'care', 'sleep'].forEach(c => {
+        const el = document.getElementById('fields-' + c);
+        if (el) el.classList.toggle('hidden', c !== cat);
+    });
+}
+
+function updateHealthCategoryUI() {
+    document.querySelectorAll('.health-cat-btn').forEach(btn => {
+        const c = btn.dataset.cat;
+        const cfg = HEALTH_CATEGORIES[c];
+        if (c === selectedHealthCategory) {
+            btn.style.borderColor = cfg.color;
+            btn.style.background = cfg.color + '15';
+            btn.style.color = cfg.color;
+        } else {
+            btn.style.borderColor = '';
+            btn.style.background = '';
+            btn.style.color = '';
+        }
+    });
+}
+
 function openAddMealModal() {
-    document.getElementById('add-meal-modal-title').textContent = '记录一餐';
+    document.getElementById('add-meal-modal-title').textContent = '添加记录';
     document.getElementById('meal-date').value = foodCurrentDate;
     const now = new Date();
     document.getElementById('meal-time').value = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
+
+    // Reset all fields
     document.getElementById('meal-location').value = '';
     document.getElementById('meal-companion').value = '';
     document.getElementById('meal-tags').value = '';
     document.getElementById('meal-content').value = '';
+    document.getElementById('water-amount').value = '';
+    document.getElementById('water-note').value = '';
+    document.getElementById('coffee-amount').value = '';
+    document.getElementById('coffee-note').value = '';
+    document.getElementById('bowel-note').value = '';
+    document.getElementById('bowel-tags').value = '';
+    document.getElementById('care-content').value = '';
+    document.getElementById('care-note').value = '';
+    document.getElementById('sleep-bedtime').value = '';
+    document.getElementById('sleep-waketime').value = '';
+    document.getElementById('sleep-note').value = '';
+
     document.getElementById('meal-edit-id').value = '';
     selectedMealType = 'lunch';
     selectedCooked = 'self';
     selectedMealRating = 0;
+    selectedSleepQuality = 0;
     document.getElementById('meal-rating-value').value = '0';
+    document.getElementById('sleep-quality-value').value = '0';
+
+    selectHealthCategory('meal');
     updateMealTypeUI();
     updateCookedUI();
     updateMealRatingUI();
+    updateSleepQualityUI();
     document.getElementById('add-meal-modal').classList.remove('hidden');
 }
 
@@ -4431,33 +4580,89 @@ function updateMealRatingUI() {
     });
 }
 
+function setSleepQuality(n) {
+    selectedSleepQuality = (selectedSleepQuality === n) ? 0 : n;
+    document.getElementById('sleep-quality-value').value = selectedSleepQuality;
+    updateSleepQualityUI();
+}
+
+function updateSleepQualityUI() {
+    document.querySelectorAll('#sleep-quality-stars button').forEach(btn => {
+        const sq = parseInt(btn.dataset.sq);
+        btn.classList.toggle('text-primary', sq <= selectedSleepQuality);
+        btn.classList.toggle('text-gray-300', sq > selectedSleepQuality);
+    });
+    const label = SLEEP_QUALITY_LABELS[selectedSleepQuality] || '';
+    document.getElementById('sleep-quality-label').textContent = label;
+}
+
 async function saveMeal() {
     const date = document.getElementById('meal-date').value;
     if (!date) { alert('请选择日期'); return; }
-    
+
     const editId = document.getElementById('meal-edit-id').value;
-    const tags = document.getElementById('meal-tags').value.split(',').map(t => t.trim()).filter(t => t);
-    
-    const data = {
+    const category = selectedHealthCategory;
+
+    let data = {
         date: date,
         time: document.getElementById('meal-time').value,
-        mealType: selectedMealType,
-        selfCooked: selectedCooked,
-        location: document.getElementById('meal-location').value.trim(),
-        companion: document.getElementById('meal-companion').value.trim(),
-        rating: selectedMealRating,
-        tags: tags,
-        content: document.getElementById('meal-content').value.trim()
+        category: category
     };
-    
+
+    if (category === 'meal') {
+        const tags = document.getElementById('meal-tags').value.split(',').map(t => t.trim()).filter(t => t);
+        data = {
+            ...data,
+            mealType: selectedMealType,
+            selfCooked: selectedCooked,
+            location: document.getElementById('meal-location').value.trim(),
+            companion: document.getElementById('meal-companion').value.trim(),
+            rating: selectedMealRating,
+            tags: tags,
+            content: document.getElementById('meal-content').value.trim()
+        };
+    } else if (category === 'water') {
+        data = {
+            ...data,
+            amount: parseInt(document.getElementById('water-amount').value) || 0,
+            note: document.getElementById('water-note').value.trim()
+        };
+    } else if (category === 'coffee') {
+        data = {
+            ...data,
+            amount: parseFloat(document.getElementById('coffee-amount').value) || 0,
+            note: document.getElementById('coffee-note').value.trim()
+        };
+    } else if (category === 'bowel') {
+        const tags = document.getElementById('bowel-tags').value.split(',').map(t => t.trim()).filter(t => t);
+        data = {
+            ...data,
+            note: document.getElementById('bowel-note').value.trim(),
+            tags: tags
+        };
+    } else if (category === 'care') {
+        data = {
+            ...data,
+            content: document.getElementById('care-content').value.trim(),
+            note: document.getElementById('care-note').value.trim()
+        };
+    } else if (category === 'sleep') {
+        data = {
+            ...data,
+            bedTime: document.getElementById('sleep-bedtime').value,
+            wakeTime: document.getElementById('sleep-waketime').value,
+            quality: selectedSleepQuality,
+            note: document.getElementById('sleep-note').value.trim()
+        };
+    }
+
     if (editId) {
         await updateMeal(parseInt(editId), data);
     } else {
         await addMeal(data);
-        // Add points for food logging
-        addPoints('food', POINTS_CONFIG.foodLog, '饮食记录');
+        addPoints('food', POINTS_CONFIG.foodLog, '健康记录');
     }
-    
+
     closeAddMealModal();
     foodCurrentDate = date;
     renderFoodDiary();
@@ -4469,17 +4674,44 @@ async function editMeal(id) {
     document.getElementById('add-meal-modal-title').textContent = '编辑记录';
     document.getElementById('meal-date').value = meal.date;
     document.getElementById('meal-time').value = meal.time || '';
-    document.getElementById('meal-companion').value = meal.companion || '';
-    document.getElementById('meal-tags').value = (meal.tags || []).join(', ');
-    document.getElementById('meal-content').value = meal.content || '';
     document.getElementById('meal-edit-id').value = meal.id;
-    selectedMealType = meal.mealType || 'lunch';
-    selectedCooked = meal.selfCooked || 'self';
-    selectedMealRating = meal.rating || 0;
-    document.getElementById('meal-rating-value').value = selectedMealRating;
-    updateMealTypeUI();
-    updateCookedUI();
-    updateMealRatingUI();
+
+    const cat = meal.category || 'meal';
+    selectHealthCategory(cat);
+
+    if (cat === 'meal' || !cat) {
+        document.getElementById('meal-location').value = meal.location || '';
+        document.getElementById('meal-companion').value = meal.companion || '';
+        document.getElementById('meal-tags').value = (meal.tags || []).join(', ');
+        document.getElementById('meal-content').value = meal.content || '';
+        selectedMealType = meal.mealType || 'lunch';
+        selectedCooked = meal.selfCooked || 'self';
+        selectedMealRating = meal.rating || 0;
+        document.getElementById('meal-rating-value').value = selectedMealRating;
+        updateMealTypeUI();
+        updateCookedUI();
+        updateMealRatingUI();
+    } else if (cat === 'water') {
+        document.getElementById('water-amount').value = meal.amount || '';
+        document.getElementById('water-note').value = meal.note || '';
+    } else if (cat === 'coffee') {
+        document.getElementById('coffee-amount').value = meal.amount || '';
+        document.getElementById('coffee-note').value = meal.note || '';
+    } else if (cat === 'bowel') {
+        document.getElementById('bowel-note').value = meal.note || '';
+        document.getElementById('bowel-tags').value = (meal.tags || []).join(', ');
+    } else if (cat === 'care') {
+        document.getElementById('care-content').value = meal.content || '';
+        document.getElementById('care-note').value = meal.note || '';
+    } else if (cat === 'sleep') {
+        document.getElementById('sleep-bedtime').value = meal.bedTime || '';
+        document.getElementById('sleep-waketime').value = meal.wakeTime || '';
+        selectedSleepQuality = meal.quality || 0;
+        document.getElementById('sleep-quality-value').value = selectedSleepQuality;
+        updateSleepQualityUI();
+        document.getElementById('sleep-note').value = meal.note || '';
+    }
+
     document.getElementById('add-meal-modal').classList.remove('hidden');
 }
 
@@ -4489,17 +4721,22 @@ async function deleteMealAction(id) {
     renderFoodDiary();
 }
 
-// ==================== 饮食统计 ====================
+// ==================== 健康统计 ====================
 async function openFoodStatsModal() {
     const month = foodCurrentDate.substring(0, 7);
     const stats = await getFoodStats(month);
-    
+
     let html = `
         <div class="text-center mb-4">
             <div class="text-3xl font-bold text-primary">${stats.total}</div>
-            <div class="text-sm text-gray-400">${month} 月总餐数</div>
-        </div>
-        <div class="grid grid-cols-3 gap-3 mb-4">
+            <div class="text-sm text-gray-400">${month} 月总记录</div>
+        </div>`;
+
+    // Meal stats
+    if (stats.selfCooked + stats.outside + stats.delivery > 0) {
+        html += `
+        <div class="mb-4"><h4 class="font-semibold text-sm mb-2"><i class="fas fa-utensils mr-1 text-warning"></i>饮食</h4>
+        <div class="grid grid-cols-3 gap-3 mb-3">
             <div class="bg-green-50 dark:bg-green-900/20 rounded-xl p-3 text-center">
                 <div class="text-lg font-bold text-success">${stats.selfCooked}</div>
                 <div class="text-[10px] text-gray-400">自己做 ${stats.selfCookedPct}%</div>
@@ -4513,7 +4750,7 @@ async function openFoodStatsModal() {
                 <div class="text-[10px] text-gray-400">外卖</div>
             </div>
         </div>
-        <div class="grid grid-cols-2 gap-3 mb-4">
+        <div class="grid grid-cols-2 gap-3 mb-3">
             <div class="bg-gray-50 dark:bg-gray-700/30 rounded-xl p-3 text-center">
                 <div class="text-lg font-bold">${stats.avgRating}</div>
                 <div class="text-[10px] text-gray-400">平均评分</div>
@@ -4522,8 +4759,61 @@ async function openFoodStatsModal() {
                 <div class="text-lg font-bold">${stats.avgPerDay}</div>
                 <div class="text-[10px] text-gray-400">日均餐数</div>
             </div>
-        </div>`;
-    
+        </div></div>`;
+    }
+
+    // Water stats
+    if (stats.totalWater > 0) {
+        html += `
+        <div class="mb-4"><h4 class="font-semibold text-sm mb-2"><i class="fas fa-droplet mr-1 text-blue-500"></i>饮水</h4>
+        <div class="grid grid-cols-2 gap-3">
+            <div class="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-3 text-center">
+                <div class="text-lg font-bold text-blue-500">${stats.totalWater}ml</div>
+                <div class="text-[10px] text-gray-400">总饮水量</div>
+            </div>
+            <div class="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-3 text-center">
+                <div class="text-lg font-bold text-blue-500">${stats.avgWater}ml</div>
+                <div class="text-[10px] text-gray-400">日均</div>
+            </div>
+        </div></div>`;
+    }
+
+    // Coffee stats
+    if (stats.totalCoffee > 0) {
+        html += `
+        <div class="mb-4"><h4 class="font-semibold text-sm mb-2"><i class="fas fa-mug-hot mr-1 text-amber-600"></i>咖啡/茶</h4>
+        <div class="bg-amber-50 dark:bg-amber-900/20 rounded-xl p-3 text-center">
+            <div class="text-lg font-bold text-amber-600">${stats.totalCoffee} 杯</div>
+            <div class="text-[10px] text-gray-400">总杯数</div>
+        </div></div>`;
+    }
+
+    // Sleep stats
+    if (stats.sleepCount > 0) {
+        html += `
+        <div class="mb-4"><h4 class="font-semibold text-sm mb-2"><i class="fas fa-bed mr-1 text-indigo-500"></i>睡眠</h4>
+        <div class="grid grid-cols-2 gap-3">
+            <div class="bg-indigo-50 dark:bg-indigo-900/20 rounded-xl p-3 text-center">
+                <div class="text-lg font-bold text-indigo-500">${stats.avgSleep}h</div>
+                <div class="text-[10px] text-gray-400">平均时长</div>
+            </div>
+            <div class="bg-indigo-50 dark:bg-indigo-900/20 rounded-xl p-3 text-center">
+                <div class="text-lg font-bold text-indigo-500">${stats.sleepCount}</div>
+                <div class="text-[10px] text-gray-400">记录天数</div>
+            </div>
+        </div></div>`;
+    }
+
+    // Care stats
+    if (stats.careCount > 0) {
+        html += `
+        <div class="mb-4"><h4 class="font-semibold text-sm mb-2"><i class="fas fa-spa mr-1 text-pink-500"></i>护理</h4>
+        <div class="bg-pink-50 dark:bg-pink-900/20 rounded-xl p-3 text-center">
+            <div class="text-lg font-bold text-pink-500">${stats.careCount} 次</div>
+            <div class="text-[10px] text-gray-400">护理记录</div>
+        </div></div>`;
+    }
+
     if (stats.topLocations.length > 0) {
         html += `<h4 class="font-semibold text-sm mb-2">常去地点</h4><div class="space-y-1.5 mb-4">`;
         stats.topLocations.forEach(([loc, count]) => {
@@ -4531,7 +4821,7 @@ async function openFoodStatsModal() {
         });
         html += `</div>`;
     }
-    
+
     if (stats.topCompanions.length > 0) {
         html += `<h4 class="font-semibold text-sm mb-2">常用餐同伴</h4><div class="space-y-1.5">`;
         stats.topCompanions.forEach(([comp, count]) => {
@@ -4539,9 +4829,9 @@ async function openFoodStatsModal() {
         });
         html += `</div>`;
     }
-    
-    if (stats.total === 0) html = '<p class="text-center text-gray-400 py-8">本月暂无饮食记录</p>';
-    
+
+    if (stats.total === 0) html = '<p class="text-center text-gray-400 py-8">本月暂无健康记录</p>';
+
     document.getElementById('food-stats-content').innerHTML = html;
     document.getElementById('food-stats-modal').classList.remove('hidden');
 }

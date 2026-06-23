@@ -1,18 +1,25 @@
-// ==================== 饮食日记 - IndexedDB 数据库 ====================
+// ==================== 健康日记 - IndexedDB 数据库 ====================
 const FOOD_DB_NAME = 'FoodDiaryDB';
-const FOOD_DB_VERSION = 1;
+const FOOD_DB_VERSION = 2;
 
 function openFoodDB() {
     return new Promise((resolve, reject) => {
         const request = indexedDB.open(FOOD_DB_NAME, FOOD_DB_VERSION);
         request.onupgradeneeded = (event) => {
             const db = event.target.result;
+            const oldVersion = event.oldVersion;
+
             if (!db.objectStoreNames.contains('meals')) {
                 const store = db.createObjectStore('meals', { keyPath: 'id', autoIncrement: true });
                 store.createIndex('date', 'date', { unique: false });
                 store.createIndex('month', 'month', { unique: false });
-                store.createIndex('selfCooked', 'selfCooked', { unique: false });
-                store.createIndex('location', 'location', { unique: false });
+                store.createIndex('category', 'category', { unique: false });
+            } else if (oldVersion < 2) {
+                // Migration: add category index to existing store
+                const store = event.target.transaction.objectStore('meals');
+                if (!store.indexNames.contains('category')) {
+                    store.createIndex('category', 'category', { unique: false });
+                }
             }
         };
         request.onsuccess = (event) => resolve(event.target.result);
@@ -20,7 +27,17 @@ function openFoodDB() {
     });
 }
 
-// ==================== 用餐类型配置 ====================
+// ==================== 健康分类配置 ====================
+const HEALTH_CATEGORIES = {
+    'meal':   { label: '饮食',   icon: 'fa-utensils',     color: '#f59e0b', emoji: '\u{1F37D}\u{FE0F}' },
+    'water':  { label: '饮水',   icon: 'fa-droplet',      color: '#3b82f6', emoji: '\u{1F4A7}' },
+    'coffee': { label: '咖啡/茶', icon: 'fa-mug-hot',     color: '#92400e', emoji: '\u{2615}' },
+    'bowel':  { label: '排泄',   icon: 'fa-toilet',       color: '#22c55e', emoji: '\u{1F6BD}' },
+    'care':   { label: '护理',   icon: 'fa-spa',          color: '#ec4899', emoji: '\u{1F6C0}' },
+    'sleep':  { label: '睡眠',   icon: 'fa-bed',          color: '#6366f1', emoji: '\u{1F634}' }
+};
+
+// ==================== 用餐类型配置 (仅用于 meal 分类) ====================
 const MEAL_TYPES = {
     'breakfast': { label: '早餐', icon: 'fa-sun', color: '#f59e0b', time: '07:00' },
     'lunch': { label: '午餐', icon: 'fa-cloud-sun', color: '#f97316', time: '12:00' },
@@ -35,14 +52,30 @@ const COOKED_OPTIONS = {
     'other': { label: '其他', icon: 'fa-ellipsis-h', color: '#6b7280' }
 };
 
-// ==================== 用餐记录 CRUD ====================
+// ==================== 睡眠评价 ====================
+const SLEEP_QUALITY_LABELS = {
+    1: '很差',
+    2: '一般',
+    3: '尚可',
+    4: '不错',
+    5: '很好'
+};
+
+// ==================== 健康记录 CRUD ====================
 async function addMeal(meal) {
     const db = await openFoodDB();
     const tx = db.transaction('meals', 'readwrite');
     const store = tx.objectStore('meals');
+
+    // Determine category (backward compatibility)
+    const category = meal.category || 'meal';
+
     const data = {
         date: meal.date || getToday(),
         time: meal.time || '',
+        category: category,
+        amount: meal.amount || null,
+        // Meal-specific fields
         mealType: meal.mealType || 'lunch',
         selfCooked: meal.selfCooked || 'self',
         location: meal.location || '',
@@ -50,10 +83,17 @@ async function addMeal(meal) {
         rating: meal.rating || 0,
         tags: meal.tags || [],
         content: meal.content || '',
+        note: meal.note || '',
+        // Sleep-specific fields
+        bedTime: meal.bedTime || '',
+        wakeTime: meal.wakeTime || '',
+        quality: meal.quality || 0,
+        // Photo (meal only)
         photo: meal.photo || null,
         thumbnail: meal.thumbnail || null,
         createdAt: new Date().toISOString()
     };
+
     store.add(data);
     const result = await new Promise((resolve, reject) => {
         tx.oncomplete = () => resolve(data);
@@ -110,9 +150,13 @@ async function getMealsByDate(date) {
         req.onsuccess = () => r(req.result || []);
     });
     db.close();
+    // Sort by time, then by category order
+    const catOrder = ['sleep', 'meal', 'water', 'coffee', 'bowel', 'care'];
     return meals.sort((a, b) => {
-        const order = ['breakfast', 'lunch', 'snack', 'dinner'];
-        return order.indexOf(a.mealType) - order.indexOf(b.mealType);
+        const timeA = a.time || '';
+        const timeB = b.time || '';
+        if (timeA !== timeB) return timeA.localeCompare(timeB);
+        return catOrder.indexOf(a.category || 'meal') - catOrder.indexOf(b.category || 'meal');
     });
 }
 
@@ -141,43 +185,85 @@ async function getRecentMeals(days) {
     return meals.filter(m => m.date >= cutoffStr).sort((a, b) => b.date.localeCompare(a.date));
 }
 
-// ==================== 月度统计 ====================
+// ==================== 统计 ====================
 async function getFoodStats(month) {
     const meals = await getMealsByMonth(month);
-    
+
     const total = meals.length;
-    const selfCooked = meals.filter(m => m.selfCooked === 'self').length;
-    const outside = meals.filter(m => m.selfCooked === 'outside').length;
-    const delivery = meals.filter(m => m.selfCooked === 'delivery').length;
-    
+    const mealRecords = meals.filter(m => m.category === 'meal' || !m.category);
+    const selfCooked = mealRecords.filter(m => m.selfCooked === 'self').length;
+    const outside = mealRecords.filter(m => m.selfCooked === 'outside').length;
+    const delivery = mealRecords.filter(m => m.selfCooked === 'delivery').length;
+
     // 地点排行
     const locationMap = {};
-    meals.forEach(m => {
+    mealRecords.forEach(m => {
         if (m.location) locationMap[m.location] = (locationMap[m.location] || 0) + 1;
     });
     const topLocations = Object.entries(locationMap).sort((a, b) => b[1] - a[1]).slice(0, 5);
-    
+
     // 同伴排行
     const companionMap = {};
-    meals.forEach(m => {
+    mealRecords.forEach(m => {
         if (m.companion) companionMap[m.companion] = (companionMap[m.companion] || 0) + 1;
     });
     const topCompanions = Object.entries(companionMap).sort((a, b) => b[1] - a[1]).slice(0, 5);
-    
+
     // 平均评分
-    const rated = meals.filter(m => m.rating > 0);
+    const rated = mealRecords.filter(m => m.rating > 0);
     const avgRating = rated.length > 0 ? (rated.reduce((s, m) => s + m.rating, 0) / rated.length).toFixed(1) : 0;
-    
+
     // 每日用餐数
     const dailyMap = {};
-    meals.forEach(m => { dailyMap[m.date] = (dailyMap[m.date] || 0) + 1; });
-    const avgPerDay = Object.keys(dailyMap).length > 0 ? (total / Object.keys(dailyMap).length).toFixed(1) : 0;
-    
+    mealRecords.forEach(m => { dailyMap[m.date] = (dailyMap[m.date] || 0) + 1; });
+    const avgPerDay = Object.keys(dailyMap).length > 0 ? (mealRecords.length / Object.keys(dailyMap).length).toFixed(1) : 0;
+
+    // 饮水统计
+    const waterRecords = meals.filter(m => m.category === 'water');
+    const totalWater = waterRecords.reduce((s, m) => s + (parseInt(m.amount) || 0), 0);
+    const avgWater = waterRecords.length > 0 ? Math.round(totalWater / waterRecords.length) : 0;
+
+    // 咖啡统计
+    const coffeeRecords = meals.filter(m => m.category === 'coffee');
+    const totalCoffee = coffeeRecords.reduce((s, m) => s + (parseInt(m.amount) || 0), 0);
+
+    // 睡眠统计
+    const sleepRecords = meals.filter(m => m.category === 'sleep');
+    let totalSleepHours = 0;
+    let sleepCount = 0;
+    sleepRecords.forEach(s => {
+        if (s.bedTime && s.wakeTime) {
+            const duration = calcSleepDuration(s.bedTime, s.wakeTime);
+            if (duration > 0) {
+                totalSleepHours += duration;
+                sleepCount++;
+            }
+        }
+    });
+    const avgSleep = sleepCount > 0 ? (totalSleepHours / sleepCount).toFixed(1) : 0;
+
+    // 护理统计
+    const careRecords = meals.filter(m => m.category === 'care');
+    const careCount = careRecords.length;
+
     return {
         month, total, selfCooked, outside, delivery,
         topLocations, topCompanions, avgRating, avgPerDay,
-        selfCookedPct: total > 0 ? Math.round(selfCooked / total * 100) : 0
+        selfCookedPct: mealRecords.length > 0 ? Math.round(selfCooked / mealRecords.length * 100) : 0,
+        totalWater, avgWater,
+        totalCoffee,
+        avgSleep, sleepCount,
+        careCount
     };
+}
+
+function calcSleepDuration(bedTime, wakeTime) {
+    const [bh, bm] = bedTime.split(':').map(Number);
+    const [wh, wm] = wakeTime.split(':').map(Number);
+    let start = bh * 60 + bm;
+    let end = wh * 60 + wm;
+    if (end < start) end += 24 * 60;
+    return (end - start) / 60;
 }
 
 // ==================== 导出备份 ====================
@@ -189,7 +275,7 @@ async function exportFoodBackup() {
         req.onsuccess = () => r(req.result || []);
     });
     db.close();
-    return { version: 1, exportedAt: new Date().toISOString(), meals };
+    return { version: 2, exportedAt: new Date().toISOString(), meals };
 }
 
 // ==================== 导入备份 ====================
@@ -198,6 +284,8 @@ async function importFoodBackup(backup) {
     const db = await openFoodDB();
     for (const meal of backup.meals) {
         const tx = db.transaction('meals', 'readwrite');
+        // Migrate old records: ensure category field exists
+        if (!meal.category) meal.category = 'meal';
         tx.objectStore('meals').add(meal);
         await new Promise(r => { tx.oncomplete = () => r(); });
     }
