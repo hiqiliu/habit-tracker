@@ -3539,10 +3539,21 @@
                         // Single notebook export format (from exportDiaryNotebook)
                         else if (data.name && data.entries) {
                             const notebook = await createNotebook(data.name + ' (导入)');
+                            let successCount = 0;
                             for (const entry of data.entries) {
-                                await saveEntry(notebook.id, entry);
+                                if (!entry.date) continue;
+                                const entryData = {
+                                    date: entry.date,
+                                    mood: entry.mood || '',
+                                    weather: entry.weather || '',
+                                    location: entry.location || '',
+                                    content: entry.content || '',
+                                    tags: entry.tags || []
+                                };
+                                await saveEntry(notebook.id, entryData);
+                                successCount++;
                             }
-                            alert('日记导入成功！共导入 ' + data.entries.length + ' 条记录');
+                            alert('日记导入成功！共导入 ' + successCount + ' 条记录');
                             renderDiaryNotebooks();
                             if (currentDiaryId) {
                                 if (diaryTab === 'fiveyear') renderFiveYearView();
