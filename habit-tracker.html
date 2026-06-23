@@ -3282,7 +3282,7 @@
                             // Show smaller thumbnail
                             thumb = `<img src="${entry.thumbnail}" class="w-4 h-4 rounded object-cover inline-block ml-0.5">`;
                         }
-                        html += `<div onclick="openDiaryEntry('${dateStr}')" class="flex items-center gap-0.5 px-1.5 py-1 rounded-lg cursor-pointer transition-all hover:shadow-sm" style="background: ${mood.color}15; border: 1px solid ${isToday ? '#6366f1' : 'transparent'}">
+                        html += `<div onclick="openDiaryEntry('${dateStr}', '${entry.id}')" class="flex items-center gap-0.5 px-1.5 py-1 rounded-lg cursor-pointer transition-all hover:shadow-sm" style="background: ${mood.color}15; border: 1px solid ${isToday ? '#6366f1' : 'transparent'}">
                             <span class="text-xs">${mood.emoji}</span>
                             ${thumb}
                         </div>`;
