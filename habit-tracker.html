@@ -4833,6 +4833,22 @@ async function openFoodStatsModal() {
         </div></div>`;
     }
 
+    // Bowel stats
+    if (stats.bowelCount > 0) {
+        html += `
+        <div class="mb-4"><h4 class="font-semibold text-sm mb-2"><i class="fas fa-toilet mr-1 text-green-500"></i>排泄</h4>
+        <div class="grid grid-cols-2 gap-3">
+            <div class="bg-green-50 dark:bg-green-900/20 rounded-xl p-3 text-center">
+                <div class="text-lg font-bold text-green-500">${stats.bowelCount}</div>
+                <div class="text-[10px] text-gray-400">总次数</div>
+            </div>
+            <div class="bg-green-50 dark:bg-green-900/20 rounded-xl p-3 text-center">
+                <div class="text-lg font-bold text-green-500">${stats.bowelDays}</div>
+                <div class="text-[10px] text-gray-400">记录天数</div>
+            </div>
+        </div></div>`;
+    }
+
     // Care stats
     if (stats.careCount > 0) {
         html += `
@@ -4841,22 +4857,6 @@ async function openFoodStatsModal() {
             <div class="text-lg font-bold text-pink-500">${stats.careCount} 次</div>
             <div class="text-[10px] text-gray-400">护理记录</div>
         </div></div>`;
-    }
-
-    if (stats.topLocations.length > 0) {
-        html += `<h4 class="font-semibold text-sm mb-2">常去地点</h4><div class="space-y-1.5 mb-4">`;
-        stats.topLocations.forEach(([loc, count]) => {
-            html += `<div class="flex items-center gap-2 text-sm"><i class="fas fa-map-marker-alt text-primary w-4"></i><span class="flex-1">${escapeHtml(loc)}</span><span class="text-xs text-gray-400">${count}次</span></div>`;
-        });
-        html += `</div>`;
-    }
-
-    if (stats.topCompanions.length > 0) {
-        html += `<h4 class="font-semibold text-sm mb-2">常用餐同伴</h4><div class="space-y-1.5">`;
-        stats.topCompanions.forEach(([comp, count]) => {
-            html += `<div class="flex items-center gap-2 text-sm"><i class="fas fa-user text-primary w-4"></i><span class="flex-1">${escapeHtml(comp)}</span><span class="text-xs text-gray-400">${count}次</span></div>`;
-        });
-        html += `</div>`;
     }
 
     if (stats.total === 0) html = '<p class="text-center text-gray-400 py-8">本月暂无健康记录</p>';

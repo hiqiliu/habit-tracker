@@ -246,14 +246,20 @@ async function getFoodStats(month) {
     const careRecords = meals.filter(m => m.category === 'care');
     const careCount = careRecords.length;
 
+    // 排泄统计
+    const bowelRecords = meals.filter(m => m.category === 'bowel');
+    const bowelCount = bowelRecords.length;
+    const bowelDays = new Set(bowelRecords.map(m => m.date)).size;
+
     return {
         month, total, selfCooked, outside, delivery,
-        topLocations, topCompanions, avgRating, avgPerDay,
+        avgRating, avgPerDay,
         selfCookedPct: mealRecords.length > 0 ? Math.round(selfCooked / mealRecords.length * 100) : 0,
         totalWater, avgWater,
         totalCoffee,
         avgSleep, sleepCount,
-        careCount
+        careCount,
+        bowelCount, bowelDays
     };
 }
 
