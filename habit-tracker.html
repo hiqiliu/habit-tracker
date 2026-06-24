@@ -458,6 +458,13 @@
             </div>
         </div>
 
+        <!-- Write Today Button -->
+        <div id="diary-write-today-btn" class="mb-4">
+            <button onclick="openDiaryEntry(new Date().toISOString().split('T')[0])" class="w-full py-3 rounded-xl bg-primary text-white font-medium hover:bg-primary/90 flex items-center justify-center gap-2">
+                <i class="fas fa-pen"></i>写今天日记
+            </button>
+        </div>
+
         <!-- Search Results -->
         <div id="diary-search-results" class="hidden mb-4"></div>
 
@@ -3277,6 +3284,8 @@
             document.getElementById('diary-tab-timeline').className = 'px-4 py-2 rounded-xl ' + (tab === 'timeline' ? 'bg-primary text-white' : 'bg-gray-200 dark:bg-gray-700') + ' text-sm transition-all';
             document.getElementById('diary-fiveyear-view').classList.toggle('hidden', tab !== 'fiveyear');
             document.getElementById('diary-timeline-view').classList.toggle('hidden', tab !== 'timeline');
+            const writeBtn = document.getElementById('diary-write-today-btn');
+            if (writeBtn) writeBtn.classList.toggle('hidden', tab !== 'timeline');
             
             if (tab === 'fiveyear' && currentDiaryId) renderFiveYearView();
             if (tab === 'timeline' && currentDiaryId) renderTimelineView();
