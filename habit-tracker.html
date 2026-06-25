@@ -4394,13 +4394,21 @@ async function renderFoodDiary() {
     // Daily summary
     const waterTotal = records.filter(r => r.category === 'water').reduce((s, r) => s + (parseInt(r.amount) || 0), 0);
     const coffeeTotal = records.filter(r => r.category === 'coffee').reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
-    const sleepRec = records.find(r => r.category === 'sleep');
+    const sleepRecords = records.filter(r => r.category === 'sleep');
     let sleepDuration = '';
-    if (sleepRec && sleepRec.bedTime && sleepRec.wakeTime) {
-        const dur = calcSleepDuration(sleepRec.bedTime, sleepRec.wakeTime);
-        const h = Math.floor(dur);
-        const m = Math.round((dur - h) * 60);
-        sleepDuration = h + '小时' + (m > 0 ? m + '分' : '');
+    if (sleepRecords.length > 0) {
+        let totalSleepHours = 0;
+        sleepRecords.forEach(s => {
+            if (s.bedTime && s.wakeTime) {
+                const dur = calcSleepDuration(s.bedTime, s.wakeTime);
+                if (dur > 0) totalSleepHours += dur;
+            }
+        });
+        if (totalSleepHours > 0) {
+            const h = Math.floor(totalSleepHours);
+            const m = Math.round((totalSleepHours - h) * 60);
+            sleepDuration = h + '小时' + (m > 0 ? m + '分' : '');
+        }
     }
 
     let summaryHtml = '';
