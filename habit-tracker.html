@@ -309,7 +309,6 @@
                     <button onclick="setCalendarType('todo')" id="cal-type-todo" class="cal-type-btn px-3 py-1 rounded-lg bg-gray-200 dark:bg-gray-700 text-xs">待办</button>
                     <button onclick="setCalendarType('habit')" id="cal-type-habit" class="cal-type-btn px-3 py-1 rounded-lg bg-gray-200 dark:bg-gray-700 text-xs">习惯</button>
                     <button onclick="setCalendarType('log')" id="cal-type-log" class="cal-type-btn px-3 py-1 rounded-lg bg-gray-200 dark:bg-gray-700 text-xs">记录</button>
-                    <button onclick="setCalendarType('food')" id="cal-type-food" class="cal-type-btn px-3 py-1 rounded-lg bg-gray-200 dark:bg-gray-700 text-xs"><i class="fas fa-utensils mr-1"></i>饮食</button>
                 </div>
 
                 <div id="calendar-container" class="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm"></div>
@@ -2140,19 +2139,6 @@
         async function renderWeekCalendar(container) {
             const today = new Date();
             const todayStr = getToday();
-            // Preload food meals for the week
-            const weekDates = [];
-            for (let i = 0; i < 7; i++) {
-                const d = new Date(today);
-                d.setDate(d.getDate() - today.getDay() + i);
-                const ds = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-                weekDates.push(ds);
-            }
-            const mealsByDate = {};
-            for (const dateStr of weekDates) {
-                const meals = await getMealsByDate(dateStr);
-                if (meals.length > 0) mealsByDate[dateStr] = meals;
-            }
 
             let html = '<div class="space-y-2">';
             
@@ -2166,17 +2152,16 @@
                 const dayTodos = items.filter(item => item.type === 'todo' && item.due === dateStr && (calendarType === 'both' || calendarType === 'todo'));
                 const dayHabits = items.filter(item => {
                     if (item.type !== 'habit') return false;
-                    if (calendarType === 'todo' || calendarType === 'food') return false;
+                    if (calendarType === 'todo') return false;
                     return isHabitDone(item.id, dateStr);
                 });
                 const dayLogs = items.filter(item => {
                     if (item.type !== 'log') return false;
-                    if (calendarType === 'todo' || calendarType === 'habit' || calendarType === 'food') return false;
+                    if (calendarType === 'todo' || calendarType === 'habit') return false;
                     return item.checks && item.checks.some(c => c.startsWith(dateStr));
                 });
-                const dayMeals = (mealsByDate[dateStr] || []).filter(() => calendarType === 'both' || calendarType === 'food');
                 
-                const hasItems = dayTodos.length > 0 || dayHabits.length > 0 || dayLogs.length > 0 || dayMeals.length > 0;
+                const hasItems = dayTodos.length > 0 || dayHabits.length > 0 || dayLogs.length > 0;
                 
                 html += `
                     <div class="bg-white dark:bg-gray-800 rounded-xl p-3 shadow-sm ${isToday ? 'ring-2 ring-primary ring-inset' : ''}">
@@ -2217,16 +2202,6 @@
                                     </div>
                                     `;
                                 }).join('')}
-                                ${dayMeals.map(m => {
-                                    const mt = MEAL_TYPES[m.mealType] || MEAL_TYPES['lunch'];
-                                    return `
-                                    <div class="flex items-center gap-2 text-sm">
-                                        <div class="w-5 h-5 rounded flex items-center justify-center text-white text-xs" style="background: ${mt.color}"><i class="fas ${mt.icon}"></i></div>
-                                        <span>${mt.label}</span>
-                                        ${m.rating > 0 ? `<span class="text-xs text-warning">${'★'.repeat(m.rating)}</span>` : ''}
-                                        ${m.location ? `<span class="text-xs text-gray-400">${escapeHtml(m.location)}</span>` : ''}
-                                    </div>`;
-                                }).join('')}
                             </div>
                         ` : '<div class="text-xs text-gray-300 py-1">暂无打卡记录</div>'}
                     </div>
@@ -2236,22 +2211,13 @@
             container.innerHTML = html;
         }
 
-        async function renderMonthCalendar(container) {
+        function renderMonthCalendar(container) {
             const today = new Date();
             const year = today.getFullYear();
             const month = today.getMonth();
             const firstDay = new Date(year, month, 1);
             const lastDay = new Date(year, month + 1, 0);
             const startPadding = firstDay.getDay();
-
-            // Preload food meals for the current month
-            const monthStr = `${year}-${String(month + 1).padStart(2, '0')}`;
-            const allMonthMeals = await getMealsByMonth(monthStr);
-            const mealsByDate = {};
-            allMonthMeals.forEach(m => {
-                if (!mealsByDate[m.date]) mealsByDate[m.date] = [];
-                mealsByDate[m.date].push(m);
-            });
 
             let html = `
                 <div class="text-center mb-4">
@@ -2273,16 +2239,15 @@
                 const dayTodos = items.filter(item => item.type === 'todo' && item.due === dateStr && (calendarType === 'both' || calendarType === 'todo'));
                 const dayHabits = items.filter(item => {
                     if (item.type !== 'habit') return false;
-                    if (calendarType === 'todo' || calendarType === 'food') return false;
+                    if (calendarType === 'todo') return false;
                     return isHabitDone(item.id, dateStr);
                 });
                 const dayLogs = items.filter(item => {
                     if (item.type !== 'log') return false;
-                    if (calendarType === 'todo' || calendarType === 'habit' || calendarType === 'food') return false;
+                    if (calendarType === 'todo' || calendarType === 'habit') return false;
                     return item.checks && item.checks.some(c => c.startsWith(dateStr));
                 });
-                const dayMeals = (mealsByDate[dateStr] || []).filter(() => calendarType === 'both' || calendarType === 'food');
-                const hasItems = dayTodos.length > 0 || dayHabits.length > 0 || dayLogs.length > 0 || dayMeals.length > 0;
+                const hasItems = dayTodos.length > 0 || dayHabits.length > 0 || dayLogs.length > 0;
 
                 const isPast = dateStr < getToday();
                 const retroClass = isPast ? 'ring-1 ring-primary/20 hover:ring-primary/50' : '';
@@ -2294,10 +2259,6 @@
                             ${dayTodos.map(t => `<div class="w-2 h-2 rounded-full ${t.completed ? 'bg-success' : 'bg-warning'}"></div>`).join('')}
                             ${dayHabits.map(h => `<div class="w-2 h-2 rounded-full ${h.archived ? 'opacity-40 grayscale' : ''}" style="background: ${h.color}"></div>`).join('')}
                             ${dayLogs.map(l => `<div class="w-2 h-2 rounded-full ${l.archived ? 'opacity-40 grayscale' : ''}" style="background: ${l.color}"></div>`).join('')}
-                            ${dayMeals.map(m => {
-                                const mt = MEAL_TYPES[m.mealType] || MEAL_TYPES['lunch'];
-                                return `<div class="w-2 h-2 rounded-full" style="background: ${mt.color}"></div>`;
-                            }).join('')}
                         </div>
                     </div>
                 `;
