@@ -393,6 +393,17 @@ const BOOK_CATEGORIES = {
     '其他': { icon: 'fa-bookmark', color: '#a855f7' }
 };
 
+const MOVIE_CATEGORIES = {
+    '剧情': { icon: 'fa-film', color: '#ef4444' },
+    '喜剧': { icon: 'fa-laugh', color: '#f59e0b' },
+    '动作': { icon: 'fa-bolt', color: '#f97316' },
+    '科幻': { icon: 'fa-rocket', color: '#6366f1' },
+    '悬疑': { icon: 'fa-user-secret', color: '#8b5cf6' },
+    '纪录片': { icon: 'fa-video', color: '#10b981' },
+    '动画': { icon: 'fa-child', color: '#ec4899' },
+    '其他': { icon: 'fa-film', color: '#6b7280' }
+};
+
 const BOOK_STATUS_CONFIG = {
     'todo': { label: '待看', icon: 'fa-clock', color: '#f59e0b' },
     'doing': { label: '正在看', icon: 'fa-play-circle', color: '#6366f1' },

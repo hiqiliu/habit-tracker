@@ -509,7 +509,6 @@
                     <button onclick="switchMediaTypeTab('all')" id="media-tab-all" class="px-3 sm:px-4 py-2 rounded-xl bg-primary text-white text-xs sm:text-sm whitespace-nowrap flex-1 sm:flex-none">全部</button>
                     <button onclick="switchMediaTypeTab('book')" id="media-tab-book" class="px-3 sm:px-4 py-2 rounded-xl bg-gray-200 dark:bg-gray-700 text-xs sm:text-sm whitespace-nowrap flex-1 sm:flex-none">书籍</button>
                     <button onclick="switchMediaTypeTab('movie')" id="media-tab-movie" class="px-3 sm:px-4 py-2 rounded-xl bg-gray-200 dark:bg-gray-700 text-xs sm:text-sm whitespace-nowrap flex-1 sm:flex-none">影视</button>
-                    <button onclick="switchMediaTypeTab('tv')" id="media-tab-tv" class="px-3 sm:px-4 py-2 rounded-xl bg-gray-200 dark:bg-gray-700 text-xs sm:text-sm whitespace-nowrap flex-1 sm:flex-none">剧集</button>
                 </div>
                 <!-- Status Tabs -->
                 <div class="flex gap-1.5 sm:gap-2 mb-4 overflow-auto pb-1">
@@ -766,7 +765,6 @@
                 <select id="book-media-type" class="w-full px-4 py-2.5 rounded-xl border dark:border-gray-700 dark:bg-gray-800 text-sm" onchange="onMediaTypeChange()">
                     <option value="book">书籍</option>
                     <option value="movie">影视</option>
-                    <option value="tv">剧集</option>
                 </select>
             </div>
             <div><label class="text-xs text-gray-500 block mb-1">名称 *</label><input type="text" id="book-title" class="w-full px-4 py-2.5 rounded-xl border dark:border-gray-700 dark:bg-gray-800 text-sm" placeholder="名称"></div>
@@ -776,7 +774,6 @@
             <div class="flex gap-2">
                 <div class="flex-1"><label class="text-xs text-gray-500 block mb-1">分类</label>
                     <select id="book-category" class="w-full px-4 py-2.5 rounded-xl border dark:border-gray-700 dark:bg-gray-800 text-sm">
-                        <option value="小说">小说</option><option value="非虚构">非虚构</option><option value="技术">技术</option><option value="历史">历史</option><option value="哲学">哲学</option><option value="心理">心理</option><option value="经济">经济</option><option value="科学">科学</option><option value="艺术">艺术</option><option value="传记">传记</option><option value="其他">其他</option>
                     </select>
                 </div>
                 <div class="flex-1"><label class="text-xs text-gray-500 block mb-1">状态</label>
@@ -3055,7 +3052,7 @@ function switchBookTab(tab) {
 
 function switchMediaTypeTab(type) {
     mediaTypeTab = type;
-    ['all', 'book', 'movie', 'tv'].forEach(t => {
+    ['all', 'book', 'movie'].forEach(t => {
         const btn = document.getElementById('media-tab-' + t);
         if (btn) btn.className = 'px-3 sm:px-4 py-2 rounded-xl ' + (t === type ? 'bg-primary text-white' : 'bg-gray-200 dark:bg-gray-700') + ' text-xs sm:text-sm whitespace-nowrap flex-1 sm:flex-none';
     });
@@ -3080,7 +3077,11 @@ async function renderBookshelf() {
 
     // Filter by media type
     if (mediaTypeTab !== 'all') {
-        books = books.filter(b => (b.mediaType || 'book') === mediaTypeTab);
+        if (mediaTypeTab === 'movie') {
+            books = books.filter(b => b.mediaType === 'movie' || b.mediaType === 'tv');
+        } else {
+            books = books.filter(b => (b.mediaType || 'book') === mediaTypeTab);
+        }
     }
 
     if (books.length === 0) {
@@ -3091,7 +3092,8 @@ async function renderBookshelf() {
 
     list.innerHTML = books.map(b => {
         const mt = b.mediaType || 'book';
-        const cat = BOOK_CATEGORIES[b.category] || BOOK_CATEGORIES['其他'];
+        const catConfig = (mt === 'movie' || mt === 'tv') ? MOVIE_CATEGORIES : BOOK_CATEGORIES;
+        const cat = catConfig[b.category] || catConfig['其他'];
         const pageProgress = b.totalPages > 0 ? Math.round(b.currentPage / b.totalPages * 100) : 0;
         const epProgress = b.episodes > 0 ? Math.round(b.currentEpisode / b.episodes * 100) : 0;
         const stars = b.rating > 0 ? '★'.repeat(b.rating) + '☆'.repeat(5 - b.rating) : '';
@@ -3161,24 +3163,21 @@ async function renderBookshelf() {
 
 function onMediaTypeChange() {
     const mt = document.getElementById('book-media-type').value;
+    const catSelect = document.getElementById('book-category');
     if (mt === 'book') {
         document.getElementById('field-author').classList.remove('hidden');
         document.getElementById('field-director').classList.add('hidden');
         document.getElementById('field-cast').classList.add('hidden');
         document.getElementById('field-pages').classList.remove('hidden');
         document.getElementById('field-episodes').classList.add('hidden');
+        catSelect.innerHTML = Object.keys(BOOK_CATEGORIES).map(c => `<option value="${c}">${c}</option>`).join('');
     } else if (mt === 'movie') {
         document.getElementById('field-author').classList.add('hidden');
         document.getElementById('field-director').classList.remove('hidden');
         document.getElementById('field-cast').classList.remove('hidden');
         document.getElementById('field-pages').classList.add('hidden');
-        document.getElementById('field-episodes').classList.add('hidden');
-    } else if (mt === 'tv') {
-        document.getElementById('field-author').classList.add('hidden');
-        document.getElementById('field-director').classList.remove('hidden');
-        document.getElementById('field-cast').classList.remove('hidden');
-        document.getElementById('field-pages').classList.add('hidden');
         document.getElementById('field-episodes').classList.remove('hidden');
+        catSelect.innerHTML = Object.keys(MOVIE_CATEGORIES).map(c => `<option value="${c}">${c}</option>`).join('');
     }
 }
 
@@ -3318,7 +3317,8 @@ async function openBookDetail(id) {
     if (!book) return;
     const notes = await getBookNotes(id);
     const mt = book.mediaType || 'book';
-    const cat = BOOK_CATEGORIES[book.category] || BOOK_CATEGORIES['其他'];
+    const catConfig = (mt === 'movie' || mt === 'tv') ? MOVIE_CATEGORIES : BOOK_CATEGORIES;
+    const cat = catConfig[book.category] || catConfig['其他'];
     const pageProgress = book.totalPages > 0 ? Math.round(book.currentPage / book.totalPages * 100) : 0;
     const epProgress = book.episodes > 0 ? Math.round(book.currentEpisode / book.episodes * 100) : 0;
     const stars = book.rating > 0 ? '★'.repeat(book.rating) + '☆'.repeat(5 - book.rating) : '';
@@ -3428,10 +3428,37 @@ async function openBookshelfStats() {
     const year = new Date().getFullYear().toString();
     const stats = await getYearlyStats(year);
 
+    function mergeMediaStats(a, b) {
+        const finished = [...a.finished, ...b.finished];
+        const reading = [...a.reading, ...b.reading];
+        const toRead = [...a.toRead, ...b.toRead];
+        const categoryMap = {...a.categoryMap};
+        for (const [cat, count] of Object.entries(b.categoryMap)) {
+            categoryMap[cat] = (categoryMap[cat] || 0) + count;
+        }
+        const monthlyMap = {...a.monthlyMap};
+        for (const [month, count] of Object.entries(b.monthlyMap)) {
+            monthlyMap[month] = (monthlyMap[month] || 0) + count;
+        }
+        const rated = finished.filter(b => b.rating > 0);
+        const avgRating = rated.length > 0 ? (rated.reduce((sum, b) => sum + b.rating, 0) / rated.length).toFixed(1) : 0;
+        return {
+            finished, reading, toRead,
+            totalPages: a.totalPages + b.totalPages,
+            totalEpisodes: a.totalEpisodes + b.totalEpisodes,
+            avgRating,
+            categoryMap,
+            monthlyMap
+        };
+    }
+
+    const mergedMovieStats = mergeMediaStats(stats.movieStats, stats.tvStats);
+
     function renderMediaStats(mediaStats, title, icon, color, isBook) {
         const catEntries = Object.entries(mediaStats.categoryMap).sort((a, b) => b[1] - a[1]);
         const monthEntries = Object.entries(mediaStats.monthlyMap).sort();
         const hasData = mediaStats.finished.length > 0 || mediaStats.reading.length > 0;
+        const catConfig = isBook ? BOOK_CATEGORIES : MOVIE_CATEGORIES;
 
         return `
         <div class="mb-5 ${hasData ? '' : 'opacity-60'}">
@@ -3446,8 +3473,8 @@ async function openBookshelfStats() {
                     <div class="text-[10px] text-gray-400">进行中</div>
                 </div>
                 <div class="bg-gray-50 dark:bg-gray-700/30 rounded-xl p-2 text-center">
-                    <div class="text-base font-bold">${isBook ? mediaStats.totalPages : (isBook === false ? mediaStats.totalEpisodes : mediaStats.totalPages)}</div>
-                    <div class="text-[10px] text-gray-400">${isBook ? '总页数' : (isBook === false ? '总集数' : '数量')}</div>
+                    <div class="text-base font-bold">${isBook ? mediaStats.totalPages : mediaStats.totalEpisodes}</div>
+                    <div class="text-[10px] text-gray-400">${isBook ? '总页数' : '总集数'}</div>
                 </div>
                 <div class="bg-gray-50 dark:bg-gray-700/30 rounded-xl p-2 text-center">
                     <div class="text-base font-bold">${mediaStats.avgRating}</div>
@@ -3457,7 +3484,7 @@ async function openBookshelfStats() {
             ${catEntries.length > 0 ? `
                 <div class="space-y-1 mb-3">
                     ${catEntries.map(([cat, count]) => {
-                        const c = BOOK_CATEGORIES[cat] || BOOK_CATEGORIES['其他'];
+                        const c = catConfig[cat] || catConfig['其他'];
                         const pct = mediaStats.finished.length > 0 ? Math.round(count / mediaStats.finished.length * 100) : 0;
                         return `<div class="flex items-center gap-2 text-xs">
                             <i class="fas ${c.icon} w-3" style="color: ${c.color}"></i>
@@ -3486,9 +3513,7 @@ async function openBookshelfStats() {
     let html = `
         ${renderMediaStats(stats.bookStats, '书籍', 'fa-book', '#7c6fc4', true)}
         <hr class="border-gray-200 dark:border-gray-700 mb-5">
-        ${renderMediaStats(stats.movieStats, '影视', 'fa-film', '#ef4444', false)}
-        <hr class="border-gray-200 dark:border-gray-700 mb-5">
-        ${renderMediaStats(stats.tvStats, '剧集', 'fa-tv', '#10b981', null)}
+        ${renderMediaStats(mergedMovieStats, '影视', 'fa-film', '#ef4444', false)}
     `;
 
     document.getElementById('bookshelf-stats-content').innerHTML = html;
