@@ -3843,15 +3843,8 @@ function toggleRetroCheckin(itemId, dateStr) {
         if (item.checkNotes) delete item.checkNotes[dateStr];
     } else {
         item.checks.push(dateStr);
-        // Only add points if not today (today's check-in already adds points via toggleItem)
         if (dateStr !== getToday()) {
             addPoints('habit_retro', POINTS_CONFIG.habitCheckIn, '补打卡: ' + item.title);
-        }
-        // Prompt for note (optional)
-        const note = prompt('备注（可选，如：芭杆沙漏腰30分钟）：');
-        if (note && note.trim()) {
-            if (!item.checkNotes) item.checkNotes = {};
-            item.checkNotes[dateStr] = note.trim();
         }
     }
 
