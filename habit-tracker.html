@@ -326,59 +326,75 @@
             </div>
 
             <!-- Items View -->
-            <div id="view-items" class="view-section hidden fade-in">
-                <div class="flex justify-between items-center mb-6">
-                    <h2 class="text-2xl font-bold">事项管理</h2>
+            <div id="view-tasks" class="view-section hidden fade-in">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-2xl font-bold">任务</h2>
                     <div class="flex gap-2">
                         <button onclick="openRetroCheckin()" class="text-xs px-3 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 transition-all"><i class="fas fa-calendar-plus mr-1"></i>补打卡</button>
                         <button onclick="openItemModal()" class="bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-xl transition-all">
-                            <i class="fas fa-plus mr-1"></i>新建事项
+                            <i class="fas fa-plus mr-1"></i>新建
                         </button>
                     </div>
                 </div>
-
-                <!-- Filters -->
+                <!-- Task Tabs -->
                 <div class="flex gap-2 mb-4 overflow-auto pb-2">
-                    <button onclick="filterItems('all')" id="filter-all" class="filter-btn px-4 py-2 rounded-lg bg-primary text-white text-sm whitespace-nowrap">全部</button>
-                    <button onclick="filterItems('todo')" id="filter-todo" class="filter-btn px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-sm whitespace-nowrap">待办</button>
-                    <button onclick="filterItems('habit')" id="filter-habit" class="filter-btn px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-sm whitespace-nowrap">习惯</button>
-                    <button onclick="filterItems('log')" id="filter-log" class="filter-btn px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-sm whitespace-nowrap">记录</button>
-                    <button onclick="filterItems('today')" id="filter-today" class="filter-btn px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-sm whitespace-nowrap">今天</button>
-                    <button onclick="filterItems('completed')" id="filter-completed" class="filter-btn px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-sm whitespace-nowrap">已完成</button>
-                    <button onclick="filterItems('archived')" id="filter-archived" class="filter-btn px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-sm whitespace-nowrap">归档</button>
+                    <button onclick="switchTaskTab('list')" id="task-tab-list" class="task-tab-btn px-4 py-2 rounded-lg bg-primary text-white text-sm whitespace-nowrap">列表</button>
+                    <button onclick="switchTaskTab('calendar')" id="task-tab-calendar" class="task-tab-btn px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-sm whitespace-nowrap">日历</button>
+                    <button onclick="switchTaskTab('schedule')" id="task-tab-schedule" class="task-tab-btn px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-sm whitespace-nowrap">课表</button>
+                    <button onclick="switchTaskTab('stats')" id="task-tab-stats" class="task-tab-btn px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-sm whitespace-nowrap">统计</button>
                 </div>
-
-                <!-- Projects -->
-                <div class="mb-4">
-                    <label class="text-sm text-gray-500 dark:text-gray-400 mb-2 block">项目筛选</label>
-                    <select id="project-filter" onchange="renderItems()" class="w-full md:w-64 px-4 py-2 rounded-xl border dark:border-gray-700 dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary">
-                        <option value="">所有项目</option>
-                    </select>
-                </div>
-
-                <div id="item-list" class="grid md:grid-cols-3 gap-4"></div>
-            </div>
-
-            <!-- Calendar View -->
-            <div id="view-calendar" class="view-section hidden fade-in">
-                <div class="flex justify-between items-center mb-6">
-                    <h2 class="text-2xl font-bold">日历视图</h2>
-                    <div class="flex gap-2">
-                        <button onclick="setCalendarView('week')" id="cal-view-week" class="px-4 py-2 rounded-lg bg-primary text-white text-sm">周</button>
-                        <button onclick="setCalendarView('month')" id="cal-view-month" class="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-sm">月</button>
-                        <button onclick="setCalendarView('year')" id="cal-view-year" class="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-sm">年</button>
+                <div id="task-list-panel" class="task-panel">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-2xl font-bold">事项管理</h2>
+                        <div class="flex gap-2">
+                            <button onclick="openRetroCheckin()" class="text-xs px-3 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 transition-all"><i class="fas fa-calendar-plus mr-1"></i>补打卡</button>
+                            <button onclick="openItemModal()" class="bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-xl transition-all">
+                                <i class="fas fa-plus mr-1"></i>新建事项
+                            </button>
+                        </div>
                     </div>
+
+                    <!-- Filters -->
+                    <div class="flex gap-2 mb-4 overflow-auto pb-2">
+                        <button onclick="filterItems('all')" id="filter-all" class="filter-btn px-4 py-2 rounded-lg bg-primary text-white text-sm whitespace-nowrap">全部</button>
+                        <button onclick="filterItems('todo')" id="filter-todo" class="filter-btn px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-sm whitespace-nowrap">待办</button>
+                        <button onclick="filterItems('habit')" id="filter-habit" class="filter-btn px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-sm whitespace-nowrap">习惯</button>
+                        <button onclick="filterItems('log')" id="filter-log" class="filter-btn px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-sm whitespace-nowrap">记录</button>
+                        <button onclick="filterItems('today')" id="filter-today" class="filter-btn px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-sm whitespace-nowrap">今天</button>
+                        <button onclick="filterItems('completed')" id="filter-completed" class="filter-btn px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-sm whitespace-nowrap">已完成</button>
+                        <button onclick="filterItems('archived')" id="filter-archived" class="filter-btn px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-sm whitespace-nowrap">归档</button>
+                    </div>
+
+                    <!-- Projects -->
+                    <div class="mb-4">
+                        <label class="text-sm text-gray-500 dark:text-gray-400 mb-2 block">项目筛选</label>
+                        <select id="project-filter" onchange="renderTasks()" class="w-full md:w-64 px-4 py-2 rounded-xl border dark:border-gray-700 dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary">
+                            <option value="">所有项目</option>
+                        </select>
+                    </div>
+
+                    <div id="item-list" class="grid md:grid-cols-3 gap-4"></div>
                 </div>
 
-                <div class="flex gap-2 mb-4 overflow-auto pb-2">
-                    <button onclick="setCalendarType('both')" id="cal-type-both" class="cal-type-btn px-3 py-1 rounded-lg bg-primary text-white text-xs">全部</button>
-                    <button onclick="setCalendarType('todo')" id="cal-type-todo" class="cal-type-btn px-3 py-1 rounded-lg bg-gray-200 dark:bg-gray-700 text-xs">待办</button>
-                    <button onclick="setCalendarType('habit')" id="cal-type-habit" class="cal-type-btn px-3 py-1 rounded-lg bg-gray-200 dark:bg-gray-700 text-xs">习惯</button>
-                    <button onclick="setCalendarType('log')" id="cal-type-log" class="cal-type-btn px-3 py-1 rounded-lg bg-gray-200 dark:bg-gray-700 text-xs">记录</button>
-                </div>
+                <div id="task-calendar-panel" class="task-panel hidden">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-2xl font-bold">日历视图</h2>
+                        <div class="flex gap-2">
+                            <button onclick="setCalendarView('week')" id="cal-view-week" class="px-4 py-2 rounded-lg bg-primary text-white text-sm">周</button>
+                            <button onclick="setCalendarView('month')" id="cal-view-month" class="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-sm">月</button>
+                            <button onclick="setCalendarView('year')" id="cal-view-year" class="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-sm">年</button>
+                        </div>
+                    </div>
 
-                <div id="calendar-container" class="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm"></div>
-            </div>
+                    <div class="flex gap-2 mb-4 overflow-auto pb-2">
+                        <button onclick="setCalendarType('both')" id="cal-type-both" class="cal-type-btn px-3 py-1 rounded-lg bg-primary text-white text-xs">全部</button>
+                        <button onclick="setCalendarType('todo')" id="cal-type-todo" class="cal-type-btn px-3 py-1 rounded-lg bg-gray-200 dark:bg-gray-700 text-xs">待办</button>
+                        <button onclick="setCalendarType('habit')" id="cal-type-habit" class="cal-type-btn px-3 py-1 rounded-lg bg-gray-200 dark:bg-gray-700 text-xs">习惯</button>
+                        <button onclick="setCalendarType('log')" id="cal-type-log" class="cal-type-btn px-3 py-1 rounded-lg bg-gray-200 dark:bg-gray-700 text-xs">记录</button>
+                    </div>
+
+                    <div id="calendar-container" class="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm"></div>
+                </div>
 
             <!-- New Schedule Modal -->
             <div id="new-schedule-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
@@ -409,75 +425,74 @@
                 </div>
             </div>
 
-            <!-- Schedule View -->
-            <div id="view-schedule" class="view-section hidden fade-in">
-                <!-- Schedule Type Tabs -->
-                <div id="schedule-tabs" class="flex gap-2 mb-6 overflow-auto pb-2">
-                    <!-- Populated by renderScheduleTabs() -->
-                </div>
-
-                <div class="flex justify-between items-center mb-6">
-                    <div class="flex items-center gap-2">
-                        <h2 class="text-2xl font-bold" id="schedule-title">运动课表</h2>
-                        <button onclick="editScheduleName()" class="text-gray-400 hover:text-primary p-1" title="修改名称"><i class="fas fa-pen text-sm"></i></button>
+                <div id="task-schedule-panel" class="task-panel hidden">
+                    <!-- Schedule Type Tabs -->
+                    <div id="schedule-tabs" class="flex gap-2 mb-6 overflow-auto pb-2">
+                        <!-- Populated by renderScheduleTabs() -->
                     </div>
-                    <div class="flex gap-2">
-                        <button onclick="toggleScheduleEditMode()" id="schedule-edit-btn" class="bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 px-4 py-2 rounded-xl transition-all">
-                            <i class="fas fa-edit mr-1"></i>编辑
-                        </button>
-                        <button onclick="openScheduleSettings()" class="bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-xl transition-all">
-                            <i class="fas fa-cog mr-1"></i>设置
-                        </button>
-                    </div>
-                </div>
 
-                <!-- Progress -->
-                <div class="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm mb-6">
-                    <div class="flex flex-wrap items-center gap-4">
-                        <div class="flex-1 min-w-[200px]">
-                            <div class="flex justify-between text-sm mb-1">
-                                <span class="text-gray-500 dark:text-gray-400">当前进度</span>
-                                <span id="schedule-progress-text" class="font-medium">0 / 0 天完成</span>
-                            </div>
-                            <div class="h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                                <div id="schedule-progress-bar" class="h-full bg-gradient-to-r from-primary to-secondary rounded-full transition-all" style="width: 0%"></div>
+                    <div class="flex justify-between items-center mb-6">
+                        <div class="flex items-center gap-2">
+                            <h2 class="text-2xl font-bold" id="schedule-title">运动课表</h2>
+                            <button onclick="editScheduleName()" class="text-gray-400 hover:text-primary p-1" title="修改名称"><i class="fas fa-pen text-sm"></i></button>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="toggleScheduleEditMode()" id="schedule-edit-btn" class="bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 px-4 py-2 rounded-xl transition-all">
+                                <i class="fas fa-edit mr-1"></i>编辑
+                            </button>
+                            <button onclick="openScheduleSettings()" class="bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-xl transition-all">
+                                <i class="fas fa-cog mr-1"></i>设置
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Progress -->
+                    <div class="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm mb-6">
+                        <div class="flex flex-wrap items-center gap-4">
+                            <div class="flex-1 min-w-[200px]">
+                                <div class="flex justify-between text-sm mb-1">
+                                    <span class="text-gray-500 dark:text-gray-400">当前进度</span>
+                                    <span id="schedule-progress-text" class="font-medium">0 / 0 天完成</span>
+                                </div>
+                                <div class="h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                                    <div id="schedule-progress-bar" class="h-full bg-gradient-to-r from-primary to-secondary rounded-full transition-all" style="width: 0%"></div>
+                                </div>
                             </div>
                         </div>
                     </div>
+
+                    <!-- Schedule Grid -->
+                    <div id="schedule-grid" class="space-y-4"></div>
                 </div>
 
-                <!-- Schedule Grid -->
-                <div id="schedule-grid" class="space-y-4"></div>
-            </div>
+                <div id="task-stats-panel" class="task-panel hidden">
+                    <h2 class="text-2xl font-bold mb-6">统计分析</h2>
 
-            <!-- Stats View -->
-            <div id="view-stats" class="view-section hidden fade-in">
-                <h2 class="text-2xl font-bold mb-6">统计分析</h2>
-
-                <div class="grid lg:grid-cols-2 gap-6 mb-6">
-                    <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm">
-                        <h3 class="text-lg font-semibold mb-4">习惯完成趋势（近7天）</h3>
-                        <canvas id="habit-trend-chart" height="200"></canvas>
+                    <div class="grid lg:grid-cols-2 gap-6 mb-6">
+                        <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm">
+                            <h3 class="text-lg font-semibold mb-4">习惯完成趋势（近7天）</h3>
+                            <canvas id="habit-trend-chart" height="200"></canvas>
+                        </div>
+                        <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm">
+                            <h3 class="text-lg font-semibold mb-4">习惯完成率</h3>
+                            <canvas id="habit-pie-chart" height="200"></canvas>
+                        </div>
                     </div>
-                    <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm">
-                        <h3 class="text-lg font-semibold mb-4">习惯完成率</h3>
-                        <canvas id="habit-pie-chart" height="200"></canvas>
+
+                    <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm mb-6">
+                        <h3 class="text-lg font-semibold mb-4">待办完成统计（近7天）</h3>
+                        <canvas id="todo-stats-chart" height="150"></canvas>
                     </div>
-                </div>
 
-                <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm mb-6">
-                    <h3 class="text-lg font-semibold mb-4">待办完成统计（近7天）</h3>
-                    <canvas id="todo-stats-chart" height="150"></canvas>
-                </div>
+                    <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm">
+                        <h3 class="text-lg font-semibold mb-4">习惯排行榜</h3>
+                        <div id="habit-ranking" class="space-y-3"></div>
+                    </div>
 
-                <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm">
-                    <h3 class="text-lg font-semibold mb-4">习惯排行榜</h3>
-                    <div id="habit-ranking" class="space-y-3"></div>
-                </div>
-
-                <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm mt-6">
-                    <h3 class="text-lg font-semibold mb-4">记录频率统计</h3>
-                    <canvas id="log-stats-chart" height="150"></canvas>
+                    <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm mt-6">
+                        <h3 class="text-lg font-semibold mb-4">记录频率统计</h3>
+                        <canvas id="log-stats-chart" height="150"></canvas>
+                    </div>
                 </div>
             </div>
             <!-- Bookshelf View -->
@@ -519,7 +534,7 @@
             <div class="text-right">
                 <div class="text-sm opacity-80">累计获得</div>
                 <div class="text-lg font-bold" id="wishes-earned-points">0</div>
-                <div class="text-xs opacity-70 mt-1">已兑换: <span id="wishes-spent-points">0</span></div>
+                <div class="text-xs opacity-70 mt-1">已达成: <span id="wishes-spent-points">0</span></div>
             </div>
         </div>
         <div class="flex gap-4 mt-3 text-xs">
@@ -545,7 +560,7 @@
 
     <!-- Tabs -->
     <div class="flex gap-2 mb-4">
-        <button onclick="switchWishTab('pending')" id="wish-tab-pending" class="px-4 py-2 rounded-xl bg-primary text-white text-sm">心愿清单</button>
+        <button onclick="switchWishTab('pending')" id="wish-tab-pending" class="px-4 py-2 rounded-xl bg-primary text-white text-sm">成就清单</button>
         <button onclick="switchWishTab('redeemed')" id="wish-tab-redeemed" class="px-4 py-2 rounded-xl bg-gray-200 dark:bg-gray-700 text-sm">已实现</button>
         <button onclick="switchWishTab('history')" id="wish-tab-history" class="px-4 py-2 rounded-xl bg-gray-200 dark:bg-gray-700 text-sm">积分记录</button>
     </div>
@@ -558,9 +573,91 @@
 
     <!-- Add Wish Button -->
     <button onclick="openAddWishModal()" class="w-full mt-3 py-3 rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-600 text-gray-400 hover:border-primary hover:text-primary transition-all text-sm">
-        <i class="fas fa-plus mr-1"></i>添加心愿
+        <i class="fas fa-plus mr-1"></i>添加成就
     </button>
 </div>
+
+            <!-- Settings View -->
+            <div id="view-settings" class="view-section hidden fade-in">
+                <h2 class="text-2xl font-bold mb-6">设置</h2>
+                
+                <div class="space-y-4">
+                    <!-- Theme -->
+                    <div class="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                                <i class="fas fa-moon"></i>
+                            </div>
+                            <div>
+                                <div class="font-medium">深色模式</div>
+                                <div class="text-xs text-gray-400">切换浅色/深色主题</div>
+                            </div>
+                        </div>
+                        <button onclick="toggleTheme()" class="px-4 py-2 rounded-xl bg-gray-200 dark:bg-gray-700 text-sm">切换</button>
+                    </div>
+
+                    <!-- Data Export/Import -->
+                    <div class="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm">
+                        <div class="flex items-center gap-3 mb-4">
+                            <div class="w-10 h-10 rounded-xl bg-success/10 flex items-center justify-center text-success">
+                                <i class="fas fa-database"></i>
+                            </div>
+                            <div>
+                                <div class="font-medium">数据管理</div>
+                                <div class="text-xs text-gray-400">备份与恢复</div>
+                            </div>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="exportData()" class="flex-1 py-2 rounded-xl bg-primary text-white text-sm"><i class="fas fa-download mr-1"></i>导出备份</button>
+                            <button onclick="importData()" class="flex-1 py-2 rounded-xl border dark:border-gray-600 text-sm"><i class="fas fa-upload mr-1"></i>导入备份</button>
+                        </div>
+                        <input type="file" id="import-file" class="hidden" accept=".json" onchange="handleImport(event)">
+                    </div>
+
+                    <!-- Schedule Config -->
+                    <div class="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-warning/10 flex items-center justify-center text-warning">
+                                <i class="fas fa-calendar-alt"></i>
+                            </div>
+                            <div>
+                                <div class="font-medium">课表同步设置</div>
+                                <div class="text-xs text-gray-400">配置课表与习惯的自动同步</div>
+                            </div>
+                        </div>
+                        <button onclick="openScheduleSettings()" class="px-4 py-2 rounded-xl bg-gray-200 dark:bg-gray-700 text-sm">配置</button>
+                    </div>
+
+                    <!-- Archive Management -->
+                    <div class="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm">
+                        <div class="flex items-center gap-3 mb-4">
+                            <div class="w-10 h-10 rounded-xl bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-500">
+                                <i class="fas fa-archive"></i>
+                            </div>
+                            <div>
+                                <div class="font-medium">归档管理</div>
+                                <div class="text-xs text-gray-400">查看和管理已归档项目</div>
+                            </div>
+                        </div>
+                        <button onclick="showView('tasks'); switchTaskTab('list'); filterItems('archived');" class="w-full py-2 rounded-xl border dark:border-gray-600 text-sm">查看归档项目</button>
+                    </div>
+
+                    <!-- Data Cleanup -->
+                    <div class="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm">
+                        <div class="flex items-center gap-3 mb-4">
+                            <div class="w-10 h-10 rounded-xl bg-danger/10 flex items-center justify-center text-danger">
+                                <i class="fas fa-trash-alt"></i>
+                            </div>
+                            <div>
+                                <div class="font-medium">数据清理</div>
+                                <div class="text-xs text-gray-400">清理已完成或过期数据</div>
+                            </div>
+                        </div>
+                        <button onclick="cleanupCompletedTodos()" class="w-full py-2 rounded-xl bg-danger/10 text-danger text-sm mb-2">清理已完成待办</button>
+                        <button onclick="if(confirm('确定要清空所有数据吗？此操作不可恢复！')) { localStorage.clear(); location.reload(); }" class="w-full py-2 rounded-xl border dark:border-gray-600 text-sm text-danger">清空所有数据</button>
+                    </div>
+                </div>
+            </div>
 
 <!-- Points Rules Modal -->
 <div id="points-rules-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center" onclick="event.target===this&&closePointsRulesModal()">
@@ -606,11 +703,11 @@
 <div id="edit-wish-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center" onclick="event.target===this&&closeEditWishModal()">
     <div class="bg-white dark:bg-gray-800 rounded-t-2xl sm:rounded-2xl p-5 w-full max-w-md" style="padding-bottom: max(1.25rem, env(safe-area-inset-bottom));" onclick="event.stopPropagation()">
         <div class="flex justify-between items-center mb-4">
-            <h3 class="text-lg font-bold">编辑心愿</h3>
+            <h3 class="text-lg font-bold">编辑成就</h3>
             <button onclick="closeEditWishModal()" class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"><i class="fas fa-times"></i></button>
         </div>
         <div class="space-y-4">
-            <div><label class="text-xs text-gray-500 block mb-1">心愿名称</label><input type="text" id="edit-wish-name" class="w-full px-4 py-2.5 rounded-xl border dark:border-gray-700 dark:bg-gray-800 text-sm"></div>
+            <div><label class="text-xs text-gray-500 block mb-1">成就名称</label><input type="text" id="edit-wish-name" class="w-full px-4 py-2.5 rounded-xl border dark:border-gray-700 dark:bg-gray-800 text-sm"></div>
             <div class="flex gap-2">
                 <div class="flex-1"><label class="text-xs text-gray-500 block mb-1">所需积分</label><input type="number" id="edit-wish-points" class="w-full px-4 py-2.5 rounded-xl border dark:border-gray-700 dark:bg-gray-800 text-sm" min="1"></div>
                 <div class="flex-1"><label class="text-xs text-gray-500 block mb-1">分类</label>
@@ -633,11 +730,11 @@
 <div id="add-wish-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center" onclick="event.target===this&&closeAddWishModal()">
     <div class="bg-white dark:bg-gray-800 rounded-t-2xl sm:rounded-2xl p-5 w-full max-w-md" style="padding-bottom: max(1.25rem, env(safe-area-inset-bottom));" onclick="event.stopPropagation()">
         <div class="flex justify-between items-center mb-4">
-            <h3 class="text-lg font-bold">添加心愿</h3>
+            <h3 class="text-lg font-bold">添加成就</h3>
             <button onclick="closeAddWishModal()" class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"><i class="fas fa-times"></i></button>
         </div>
         <div class="space-y-4">
-            <div><label class="text-xs text-gray-500 block mb-1">心愿名称 *</label><input type="text" id="wish-name" class="w-full px-4 py-2.5 rounded-xl border dark:border-gray-700 dark:bg-gray-800 text-sm" placeholder="例如：买一杯奶茶"></div>
+            <div><label class="text-xs text-gray-500 block mb-1">成就名称 *</label><input type="text" id="wish-name" class="w-full px-4 py-2.5 rounded-xl border dark:border-gray-700 dark:bg-gray-800 text-sm" placeholder="例如：买一杯奶茶"></div>
             <div class="flex gap-2">
                 <div class="flex-1"><label class="text-xs text-gray-500 block mb-1">所需积分 *</label><input type="number" id="wish-points" class="w-full px-4 py-2.5 rounded-xl border dark:border-gray-700 dark:bg-gray-800 text-sm" placeholder="50" min="1"></div>
                 <div class="flex-1"><label class="text-xs text-gray-500 block mb-1">分类</label>
@@ -650,7 +747,7 @@
             </div>
             <div><label class="text-xs text-gray-500 block mb-1">备注（可选）</label><input type="text" id="wish-desc" class="w-full px-4 py-2.5 rounded-xl border dark:border-gray-700 dark:bg-gray-800 text-sm" placeholder="补充说明"></div>
         </div>
-        <button onclick="saveWish()" class="w-full mt-4 py-3 rounded-xl bg-primary text-white font-medium hover:bg-primary/90"><i class="fas fa-plus mr-1"></i>添加心愿</button>
+        <button onclick="saveWish()" class="w-full mt-4 py-3 rounded-xl bg-primary text-white font-medium hover:bg-primary/90"><i class="fas fa-plus mr-1"></i>添加成就</button>
     </div>
 </div>
 
@@ -994,7 +1091,7 @@
             }
             currentView = view;
             if (view === 'today') renderToday();
-            if (view === 'tasks') renderTasks();
+            if (view === 'tasks') switchTaskTab(currentTaskTab);
             if (view === 'bookshelf') renderBookshelf();
             if (view === 'settings') renderSettings();
         }
@@ -1004,7 +1101,7 @@
         }
 
         // ==================== Dashboard ====================
-        function renderDashboard() {
+        function renderToday() {
             const today = getToday();
             document.getElementById('dashboard-date').textContent = new Date().toLocaleDateString('zh-CN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
@@ -1193,7 +1290,7 @@
         }
 
         // ==================== Items ====================
-        function renderItems() {
+        function renderTasks() {
             const projectFilter = document.getElementById('project-filter');
             projectFilter.innerHTML = '<option value="">所有项目</option>' + projects.map(p => `<option value="${escapeHtml(p)}">${escapeHtml(p)}</option>`).join('');
             projectFilter.value = currentProjectFilter;
@@ -1407,7 +1504,7 @@
             });
             document.getElementById('filter-' + filter).classList.add('bg-primary', 'text-white');
             document.getElementById('filter-' + filter).classList.remove('bg-gray-200', 'dark:bg-gray-700');
-            renderItems();
+            renderTasks();
         }
 
         // ==================== Item Modal ====================
@@ -1633,8 +1730,8 @@
 
             saveData();
             closeItemModal();
-            if (currentView === 'items') renderItems();
-            if (currentView === 'dashboard') renderDashboard();
+            if (currentView === 'tasks') renderTasks();
+            if (currentView === 'today') renderToday();
             if (currentView === 'calendar') renderCalendar();
         }
 
@@ -1670,8 +1767,8 @@
             }
 
             saveData();
-            if (currentView === 'items') renderItems();
-            if (currentView === 'dashboard') renderDashboard();
+            if (currentView === 'tasks') renderTasks();
+            if (currentView === 'today') renderToday();
             if (currentView === 'calendar') renderCalendar();
         }
 
@@ -1683,15 +1780,15 @@
                 if (confirm('确定永久删除这个事项吗？此操作不可恢复。')) {
                     items = items.filter(i => i.id !== id);
                     saveData();
-                    if (currentView === 'items') renderItems();
-                    if (currentView === 'dashboard') renderDashboard();
+                    if (currentView === 'tasks') renderTasks();
+                    if (currentView === 'today') renderToday();
                 }
             } else {
                 if (confirm('确定归档这个事项吗？归档后事项将隐藏，但历史记录会保留。')) {
                     item.archived = true;
                     saveData();
-                    if (currentView === 'items') renderItems();
-                    if (currentView === 'dashboard') renderDashboard();
+                    if (currentView === 'tasks') renderTasks();
+                    if (currentView === 'today') renderToday();
                 }
             }
         }
@@ -1701,7 +1798,7 @@
             if (item) {
                 item.archived = false;
                 saveData();
-                renderItems();
+                renderTasks();
             }
         }
 
@@ -1713,8 +1810,8 @@
             item.checks.push(now);
             addPoints('log', POINTS_CONFIG.logRecord, '记录: ' + item.title);
             saveData();
-            if (currentView === 'items') renderItems();
-            if (currentView === 'dashboard') renderDashboard();
+            if (currentView === 'tasks') renderTasks();
+            if (currentView === 'today') renderToday();
         }
 
         function deleteLogCheck(itemId, checkIndex) {
@@ -1723,8 +1820,8 @@
             if (!confirm('确定删除这条记录吗？')) return;
             item.checks.splice(checkIndex, 1);
             saveData();
-            if (currentView === 'items') renderItems();
-            if (currentView === 'dashboard') renderDashboard();
+            if (currentView === 'tasks') renderTasks();
+            if (currentView === 'today') renderToday();
             if (currentView === 'calendar') renderCalendar();
         }
 
@@ -1740,8 +1837,8 @@
             if (indices.length > 0) {
                 item.checks.splice(indices[indices.length - 1], 1);
                 saveData();
-                if (currentView === 'items') renderItems();
-                if (currentView === 'dashboard') renderDashboard();
+                if (currentView === 'tasks') renderTasks();
+                if (currentView === 'today') renderToday();
                 if (currentView === 'calendar') renderCalendar();
             }
         }
@@ -1852,6 +1949,25 @@
             const now = new Date();
             const daysDiff = Math.max(1, Math.ceil((now - created) / (1000 * 60 * 60 * 24)));
             return (item.checks.length / daysDiff).toFixed(1);
+        }
+
+
+        // ==================== Task Tabs ====================
+        let currentTaskTab = 'list';
+        function switchTaskTab(tab) {
+            currentTaskTab = tab;
+            document.querySelectorAll('.task-panel').forEach(p => p.classList.add('hidden'));
+            document.getElementById('task-' + tab + '-panel').classList.remove('hidden');
+            document.querySelectorAll('.task-tab-btn').forEach(b => {
+                b.classList.remove('bg-primary', 'text-white');
+                b.classList.add('bg-gray-200', 'dark:bg-gray-700');
+            });
+            document.getElementById('task-tab-' + tab).classList.add('bg-primary', 'text-white');
+            document.getElementById('task-tab-' + tab).classList.remove('bg-gray-200', 'dark:bg-gray-700');
+            if (tab === 'list') renderTasks();
+            if (tab === 'calendar') renderCalendar();
+            if (tab === 'schedule') renderSchedule();
+            if (tab === 'stats') renderStats();
         }
 
         // ==================== Calendar ====================
@@ -2270,6 +2386,18 @@
             });
         }
 
+
+        function cleanupCompletedTodos() {
+            const completed = items.filter(i => i.type === 'todo' && i.completed && !i.archived);
+            if (completed.length === 0) { alert('没有已完成的待办需要清理'); return; }
+            if (!confirm(`确定要归档 ${completed.length} 个已完成待办吗？`)) return;
+            completed.forEach(i => i.archived = true);
+            saveData();
+            alert('已完成待办已归档');
+            if (currentView === 'tasks') renderTasks();
+            if (currentView === 'today') renderToday();
+        }
+
         // ==================== Export/Import ====================
         async function exportData() {
             const bookshelfBackup = await exportBookshelfBackup();
@@ -2519,8 +2647,8 @@
                 if (habit.checkNotes) delete habit.checkNotes[dateStr];
             }
             saveData();
-            if (currentView === 'items') renderItems();
-            if (currentView === 'dashboard') renderDashboard();
+            if (currentView === 'tasks') renderTasks();
+            if (currentView === 'today') renderToday();
             if (currentView === 'calendar') renderCalendar();
         }
 
@@ -2891,7 +3019,7 @@
             });
             renderScheduleTabs();
 
-            showView('dashboard');
+            showView('today');
 
             // 初始化积分显示
             updatePointsDisplay();
@@ -2905,6 +3033,11 @@
                 });
             }
         });
+
+        // ==================== Settings ====================
+        function renderSettings() {
+            // Settings view is static HTML, nothing dynamic to render
+        }
 
         // ==================== 书架 - UI逻辑 ====================
 let bookTab = 'doing';
@@ -3153,7 +3286,7 @@ async function quickLogReading(bookId) {
     if (pages === null) return;
     await logReading(bookId, parseInt(pages) || 0);
     renderBookshelf();
-    renderDashboard();
+    renderToday();
 }
 
 async function quickLogEpisode(bookId) {
@@ -3175,7 +3308,7 @@ async function quickLogEpisode(bookId) {
             }
         }
         renderBookshelf();
-        renderDashboard();
+        renderToday();
     }
 }
 
@@ -3366,7 +3499,7 @@ function closeBookshelfStats() {
     document.getElementById('bookshelf-stats-modal').classList.add('hidden');
 }
 
-// ==================== 心愿兑换 - UI逻辑 ====================
+// ==================== 成就达成 - UI逻辑 ====================
 let wishTab = 'pending';
 
 function switchWishTab(tab) {
@@ -3415,7 +3548,7 @@ function renderWishesList() {
     const available = getAvailablePoints();
     
     if (wishes.length === 0) {
-        list.innerHTML = '<div class="text-center py-8 text-gray-400"><i class="fas fa-star text-3xl mb-2 block"></i>还没有心愿<br>添加一个心愿，用积分兑换吧！</div>';
+        list.innerHTML = '<div class="text-center py-8 text-gray-400"><i class="fas fa-star text-3xl mb-2 block"></i>还没有成就<br>添加一个成就，用积分达成吧！</div>';
         return;
     }
     
@@ -3444,7 +3577,7 @@ function renderWishesList() {
                     </div>
                 </div>
                 <div class="flex gap-1 flex-shrink-0">
-                    <button onclick="redeemWishAction('${w.id}')" class="w-8 h-8 rounded-lg ${canRedeem ? 'bg-success/10 text-success hover:bg-success/20' : 'bg-gray-100 dark:bg-gray-700 text-gray-300'} flex items-center justify-center text-xs" ${canRedeem ? '' : 'disabled'} title="兑换"><i class="fas fa-check"></i></button>
+                    <button onclick="redeemWishAction('${w.id}')" class="w-8 h-8 rounded-lg ${canRedeem ? 'bg-success/10 text-success hover:bg-success/20' : 'bg-gray-100 dark:bg-gray-700 text-gray-300'} flex items-center justify-center text-xs" ${canRedeem ? '' : 'disabled'} title="达成"><i class="fas fa-check"></i></button>
                     <button onclick="editWishAction('${w.id}')" class="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-xs hover:bg-gray-200"><i class="fas fa-pen"></i></button>
                     <button onclick="deleteWishAction('${w.id}')" class="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-xs hover:bg-gray-200 text-danger"><i class="fas fa-trash"></i></button>
                 </div>
@@ -3458,7 +3591,7 @@ function renderRedeemedWishes() {
     const wishes = getWishes().filter(w => w.status === 'redeemed');
     
     if (wishes.length === 0) {
-        list.innerHTML = '<div class="text-center py-8 text-gray-400"><i class="fas fa-trophy text-3xl mb-2 block"></i>还没有实现的心愿</div>';
+        list.innerHTML = '<div class="text-center py-8 text-gray-400"><i class="fas fa-trophy text-3xl mb-2 block"></i>还没有达成的成就</div>';
         return;
     }
     
@@ -3523,7 +3656,7 @@ function closeAddWishModal() {
 function saveWish() {
     const name = document.getElementById('wish-name').value.trim();
     const points = parseInt(document.getElementById('wish-points').value) || 0;
-    if (!name || points <= 0) { alert('请填写心愿名称和所需积分'); return; }
+    if (!name || points <= 0) { alert('请填写成就名称和所需积分'); return; }
     addWish({
         name: name,
         points: points,
@@ -3535,10 +3668,10 @@ function saveWish() {
 }
 
 function redeemWishAction(id) {
-    if (!confirm('确定要兑换这个心愿吗？')) return;
+    if (!confirm('确定要达成这个成就吗？')) return;
     const success = redeemWish(id);
     if (success) {
-        alert('兑换成功！');
+        alert('达成成功！');
         renderWishesView();
     } else {
         alert('积分不足！');
@@ -3564,7 +3697,7 @@ function saveEditWish() {
     const id = document.getElementById('edit-wish-id').value;
     const name = document.getElementById('edit-wish-name').value.trim();
     const points = parseInt(document.getElementById('edit-wish-points').value) || 0;
-    if (!name || points <= 0) { alert('请填写心愿名称和所需积分'); return; }
+    if (!name || points <= 0) { alert('请填写成就名称和所需积分'); return; }
     updateWish(id, {
         name: name,
         points: points,
@@ -3577,14 +3710,14 @@ function saveEditWish() {
 
 function deleteEditWish() {
     const id = document.getElementById('edit-wish-id').value;
-    if (!confirm('确定要删除这个心愿吗？')) return;
+    if (!confirm('确定要删除这个成就吗？')) return;
     deleteWish(id);
     closeEditWishModal();
     renderWishesList();
 }
 
 function deleteWishAction(id) {
-    if (!confirm('确定要删除这个心愿吗？')) return;
+    if (!confirm('确定要删除这个成就吗？')) return;
     deleteWish(id);
     renderWishesList();
 }
@@ -3700,7 +3833,7 @@ function toggleRetroCheckin(itemId, dateStr) {
     saveData();
     renderRetroCheckinList(dateStr);
     if (currentView === 'calendar') renderCalendar();
-    if (currentView === 'dashboard') renderDashboard();
+    if (currentView === 'today') renderToday();
 }
     </script>
 
