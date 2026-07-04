@@ -183,51 +183,29 @@
         <aside class="w-64 hidden md:flex flex-col" style="background: var(--surface); box-shadow: var(--shadow);">
             <div class="p-6 border-b dark:border-gray-700">
                 <h1 class="text-2xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-                    <i class="fas fa-seedling mr-2"></i>习惯追踪
+                    <i class="fas fa-calendar-check mr-2"></i>日程管理
                 </h1>
             </div>
             <nav class="flex-1 p-4 space-y-2">
-                <button onclick="showView('dashboard')" id="nav-dashboard" class="nav-btn w-full flex items-center px-4 py-3 rounded-xl bg-primary text-white transition-all">
-                    <i class="fas fa-home w-6"></i><span>总览</span>
+                <button onclick="showView('today')" id="nav-today" class="nav-btn w-full flex items-center px-4 py-3 rounded-xl bg-primary text-white transition-all">
+                    <i class="fas fa-sun w-6"></i><span>今日</span>
                 </button>
-                <button onclick="showView('items')" id="nav-items" class="nav-btn w-full flex items-center px-4 py-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-all">
-                    <i class="fas fa-tasks w-6"></i><span>事项管理</span>
-                </button>
-                <button onclick="showView('calendar')" id="nav-calendar" class="nav-btn w-full flex items-center px-4 py-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-all">
-                    <i class="fas fa-calendar-alt w-6"></i><span>日历视图</span>
-                </button>
-                <button onclick="showView('schedule')" id="nav-schedule" class="nav-btn w-full flex items-center px-4 py-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-all">
-                    <i class="fas fa-clipboard-list w-6"></i><span>课表</span>
+                <button onclick="showView('tasks')" id="nav-tasks" class="nav-btn w-full flex items-center px-4 py-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-all">
+                    <i class="fas fa-tasks w-6"></i><span>任务</span>
                 </button>
                 <button onclick="showView('bookshelf')" id="nav-bookshelf" class="nav-btn w-full flex items-center px-4 py-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-all">
                     <i class="fas fa-book-reader w-6"></i><span>书影</span>
                 </button>
-                <button onclick="showView('wishes')" id="nav-wishes" class="nav-btn w-full flex items-center px-4 py-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-all">
-                    <i class="fas fa-star w-6"></i><span>心愿兑换</span>
-                    <span id="points-badge" class="ml-auto bg-warning text-white text-xs px-2 py-0.5 rounded-full">0</span>
-                </button>
-                <button onclick="showView('stats')" id="nav-stats" class="nav-btn w-full flex items-center px-4 py-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-all">
-                    <i class="fas fa-chart-pie w-6"></i><span>统计分析</span>
+                <button onclick="showView('settings')" id="nav-settings" class="nav-btn w-full flex items-center px-4 py-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-all">
+                    <i class="fas fa-cog w-6"></i><span>设置</span>
                 </button>
             </nav>
-            <div class="p-4 border-t" style="border-color: var(--rule);">
-                <button onclick="exportData()" class="w-full flex items-center px-4 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-sm transition-all">
-                    <i class="fas fa-download w-6"></i><span>导出数据</span>
-                </button>
-                <button onclick="importData()" class="w-full flex items-center px-4 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-sm transition-all">
-                    <i class="fas fa-upload w-6"></i><span>导入数据</span>
-                </button>
-                <button onclick="toggleTheme()" class="w-full flex items-center px-4 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-sm transition-all">
-                    <i class="fas fa-moon w-6 dark:hidden"></i><i class="fas fa-sun w-6 hidden dark:inline"></i>
-                    <span class="dark:hidden">深色模式</span><span class="hidden dark:inline">浅色模式</span>
-                </button>
-            </div>
         </aside>
 
         <!-- Mobile Header -->
         <div class="md:hidden fixed top-0 left-0 right-0 z-50 px-4 py-3 flex justify-between items-center" style="padding-top: max(0.75rem, env(safe-area-inset-top)); background: rgba(255,255,255,0.82); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-bottom: 1px solid var(--rule); box-shadow: var(--shadow-sm);">
             <h1 class="text-lg font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-                <i class="fas fa-seedling mr-1"></i>习惯追踪
+                <i class="fas fa-calendar-check mr-1"></i>日程管理
             </h1>
             <button onclick="toggleMobileMenu()" class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700" id="mobile-menu-btn">
                 <i class="fas fa-bars text-xl"></i>
@@ -237,37 +215,17 @@
         <!-- Mobile Menu -->
         <div id="mobile-menu" class="hidden fixed inset-0 bg-black/50 z-[60] md:hidden" onclick="toggleMobileMenu()">
             <div class="absolute right-0 top-0 bottom-0 w-64 p-4 space-y-2" style="padding-top: max(1rem, env(safe-area-inset-top)); background: var(--surface); box-shadow: var(--shadow-md); backdrop-filter: blur(8px);" onclick="event.stopPropagation()">
-                <button onclick="showView('dashboard'); toggleMobileMenu()" class="w-full flex items-center px-4 py-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700">
-                    <i class="fas fa-home w-6"></i><span>总览</span>
+                <button onclick="showView('today'); toggleMobileMenu()" class="w-full flex items-center px-4 py-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700">
+                    <i class="fas fa-sun w-6"></i><span>今日</span>
                 </button>
-                <button onclick="showView('items'); toggleMobileMenu()" class="w-full flex items-center px-4 py-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700">
-                    <i class="fas fa-tasks w-6"></i><span>事项管理</span>
-                </button>
-                <button onclick="showView('calendar'); toggleMobileMenu()" class="w-full flex items-center px-4 py-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700">
-                    <i class="fas fa-calendar-alt w-6"></i><span>日历视图</span>
-                </button>
-                <button onclick="showView('schedule'); toggleMobileMenu()" class="w-full flex items-center px-4 py-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700">
-                    <i class="fas fa-clipboard-list w-6"></i><span>课表</span>
+                <button onclick="showView('tasks'); toggleMobileMenu()" class="w-full flex items-center px-4 py-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700">
+                    <i class="fas fa-tasks w-6"></i><span>任务</span>
                 </button>
                 <button onclick="showView('bookshelf'); toggleMobileMenu()" class="w-full flex items-center px-4 py-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700">
                     <i class="fas fa-book-reader w-6"></i><span>书影</span>
                 </button>
-                <button onclick="showView('wishes'); toggleMobileMenu()" class="w-full flex items-center px-4 py-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700">
-                    <i class="fas fa-star w-6"></i><span>心愿兑换</span>
-                </button>
-                <button onclick="showView('stats'); toggleMobileMenu()" class="w-full flex items-center px-4 py-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700">
-                    <i class="fas fa-chart-pie w-6"></i><span>统计分析</span>
-                </button>
-                <hr class="dark:border-gray-700">
-                <button onclick="exportData()" class="w-full flex items-center px-4 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-sm">
-                    <i class="fas fa-download w-6"></i><span>导出数据</span>
-                </button>
-                <button onclick="importData()" class="w-full flex items-center px-4 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-sm">
-                    <i class="fas fa-upload w-6"></i><span>导入数据</span>
-                </button>
-                <button onclick="toggleTheme()" class="w-full flex items-center px-4 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-sm">
-                    <i class="fas fa-moon w-6 dark:hidden"></i><i class="fas fa-sun w-6 hidden dark:inline"></i>
-                    <span class="dark:hidden">深色模式</span><span class="hidden dark:inline">浅色模式</span>
+                <button onclick="showView('settings'); toggleMobileMenu()" class="w-full flex items-center px-4 py-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700">
+                    <i class="fas fa-cog w-6"></i><span>设置</span>
                 </button>
             </div>
         </div>
@@ -275,8 +233,8 @@
         <!-- Main Content -->
         <main class="flex-1 p-4 md:p-8 mt-14 md:mt-0 overflow-auto">
             <div class="max-w-4xl mx-auto">
-            <!-- Dashboard View -->
-            <div id="view-dashboard" class="view-section fade-in">
+            <!-- Today View -->
+            <div id="view-today" class="view-section fade-in">
                 <div class="mb-6">
                     <h2 class="text-3xl font-bold mb-2">你好！👋</h2>
                     <p class="text-gray-500 dark:text-gray-400" id="dashboard-date"></p>
@@ -1035,17 +993,10 @@
                 activeBtn.classList.remove('hover:bg-gray-100', 'dark:hover:bg-gray-700');
             }
             currentView = view;
-            if (view === 'dashboard') renderDashboard();
-            if (view === 'items') renderItems();
-            if (view === 'calendar') renderCalendar();
-            if (view === 'schedule') renderSchedule();
-            if (view === 'stats') renderStats();
-            if (view === 'bookshelf') {
-                renderBookshelf();
-            }
-            if (view === 'wishes') {
-                renderWishesView();
-            }
+            if (view === 'today') renderToday();
+            if (view === 'tasks') renderTasks();
+            if (view === 'bookshelf') renderBookshelf();
+            if (view === 'settings') renderSettings();
         }
 
         function toggleMobileMenu() {
