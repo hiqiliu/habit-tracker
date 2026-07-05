@@ -2803,6 +2803,10 @@
                 const schedules = JSON.parse(custom);
                 schedules.forEach(s => {
                     SCHEDULE_CONFIGS[s.id] = s.config;
+                    // Restore function lost in JSON serialization
+                    if (!SCHEDULE_CONFIGS[s.id].getLevel) {
+                        SCHEDULE_CONFIGS[s.id].getLevel = (week) => '第 ' + week + ' 周';
+                    }
                 });
             }
         }
@@ -2957,14 +2961,6 @@
         // ==================== Init ====================
         document.addEventListener('DOMContentLoaded', function() {
             migrateData();
-
-            // Load custom schedule if exists
-            ['exercise', 'english', 'finance'].forEach(type => {
-                const custom = localStorage.getItem('ht_schedule_custom_' + type);
-                if (custom) {
-                    SCHEDULE_CONFIGS[type].schedule = JSON.parse(custom);
-                }
-            });
 
             // Load and init custom schedules
             loadCustomSchedules();
