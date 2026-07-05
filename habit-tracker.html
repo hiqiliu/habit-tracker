@@ -2491,15 +2491,6 @@
         // ==================== Schedule ====================
         const SCHEDULE_CONFIGS = {};
 
-        // Load custom schedule names
-        const savedNames = localStorage.getItem('ht_schedule_names');
-        if (savedNames) {
-            const names = JSON.parse(savedNames);
-            if (names.exercise) SCHEDULE_CONFIGS.exercise.name = names.exercise;
-            if (names.english) SCHEDULE_CONFIGS.english.name = names.english;
-            if (names.finance) SCHEDULE_CONFIGS.finance.name = names.finance;
-        }
-
         // Load custom habit sync rules
         const savedRules = localStorage.getItem('ht_schedule_habit_rules');
         if (savedRules) {
@@ -2980,6 +2971,11 @@
                 }
             });
             renderScheduleTabs();
+            // Set currentScheduleType to first available if invalid
+            if (!SCHEDULE_CONFIGS[currentScheduleType]) {
+                const keys = Object.keys(SCHEDULE_CONFIGS);
+                currentScheduleType = keys.length > 0 ? keys[0] : null;
+            }
 
             showView('today');
 
