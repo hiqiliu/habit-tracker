@@ -2649,7 +2649,10 @@
                             <div>
                                 <h3 class="font-bold text-lg">第 ${week.week} 周</h3>
                                 ${scheduleEditMode ? `
-                                <input type="text" value="${escapeHtml(level)}" onchange="updateWeekLabel(${week.week}, this.value)" class="text-xs px-2 py-1 rounded-lg border dark:border-gray-600 dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-primary w-40">
+                                <div class="flex items-center gap-1 mt-1">
+                                    <input type="text" value="${escapeHtml(level)}" onblur="updateWeekLabel(${week.week}, this.value)" onkeydown="if(event.key==='Enter'){this.blur();}" class="text-xs px-2 py-1 rounded-lg border dark:border-gray-600 dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-primary w-40">
+                                    <span class="text-[10px] text-gray-400">↵</span>
+                                </div>
                                 ` : `
                                 <span class="text-xs text-gray-400">${level}</span>
                                 `}
