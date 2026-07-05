@@ -14,9 +14,6 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="EXERCISE_SCHEDULE.js"></script>
-    <script src="ENGLISH_SCHEDULE.js"></script>
-    <script src="FINANCE_SCHEDULE.js"></script>
     <script src="bookshelf-db.js"></script>
     <script src="points-db.js"></script>
     <script>
@@ -971,7 +968,7 @@
         let currentLogIcon = 'fa-star';
         let selectedWeekDays = [];
         let charts = {};
-        let currentScheduleType = localStorage.getItem('ht_current_schedule') || 'exercise';
+        let currentScheduleType = null;
         let scheduleEditMode = false;
         let scheduleData = {
             exercise: { checks: JSON.parse(localStorage.getItem('ht_schedule_checks_exercise') || '[]') },
@@ -2492,59 +2489,7 @@
         }
 
         // ==================== Schedule ====================
-        const SCHEDULE_CONFIGS = {
-            exercise: {
-                name: '运动课表',
-                icon: 'fa-dumbbell',
-                habitName: '运动',
-                habitProject: '健康',
-                habitIcon: 'fa-dumbbell',
-                habitColor: '#ef4444',
-                habitNote: '运动课表自动同步',
-                totalDays: 84,
-                totalWeeks: 12,
-                getLevel: (week) => {
-                    if (week <= 4) return '核心流动期';
-                    if (week <= 8) return '体式期';
-                    if (week <= 11) return '综合期';
-                    return '生理期';
-                },
-                schedule: typeof EXERCISE_SCHEDULE !== 'undefined' ? EXERCISE_SCHEDULE : []
-            },
-            english: {
-                name: '英语课表',
-                icon: 'fa-book',
-                habitName: '学习',
-                habitProject: '学习',
-                habitIcon: 'fa-book',
-                habitColor: '#3b82f6',
-                habitNote: '英语课表自动同步',
-                totalDays: 70,
-                totalWeeks: 10,
-                getLevel: (week) => {
-                    if (week <= 5) return '基础突破期·日课';
-                    return '进阶提升期·输入';
-                },
-                schedule: typeof ENGLISH_SCHEDULE !== 'undefined' ? ENGLISH_SCHEDULE : []
-            },
-            finance: {
-                name: '理财课表',
-                icon: 'fa-chart-line',
-                habitName: '工作',
-                habitProject: '理财',
-                habitIcon: 'fa-chart-line',
-                habitColor: '#10b981',
-                habitNote: '理财课表自动同步',
-                totalDays: 82,
-                totalWeeks: 12,
-                getLevel: (week) => {
-                    if (week <= 4) return '第一阶段·投资基础';
-                    if (week <= 8) return '第二阶段·策略学习';
-                    return '第三阶段·策略构建与实盘';
-                },
-                schedule: typeof FINANCE_SCHEDULE !== 'undefined' ? FINANCE_SCHEDULE : []
-            }
-        };
+        const SCHEDULE_CONFIGS = {};
 
         // Load custom schedule names
         const savedNames = localStorage.getItem('ht_schedule_names');
@@ -2658,6 +2603,7 @@
 
         function renderSchedule() {
             const config = SCHEDULE_CONFIGS[currentScheduleType];
+            if (!config) { renderEmptySchedule(); return; }
 
             // Update tab styles
             document.querySelectorAll('.schedule-tab-btn').forEach(btn => {
@@ -2932,7 +2878,13 @@
             localStorage.removeItem('ht_schedule_custom_' + id);
             saveCustomSchedules();
             renderScheduleTabs();
-            switchScheduleType('exercise');
+            // Switch to first available schedule or show empty
+            const keys = Object.keys(SCHEDULE_CONFIGS);
+            if (keys.length > 0) {
+                switchScheduleType(keys[0]);
+            } else {
+                renderEmptySchedule();
+            }
         }
 
         function renderScheduleTabs() {
@@ -2953,6 +2905,16 @@
                 </button>
             `;
             container.innerHTML = html;
+        }
+
+        function renderEmptySchedule() {
+            const container = document.getElementById('schedule-content');
+            if (!container) return;
+            container.innerHTML = `
+                <div class="text-center py-16">
+                    <i class="fas fa-clipboard-list text-4xl text-gray-300 dark:text-gray-600 mb-4"></i>
+                    <p class="text-gray-400 mb-4">暂无课表，点击 + 创建一个</p>
+                </div>`;
         }
 
         function openScheduleSettings() {
