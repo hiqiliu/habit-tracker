@@ -2504,9 +2504,9 @@
         const savedRules = localStorage.getItem('ht_schedule_habit_rules');
         if (savedRules) {
             const rules = JSON.parse(savedRules);
-            ['exercise', 'english', 'finance'].forEach(type => {
-                if (rules[type]) {
-                    Object.assign(SCHEDULE_CONFIGS[type], rules[type]);
+            Object.entries(rules).forEach(([type, rule]) => {
+                if (SCHEDULE_CONFIGS[type]) {
+                    Object.assign(SCHEDULE_CONFIGS[type], rule);
                 }
             });
         }
@@ -2776,17 +2776,24 @@
 
         function saveScheduleData() {
             const config = SCHEDULE_CONFIGS[currentScheduleType];
+            if (!config) return;
             localStorage.setItem('ht_schedule_custom_' + currentScheduleType, JSON.stringify(config.schedule));
-            localStorage.setItem('ht_schedule_names', JSON.stringify({
-                exercise: SCHEDULE_CONFIGS.exercise.name,
-                english: SCHEDULE_CONFIGS.english.name,
-                finance: SCHEDULE_CONFIGS.finance.name
-            }));
-            localStorage.setItem('ht_schedule_habit_rules', JSON.stringify({
-                exercise: { habitName: SCHEDULE_CONFIGS.exercise.habitName, habitProject: SCHEDULE_CONFIGS.exercise.habitProject, habitIcon: SCHEDULE_CONFIGS.exercise.habitIcon, habitColor: SCHEDULE_CONFIGS.exercise.habitColor },
-                english: { habitName: SCHEDULE_CONFIGS.english.habitName, habitProject: SCHEDULE_CONFIGS.english.habitProject, habitIcon: SCHEDULE_CONFIGS.english.habitIcon, habitColor: SCHEDULE_CONFIGS.english.habitColor },
-                finance: { habitName: SCHEDULE_CONFIGS.finance.habitName, habitProject: SCHEDULE_CONFIGS.finance.habitProject, habitIcon: SCHEDULE_CONFIGS.finance.habitIcon, habitColor: SCHEDULE_CONFIGS.finance.habitColor }
-            }));
+            // Save habit sync rules for current schedule
+            const rules = {};
+            rules[currentScheduleType] = {
+                habitName: config.habitName,
+                habitProject: config.habitProject,
+                habitIcon: config.habitIcon,
+                habitColor: config.habitColor
+            };
+            // Merge with existing rules
+            const savedRules = localStorage.getItem('ht_schedule_habit_rules');
+            if (savedRules) {
+                Object.assign(rules, JSON.parse(savedRules));
+            }
+            localStorage.setItem('ht_schedule_habit_rules', JSON.stringify(rules));
+            // Also save via saveCustomSchedules for the config itself
+            saveCustomSchedules();
         }
 
         function resetScheduleData() {
