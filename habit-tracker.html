@@ -2642,13 +2642,17 @@
             grid.innerHTML = weeks.map(week => {
                 const weekChecked = week.days.filter(d => d.type !== '休息').map(d => isScheduleDayChecked(d.day)).filter(Boolean).length;
                 const weekTotal = week.days.filter(d => d.type !== '休息').length;
-                const level = config.getLevel(week.week);
+                const level = config.weekLabels && config.weekLabels[week.week] ? config.weekLabels[week.week] : config.getLevel(week.week);
                 return `
                     <div class="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm">
                         <div class="flex items-center justify-between mb-4">
                             <div>
                                 <h3 class="font-bold text-lg">第 ${week.week} 周</h3>
+                                ${scheduleEditMode ? `
+                                <input type="text" value="${escapeHtml(level)}" onchange="updateWeekLabel(${week.week}, this.value)" class="text-xs px-2 py-1 rounded-lg border dark:border-gray-600 dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-primary w-40">
+                                ` : `
                                 <span class="text-xs text-gray-400">${level}</span>
+                                `}
                             </div>
                             ${!scheduleEditMode ? `
                             <div class="text-sm text-gray-500">
@@ -2743,6 +2747,13 @@
                 saveScheduleData();
                 renderSchedule();
             }
+        }
+
+        function updateWeekLabel(week, label) {
+            const config = SCHEDULE_CONFIGS[currentScheduleType];
+            if (!config.weekLabels) config.weekLabels = {};
+            config.weekLabels[week] = label;
+            saveScheduleData();
         }
 
         function deleteScheduleDay(day) {
