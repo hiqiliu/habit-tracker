@@ -4935,7 +4935,7 @@ function renderAsmList(mod) {
   // Add button
   html += '<div class="form-row" style="margin-bottom:10px;">'
     + '<button class="btn-sm primary" onclick="showAddAsm()" style="flex:1;">+ 新建评估</button>'
-    + '<button class="btn-sm" onclick="importPosturePlan()" style="flex:1;">📥 导入体态矫正方案</button>'
+    + '<button class="btn-sm" onclick="if(confirm(\'重新导入将覆盖现有体态方案数据，确定？\')){delete state._postureImportedV3;importPosturePlanV3();renderPage(\'gym\');toast(\'体态方案已更新\');}" style="flex:1;">🔄 更新体态方案</button>'
     + '</div>';
 
   if (list.length === 0) {
@@ -7912,6 +7912,268 @@ function importPosturePlanV2() {
   console.log('[体态矫正方案 V2] 导入完成：2个课表(6+7课时) + 13个运动资源 + 4个灵感条目');
 }
 
+// ─── 体态矫正方案 V3（基于核磁+力线综合评估）───
+function importPosturePlanV3() {
+  if (state._postureImportedV3) return;
+  if (!state.gym) state.gym = {};
+  if (!state.gym.plans) state.gym.plans = [];
+  if (!state.gym.resources) state.gym.resources = [];
+  if (!state.gym.resourceTags) state.gym.resourceTags = [];
+  if (!state.gym.assessments) state.gym.assessments = [];
+  if (!state.tips) state.tips = { items:[], tags:[] };
+  if (!state.tips.items) state.tips.items = [];
+  if (!state.tips.tags) state.tips.tags = [];
+
+  var ts = Date.now();
+  var todayStr = today();
+
+  // ── 0. 清理旧V1/V2数据 ──
+  state.gym.plans = (state.gym.plans || []).filter(function(p) {
+    return !(p.id && (p.id.indexOf('posture-daily-') === 0 || p.id.indexOf('posture-activate-') === 0 || p.id.indexOf('posture-v3-') === 0));
+  });
+  state.gym.resources = (state.gym.resources || []).filter(function(r) {
+    return !(r.id && (r.id.indexOf('posture-res-') === 0 || r.id.indexOf('res_posture_') === 0 || r.id.indexOf('res_group_daily_') === 0 || r.id.indexOf('res_group_full_') === 0 || r.id.indexOf('posture-v3-') === 0));
+  });
+  state.tips.items = (state.tips.items || []).filter(function(item) {
+    return !(item.id && item.id.indexOf('posture-tip-') === 0);
+  });
+  state.gym.assessments = (state.gym.assessments || []).filter(function(a) {
+    return a.title !== '体态矫正评估' && a.title !== '体态综合评估（核磁+力线）';
+  });
+
+  // ── 1. 添加资源标签 ──
+  ['体态矫正','每日训练','隔天激活','康复松解','核心','臀肌','骨盆','足踝','步态','拉伸','松解'].forEach(function(t) {
+    if (state.gym.resourceTags.indexOf(t) === -1) state.gym.resourceTags.push(t);
+  });
+
+  // ── 2. 创建运动资源 ──
+  var rc = 0;
+  function createRes(title, note, tags, category) {
+    var id = 'posture-v3-res-' + ts + '-' + (++rc);
+    state.gym.resources.push({
+      id: id, title: title, link: '', note: note,
+      category: category || 'posture', tags: tags || ['体态矫正'],
+      createdAt: todayStr
+    });
+    return id;
+  }
+
+  // 每日训练 ①-⑥ + 松解
+  var d01 = createRes('① 骨盆时钟',
+    '12点方向完全不做前倾；重点找中立位；骶骨下垫薄毛巾。\n10分钟。',
+    ['体态矫正','每日训练','骨盆','核心'], 'posture');
+  var d02 = createRes('② 髂腰肌拉伸',
+    '骨盆后倾再做，不弹震，右侧多保持；轻柔。\n每侧30-60秒，2-3组。',
+    ['体态矫正','每日训练','骨盆','拉伸'], 'stretch');
+  var d03 = createRes('③ 死虫式',
+    '腰部始终不离地；骶骨下可垫薄毛巾。\n每侧8-10次，3组。',
+    ['体态矫正','每日训练','核心'], 'strength');
+  var d04 = createRes('④ 股四头肌拉伸',
+    '侧卧版，下方腿弯屈垫枕头固定骨盆。\n每侧30秒，2组。',
+    ['体态矫正','每日训练','拉伸'], 'stretch');
+  var d05 = createRes('⑤ 短足运动',
+    '脚趾不蜷，足弓主动拱起。\n10次，3组。',
+    ['体态矫正','每日训练','足踝','步态'], 'posture');
+  var d06 = createRes('⑥ 踝关节背屈',
+    '弓步站立不蹲下，重心70%在后腿；右脚微内旋5-10°；可压住大脚趾防代偿。\n每侧10次，2组。',
+    ['体态矫正','每日训练','足踝','步态'], 'posture');
+  var d07 = createRes('泡沫轴松解股外侧肌',
+    '侧卧，身体微前倾压前外侧；右2个点，左1个点。\n每点60秒。',
+    ['体态矫正','每日训练','松解'], 'stretch');
+
+  // 隔天激活 ⑦-⑮
+  var a01 = createRes('⑦ 臀桥（夹砖版优先）',
+    '小幅度，身体一条线即停；夹瑜伽砖稳定SI关节；慢速3秒上3秒下。\n12-15次，3组。',
+    ['体态矫正','隔天激活','臀肌','骨盆'], 'strength');
+  var a02 = createRes('⑧ 弹力带俯卧勾腿',
+    '肚子下垫毛巾顶骨盆后倾；大腿不离开地面；脚尖朝后不外撇。\n每侧10-12次，3组。',
+    ['体态矫正','隔天激活','臀肌'], 'strength');
+  var a03 = createRes('⑨ 侧卧蚌式',
+    '右侧多加1组（右侧臀中肌更弱）。\n右15-20次，左10-12次，3组。',
+    ['体态矫正','隔天激活','臀肌'], 'strength');
+  var a04 = createRes('⑩ 单腿站立',
+    '膝盖微屈不锁死；足弓主动发力；右侧多加15秒。\n每侧30秒，3组。',
+    ['体态矫正','隔天激活','臀肌','核心'], 'strength');
+  var a05 = createRes('⑪ 鸟狗式',
+    '脊柱中立不塌腰。\n每侧8-10次，3组。',
+    ['体态矫正','隔天激活','核心'], 'strength');
+  var a06 = createRes('⑫ 靠墙静蹲',
+    '暂停（股外侧肌酸胀期）——等酸胀消失后从15秒恢复。',
+    ['体态矫正','隔天激活','骨盆'], 'strength');
+  var a07 = createRes('⑬ 泡沫轴放松',
+    '右侧QL + 右侧TFL + 右大腿前外侧重点；不滚骶骨。\n5分钟。',
+    ['体态矫正','隔天激活','松解'], 'stretch');
+  var a08 = createRes('⑭ 仰卧骶骨放松',
+    '腿搭高处版（沙发/椅子），完全放松；骶骨下垫薄毛巾。\n10分钟。',
+    ['体态矫正','隔天激活','松解'], 'stretch');
+  var a09 = createRes('⑮ 步态再训练',
+    '沿直线走，脚尖朝前。\n3分钟。',
+    ['体态矫正','隔天激活','步态'], 'posture');
+
+  // 康复松解 S1-S4 + ⑯⑱
+  var r01 = createRes('S1 网球松解竖脊肌下段',
+    '仰卧，网球放腰椎两侧（离脊柱2-3cm），压住不动。\n每点1-2分钟。',
+    ['体态矫正','康复松解','松解'], 'stretch');
+  var r02 = createRes('S2 网球松解右侧腰方肌',
+    '侧卧，网球放腰部侧面。\n右侧重点，1-2分钟。',
+    ['体态矫正','康复松解','松解'], 'stretch');
+  var r03 = createRes('S3 网球松解骶骨旁',
+    '仰卧，网球放骶骨两侧（不压骶骨正中）。\n每侧1-2分钟。',
+    ['体态矫正','康复松解','松解'], 'stretch');
+  var r04 = createRes('S4 热敷腰部',
+    '40-45°C，隔一层衣服，放腰椎两侧肌肉区。\n15-20分钟。',
+    ['体态矫正','康复松解','松解'], 'stretch');
+  var r05 = createRes('⑯ 麦肯基伸展法',
+    '俯卧放松1-2分钟 → 前臂撑起上半身，髋贴地 → 保持30秒 → 放松。\n疼痛向腿部放射立即停。\n5-8次。',
+    ['体态矫正','康复松解','拉伸'], 'stretch');
+  var r06 = createRes('⑱ 仰卧屈膝滚动',
+    '仰卧抱膝，轻轻左右摇摆按摩下背部。\n2-3分钟。',
+    ['体态矫正','康复松解','松解'], 'stretch');
+  var r07 = createRes('⑳ 仰卧腹式呼吸',
+    '腿搭高处，手放腹部，吸气腹部鼓起，呼气下沉。\n3分钟。',
+    ['体态矫正','康复松解','核心'], 'stretch');
+
+  // 创建动作组
+  var gc = 0;
+  function createGroup(title, memberIds, tags) {
+    var id = 'posture-v3-grp-' + ts + '-' + (++gc);
+    state.gym.resources.push({
+      id: id, title: title, link: '', note: '',
+      category: 'posture', tags: tags || ['体态矫正'],
+      createdAt: todayStr, isGroup: true, memberIds: memberIds.filter(function(x){ return x; })
+    });
+    return id;
+  }
+
+  createGroup('每日训练（①-⑥+松解）', [d01,d02,d03,d04,d05,d06,d07], ['体态矫正','每日训练']);
+  createGroup('隔天激活训练（⑦-⑮）', [a01,a02,a03,a04,a05,a06,a07,a08,a09], ['体态矫正','隔天激活']);
+  createGroup('康复松解（S1-S4+⑯⑱⑳）', [r01,r02,r03,r04,r05,r06,r07], ['体态矫正','康复松解']);
+
+  // ── 3. 创建运动课表 ──
+  var plan1Items = [
+    {session:1, content:'① 骨盆时钟@10\n12点方向完全不做前倾；重点找中立位；骶骨下垫薄毛巾。', done:false, doneDate:'', syncedWorkoutId:''},
+    {session:2, content:'② 髂腰肌拉伸@5\n骨盆后倾再做，不弹震，右侧多保持；轻柔。每侧30-60秒，2-3组。', done:false, doneDate:'', syncedWorkoutId:''},
+    {session:3, content:'③ 死虫式@5\n腰部始终不离地；骶骨下可垫薄毛巾。每侧8-10次，3组。', done:false, doneDate:'', syncedWorkoutId:''},
+    {session:4, content:'④ 股四头肌拉伸@3\n侧卧版，下方腿弯屈垫枕头固定骨盆。每侧30秒，2组。', done:false, doneDate:'', syncedWorkoutId:''},
+    {session:5, content:'⑤ 短足运动@3\n脚趾不蜷，足弓主动拱起。10次，3组。', done:false, doneDate:'', syncedWorkoutId:''},
+    {session:6, content:'⑥ 踝关节背屈@3\n弓步站立不蹲下，重心70%在后腿；右脚微内旋5-10°；可压住大脚趾防代偿。每侧10次，2组。', done:false, doneDate:'', syncedWorkoutId:''},
+    {session:7, content:'泡沫轴松解股外侧肌@2\n侧卧，身体微前倾压前外侧；右2个点，左1个点。每点60秒。', done:false, doneDate:'', syncedWorkoutId:''}
+  ];
+  state.gym.plans.push({id:'posture-v3-daily-'+ts, name:'每日训练 7课时', totalSessions:7, items:plan1Items, completed:false});
+
+  var plan2Items = [
+    {session:1, content:'⑦ 臀桥（夹砖版）@5\n小幅度，身体一条线即停；夹瑜伽砖稳定SI关节；慢速3秒上3秒下。12-15次，3组。', done:false, doneDate:'', syncedWorkoutId:''},
+    {session:2, content:'⑧ 弹力带俯卧勾腿@5\n肚子下垫毛巾顶骨盆后倾；大腿不离开地面；脚尖朝后不外撇。每侧10-12次，3组。', done:false, doneDate:'', syncedWorkoutId:''},
+    {session:3, content:'⑨ 侧卧蚌式@5\n右侧多加1组（右侧臀中肌更弱）。右15-20次，左10-12次，3组。', done:false, doneDate:'', syncedWorkoutId:''},
+    {session:4, content:'⑩ 单腿站立@5\n膝盖微屈不锁死；足弓主动发力；右侧多加15秒。每侧30秒，3组。', done:false, doneDate:'', syncedWorkoutId:''},
+    {session:5, content:'⑪ 鸟狗式@5\n脊柱中立不塌腰。每侧8-10次，3组。', done:false, doneDate:'', syncedWorkoutId:''},
+    {session:6, content:'⑫ 靠墙静蹲@0\n暂停（股外侧肌酸胀期）——等酸胀消失后从15秒恢复。', done:false, doneDate:'', syncedWorkoutId:''},
+    {session:7, content:'⑬ 泡沫轴放松@5\n右侧QL+右侧TFL+右大腿前外侧重点；不滚骶骨。5分钟。', done:false, doneDate:'', syncedWorkoutId:''},
+    {session:8, content:'⑭ 仰卧骶骨放松@10\n腿搭高处版（沙发/椅子），完全放松；骶骨下垫薄毛巾。10分钟。', done:false, doneDate:'', syncedWorkoutId:''},
+    {session:9, content:'⑮ 步态再训练@3\n沿直线走，脚尖朝前。3分钟。', done:false, doneDate:'', syncedWorkoutId:''}
+  ];
+  state.gym.plans.push({id:'posture-v3-activate-'+ts, name:'隔天激活训练 9课时', totalSessions:9, items:plan2Items, completed:false});
+
+  var plan3Items = [
+    {session:1, content:'S1 网球松解竖脊肌下段@3\n仰卧，网球放腰椎两侧（离脊柱2-3cm），压住不动。每点1-2分钟。', done:false, doneDate:'', syncedWorkoutId:''},
+    {session:2, content:'S2 网球松解右侧腰方肌@3\n侧卧，网球放腰部侧面。右侧重点，1-2分钟。', done:false, doneDate:'', syncedWorkoutId:''},
+    {session:3, content:'S3 网球松解骶骨旁@3\n仰卧，网球放骶骨两侧（不压骶骨正中）。每侧1-2分钟。', done:false, doneDate:'', syncedWorkoutId:''},
+    {session:4, content:'S4 热敷腰部@5\n40-45°C，隔一层衣服，放腰椎两侧肌肉区。15-20分钟。', done:false, doneDate:'', syncedWorkoutId:''},
+    {session:5, content:'⑯ 麦肯基伸展法@5\n俯卧放松1-2分钟→前臂撑起上半身，髋贴地→保持30秒→放松。疼痛向腿部放射立即停。5-8次。', done:false, doneDate:'', syncedWorkoutId:''},
+    {session:6, content:'⑱ 仰卧屈膝滚动@3\n仰卧抱膝，轻轻左右摇摆按摩下背部。2-3分钟。', done:false, doneDate:'', syncedWorkoutId:''},
+    {session:7, content:'⑳ 仰卧腹式呼吸@3\n腿搭高处，手放腹部，吸气腹部鼓起，呼气下沉。3分钟。', done:false, doneDate:'', syncedWorkoutId:''}
+  ];
+  state.gym.plans.push({id:'posture-v3-rehab-'+ts, name:'康复松解 7课时', totalSessions:7, items:plan3Items, completed:false});
+
+  // ── 4. 创建体态评估记录 ──
+  state.gym.assessments.push({
+    id: 'asmt-v3-' + ts,
+    date: '2026-08-19',
+    title: '体态综合评估（核磁+力线）',
+    issues: ['腰椎曲度变直','骨盆前倾（腰骶段）','骨盆右旋','膝超伸（右>左）','足弓塌陷','高低肩','椎间盘膨出'],
+    forceChain: '腰椎曲度变直 + 骨盆前倾（腰骶段）\n→ 髂腰肌紧张、骶骨突出、重心前移\n→ SI关节受压、久坐骶骨痛、膝超伸\n→ 股外侧肌紧张（右侧更严重）\n\n骨盆右旋 → 右髂骨后旋\n→ 右SI关节受压、右侧QL紧张、右侧臀中肌弱\n→ 骶骨日常疼痛、右后腰酸痛、右TFL/股外侧肌代偿\n\n力线：足弓塌陷 → 后足外翻 → 踝背屈受限 → 胫骨外旋 → 膝超伸（右>左）← 股骨内旋 ← 骨盆前倾 ← 髋伸展受限',
+    forceChainNote: '核磁结果（2026-08-19）：\n· 腰椎曲度变直（竖脊肌长期痉挛把腰椎"拉直"）\n· L4/5、L5/S1椎间盘膨出（膨出比突出轻，纤维环完整，但已退变）\n· 椎间孔狭窄（膨出的椎间盘挤到了神经根通道）\n· 脊髓/马尾/椎管正常（无严重神经压迫）\n· 椎旁软组织正常\n· 骶骨偏突出（天生角度偏后+曲度变直加重）',
+    approach: '【肌肉失衡】\n过度紧张：竖脊肌（腰段）、髂腰肌、股直肌、股四头肌（股外侧肌）、TFL、左侧上斜方肌、右侧腰方肌\n薄弱/被抑制：腹横肌、腹直肌、臀大肌、臀中肌（右侧更弱）、腘绳肌、前锯肌、下斜方肌\n\n【训练思路】\n1. 松解前侧紧张肌群（髂腰肌、股直肌、股外侧肌、TFL、右侧QL）\n2. 激活后侧和深层稳定肌群（臀大肌、臀中肌、腹横肌、足底肌）\n3. 重建力线：从足底开始（足弓→脚踝→膝盖→髋→骨盆）\n4. 椎间盘膨出专项：麦肯基伸展、避免后弯、日常腰部护理\n5. 日常觉察：走路脚尖朝前，站立膝盖微屈，坐姿骶骨立起\n\n【每日时间表】\n起床后：热敷腰部+仰卧腹式呼吸（15+3分钟）\n上午：每日训练①-⑥+泡沫轴松解（25分钟）\n隔天：激活训练⑦-⑮（35分钟）\n睡前：网球松解+热敷+麦肯基伸展（15+15+5分钟）\n\n【进阶路径】\n阶段一（现在~2周）：每日①-⑥+隔天激活⑦-⑮\n阶段二（2~6周）：三天循环：上肢日/激活日/休息日｜条件：死虫式腰贴地10次不变形\n阶段三（6周起）：三天循环：上肢日/下肢日/休息日｜条件：站桩5分钟不塌腰+静蹲60秒不累\n阶段四（3个月后）：加入不对称矫正｜条件：骨盆中立位能稳定维持',
+    mantra: '用道具和重力，不靠蛮力；坐骨坐稳腰背自然直立，平躺膝盖下垫枕头。',
+    postureTips: [
+      {scene:'坐姿', tip:'坐骨坐稳，腰背自然直立；腰垫必须用，支撑腰椎；坐10分钟→靠背休息5分钟→交替；每30分钟起身活动；使用马鞍形/中空坐垫或W形记忆棉坐垫，骶骨位置不受压'},
+      {scene:'站姿', tip:'膝盖微屈，不锁死；尾骨自然指向地面，不刻意卷也不翘；轻度激活核心（腹部薄薄一层张力，呼吸正常）'},
+      {scene:'平躺', tip:'膝盖下垫枕头，被动放松；不刻意保持任何骨盆位置；骶骨下可垫薄毛巾消除硌地感'},
+      {scene:'侧卧（推荐睡姿）', tip:'右侧在上（右侧SI关节受压，朝上能打开间隙）；膝间夹枕头，髋关节约135°；枕头厚度：上方大腿和床面平行，骨盆水平；上方手臂可抱枕头防止身体前倒'},
+      {scene:'俯卧', tip:'避免（腰椎被迫伸展，加重膨出）'},
+      {scene:'蹲下陪小朋友', tip:'不要蹲到底，半程（大腿约45°）；单膝跪地优于深蹲；时间控制1分钟内；多换姿势'},
+      {scene:'抱娃', tip:'收紧核心；用髋关节后移平衡重量'},
+      {scene:'起床', tip:'先侧身，用手撑起再坐；不要仰卧起坐式起身'},
+      {scene:'弯腰捡东西', tip:'不要直腿弯腰；屈膝蹲下再捡'},
+      {scene:'穿鞋袜', tip:'不要弯腰穿；坐着翘腿穿或用长柄鞋拔'},
+      {scene:'洗脸刷牙', tip:'一手撑台面，微屈膝；不要长时间弯腰前倾'},
+      {scene:'打喷嚏/咳嗽', tip:'微微屈膝再打'}
+    ],
+    exerciseAdjustments: [
+      {exercise:'网球', adjustments:'✅ 可以继续\n打球前：左侧臀中肌激活（蚌式+单腿站立）\n打球后：重点拉伸右侧QL+右侧TFL+股外侧肌泡沫轴松解\n球场上：准备时微屈膝，重心落脚跟偏中段，膝盖不锁死'},
+      {exercise:'瑜伽', adjustments:'✅ 多做：婴儿式、猫式（只做猫式段）、下犬式、桥式（小幅）、战士一式\n⚠️ 减幅度：上犬式、眼镜蛇式（只到60%，腹部有拉伸即可）\n❌ 禁止：轮式、全骆驼式、深度后弯鸽子式\n⚠️ 注意膝超伸：三角式、战士二式、站立前屈（前腿膝盖微屈）'},
+      {exercise:'欧阳春晓直播课', adjustments:'✅ 体态矫正：重点跟\n✅ 核心训练：跟，卷腹类改为死虫式\n✅ 柔韧性：跟，后弯类减小幅度\n⚠️ 有氧跳跃：落地膝盖微屈'},
+      {exercise:'上肢力量训练', adjustments:'✅ 继续：坐姿划船、坐姿下拉、卧推\n⚠️ 改为坐姿+靠背：站姿推举、侧平举\n⚠️ 轻重量，注意对称：单臂动作\n❌ 暂停，等骨盆稳定：深蹲、硬拉、箭步蹲'},
+      {exercise:'游泳（推荐）', adjustments:'蛙泳最佳，水的浮力减轻椎间盘压力\n每周2-3次，每次30-40分钟'}
+    ],
+    warning: '【必须避免的动作】\n直腿弯腰够脚（椎间盘后方压力暴增）\n仰卧起坐（对腰椎剪切力极大）\n久坐超1小时不活动（椎间盘持续受压）\n坐姿扭腰拉伸（扭转+弯曲=椎间盘最怕）\n跳绳等高冲击跳跃（落地冲击传到椎间盘）\n瑜伽后弯（轮式/骆驼式/上犬式）（直接挤压椎间盘后方）\n俯卧两头起（脊柱伸展动作，加重膨出）\n猫牛式牛式段（腰椎伸展，只做猫式）\n骨盆时钟12点方向前倾（腰椎已变直，再前倾加压）\n深蹲到底（髂腰肌拉到极限，SI关节受压）\n\n【重要提醒】\n1. SI关节面诊：骶骨日常疼痛+右侧弹响+骨盆旋转不对称，需康复科/骨科面诊\n2. 椎间盘膨出随访：核磁结果需结合临床，关注是否有下肢放射痛/麻木\n3. 疼痛信号：任何动作出现向腿部放射的疼痛，立即停止\n4. 训练原则：质量比时间重要，姿势变形立即停\n5. 腰围使用：久坐开车超1小时、搬重物、腰痛加重时戴；训练时、躺着休息时、日常不痛时不戴；选软性弹力腰围'
+  });
+
+  // ── 5. 创建灵感库条目 ──
+  ['体态矫正','核磁结果','代偿链条','日常姿势','腰部护理','避免动作','运动调整','进阶路径','网课适配'].forEach(function(t) {
+    if (state.tips.tags.indexOf(t) === -1) state.tips.tags.push(t);
+  });
+
+  state.tips.items.push({
+    id: 'posture-tip-'+ts+'-0',
+    title: '体态矫正：核磁结果与体态问题总览',
+    content: '【核磁结果 2026-08-19】\n· 腰椎曲度变直（竖脊肌长期痉挛）\n· L4/5、L5/S1椎间盘膨出（纤维环完整但已退变）\n· 椎间孔狭窄（膨出椎间盘挤到神经根通道）\n· 脊髓/马尾/椎管正常\n· 骶骨偏突出（天生角度偏后+曲度变直加重）\n\n【体态问题严重程度】\n⭐⭐⭐⭐⭐ 腰椎曲度变直\n⭐⭐⭐⭐ 骨盆前倾（腰骶段）\n⭐⭐⭐⭐ 骨盆右旋（右髂骨后旋→右SI关节受压）\n⭐⭐⭐⭐ 膝超伸（右>左，股四头肌过度代偿）\n⭐⭐⭐ 足弓塌陷（后足外翻→外八步态）\n⭐⭐⭐ 高低肩（左高右低，脊柱S型代偿）\n⭐⭐⭐ 椎间盘膨出（L4/5、L5/S1，椎间孔狭窄）',
+    source: '', category: 'fitness', tags: ['体态矫正','核磁结果'], createdAt: todayStr
+  });
+
+  state.tips.items.push({
+    id: 'posture-tip-'+ts+'-1',
+    title: '体态矫正：代偿链条分析',
+    content: '【主链：腰椎+骨盆】\n腰椎曲度变直 + 骨盆前倾（腰骶段）\n→ 髂腰肌紧张、骶骨突出、重心前移\n→ SI关节受压、久坐骶骨痛、膝超伸\n→ 股外侧肌紧张（右侧更严重）\n\n【侧链：骨盆旋转】\n骨盆右旋 → 右髂骨后旋\n→ 右SI关节受压、右侧QL紧张、右侧臀中肌弱\n→ 骶骨日常疼痛、右后腰酸痛、右TFL/股外侧肌代偿\n\n【力线链】\n足弓塌陷 → 后足外翻 → 踝背屈受限 → 胫骨外旋\n→ 膝超伸（右>左）← 股骨内旋 ← 骨盆前倾 ← 髋伸展受限\n→ 膝内扣倾向（动态风险）',
+    source: '', category: 'fitness', tags: ['体态矫正','代偿链条'], createdAt: todayStr
+  });
+
+  state.tips.items.push({
+    id: 'posture-tip-'+ts+'-2',
+    title: '体态矫正：日常姿势调整完整指南',
+    content: '【坐姿】坐骨坐稳，腰背自然直立；腰垫必须用；坐10分钟→靠背5分钟交替；每30分钟起身；用马鞍形/W形坐垫，骶骨不受压\n\n【站姿】膝盖微屈不锁死；尾骨自然指向地面；轻度激活核心\n\n【平躺】膝盖下垫枕头；骶骨下可垫薄毛巾\n\n【侧卧（推荐）】右侧在上（右SI关节朝上打开间隙）；膝间夹枕头，髋约135°；上方手臂抱枕防前倒\n\n【俯卧】❌ 避免（腰椎被迫伸展，加重膨出）\n\n【蹲下陪小朋友】半程（大腿约45°）；单膝跪地优于深蹲；1分钟内；多换姿势\n\n【抱娃】收紧核心；髋关节后移平衡\n\n【起床】先侧身，手撑起再坐；❌ 仰卧起坐式\n\n【弯腰捡东西】❌ 直腿弯腰；✅ 屈膝蹲下\n\n【穿鞋袜】❌ 弯腰穿；✅ 坐着翘腿穿或长柄鞋拔\n\n【洗脸刷牙】一手撑台面，微屈膝\n\n【打喷嚏/咳嗽】微微屈膝再打',
+    source: '', category: 'life', tags: ['体态矫正','日常姿势'], createdAt: todayStr
+  });
+
+  state.tips.items.push({
+    id: 'posture-tip-'+ts+'-3',
+    title: '体态矫正：日常腰部护理',
+    content: '【网球松解（每日10-15分钟）】\n1. 竖脊肌下段：腰椎两侧离脊柱2-3cm，仰卧压住不动1-2分钟\n2. 腰方肌：腰部侧面，右侧重点，侧卧1-2分钟\n3. 骶骨旁：骶骨两侧（不压正中），仰卧每侧1-2分钟\n\n【热敷（每日1-2次）】\n温度40-45°C，隔衣服，放腰椎两侧肌肉区（不是骨头）\n每次15-20分钟\n最佳时间：睡前+早晨起床后，运动后也做\n\n【腰围使用】\n戴：久坐开车超1小时、搬重物、腰痛加重时\n不戴：训练时、躺着休息时、日常不痛时\n选：软性弹力腰围\n\n【睡眠】\n首选侧卧（右侧在上，膝间夹枕头）\n仰卧可以（膝下垫枕头）\n❌ 避免俯卧',
+    source: '', category: 'life', tags: ['体态矫正','腰部护理'], createdAt: todayStr
+  });
+
+  state.tips.items.push({
+    id: 'posture-tip-'+ts+'-4',
+    title: '体态矫正：必须避免的动作+运动调整',
+    content: '【必须避免】\n直腿弯腰够脚、仰卧起坐、久坐超1小时、坐姿扭腰拉伸、跳绳等高冲击跳跃、瑜伽后弯（轮式/骆驼式/上犬式）、俯卧两头起、猫牛式牛式段、骨盆时钟12点前倾、深蹲到底\n\n【运动调整】\n\n网球：✅继续；打球前左侧臀中肌激活；打球后拉伸右QL+右TFL+股外侧肌泡沫轴\n\n瑜伽：✅多做婴儿式/猫式/下犬式/桥式/战士一式；⚠️减幅上犬式/眼镜蛇式；❌禁止轮式/全骆驼式/深度后弯；⚠️站立类前腿微屈\n\n欧阳春晓课：✅体态矫正重点跟；核心卷腹改死虫式；后弯减幅度；跳跃落地微屈膝\n\n上肢力量：✅坐姿划船/下拉/卧推；⚠️站姿推举改坐姿靠背；❌暂停深蹲/硬拉/箭步蹲\n\n游泳：✅推荐蛙泳，每周2-3次30-40分钟',
+    source: '', category: 'fitness', tags: ['体态矫正','避免动作','运动调整'], createdAt: todayStr
+  });
+
+  state.tips.items.push({
+    id: 'posture-tip-'+ts+'-5',
+    title: '体态矫正：网课训练适配+每日时间表+进阶路径',
+    content: '【上肢日适配（1-2周后）】\n✅ 泡沫轴松解、静态死虫夹泡沫轴、死虫变式、跪姿胸椎旋转、俯卧弹力带下拉、单臂划船、婴儿式拉伸\n⚠️ 猫牛式只做猫式；俯卧撑改跪姿\n❌ 俯卧两头起绝对禁止\n\n【下肢日适配（4-6周后）】\n✅ 泡沫轴松解（不滚骶骨）、髂腰肌拉伸（轻柔）、9090呼吸、臀桥4变体（夹砖小幅）\n⚠️ 浅蹲替代踮脚深蹲（脚尖朝前）；鸽子式SI不疼才做\n❌ 哥本哈根支撑跳过\n\n【每日时间表】\n起床后：热敷+腹式呼吸 15+3分钟\n上午：每日训练①-⑥+泡沫轴 25分钟\n隔天：激活训练⑦-⑮ 35分钟\n睡前：网球松解+热敷+麦肯基 15+15+5分钟\n\n【进阶路径】\n阶段一（现在~2周）：每日①-⑥+隔天⑦-⑮\n阶段二（2~6周）：上肢/激活/休息三天循环｜死虫式腰贴地10次不变形\n阶段三（6周起）：上肢/下肢/休息三天循环｜站桩5分钟不塌腰+静蹲60秒不累\n阶段四（3个月后）：加入不对称矫正｜骨盆中立位能稳定维持',
+    source: '', category: 'fitness', tags: ['体态矫正','网课适配','进阶路径'], createdAt: todayStr
+  });
+
+  // ── 6. 设置标记 ──
+  delete state._postureImported;
+  delete state._postureImportedV2;
+  state._postureImportedV3 = true;
+  saveData();
+  console.log('[体态矫正方案 V3] 导入完成：3个课表(7+9+7课时) + 23个运动资源 + 3个动作组 + 1个评估记录 + 6个灵感条目');
+}
+
 function importTrainingPlanV3() {
   if (state._trainingPlanV3dImported) return;
   // Delete old V3 plans and their synced workouts
@@ -8279,7 +8541,7 @@ function importFinanceBooks() {
 }
 
 (function init() {
-  importPosturePlanV2();
+  importPosturePlanV3();
   importTrainingPlanV3();
   importFinanceStudyPlan();
   importTennisStretchPlan();
