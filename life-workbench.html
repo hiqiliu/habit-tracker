@@ -197,6 +197,25 @@ body {
 .dash-date { font-size:15px; color: var(--muted); margin-top:2px; }
 .dash-weekday { font-size:13px; color: var(--accent); margin-top:2px; }
 
+/* Posture tip flash card */
+.posture-tip-card {
+  display:flex; align-items:center; gap:12px;
+  background: linear-gradient(135deg, #e8f5e9, #f1f8e9);
+  border: 1px solid #c8e6c9; border-radius: var(--radius);
+  padding: 12px 16px; margin: 0 0 12px; cursor:pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+  animation: postureTipIn 0.3s ease;
+}
+.posture-tip-card:hover { transform: translateY(-1px); box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+.posture-tip-card:active { transform: scale(0.98); }
+.posture-tip-icon { font-size: 24px; flex-shrink:0; }
+.posture-tip-body { flex:1; min-width:0; }
+.posture-tip-label { font-size: 12px; color: #2e7d32; font-weight:600; margin-bottom:2px; }
+.posture-tip-text { font-size: 13px; color: #1b5e20; line-height:1.5; }
+.posture-tip-refresh { font-size: 14px; flex-shrink:0; opacity:0.5; transition: opacity 0.15s; }
+.posture-tip-card:hover .posture-tip-refresh { opacity:1; }
+@keyframes postureTipIn { from { opacity:0; transform: translateY(-6px); } to { opacity:1; transform: translateY(0); } }
+
 .quote-card {
   background: linear-gradient(135deg, var(--accent-soft), var(--bg2)); border-radius: var(--radius);
   padding: 18px 22px; margin: 12px 0 16px; text-align:center;
@@ -1676,6 +1695,43 @@ const QUOTES = [
   { cn:'做自己的光，不需要太亮。', en:'Be your own light, it does not need to be too bright.' }
 ];
 
+var POSTURE_TIPS = [
+  { icon:'🪑', title:'坐姿', text:'坐骨坐稳，腰背自然直立；腰垫必须用；每30分钟起身活动' },
+  { icon:'🧍', title:'站姿', text:'膝盖微屈不锁死；尾骨自然指向地面；腹部薄薄一层张力' },
+  { icon:'🛏️', title:'平躺', text:'膝盖下垫枕头被动放松；骶骨下可垫薄毛巾消除硌地感' },
+  { icon:'😴', title:'侧卧睡姿', text:'右侧在上（右SI关节朝上打开间隙）；膝间夹枕头，髋约135°' },
+  { icon:'🚫', title:'避免俯卧', text:'俯卧迫使腰椎伸展，加重椎间盘膨出，绝对避免' },
+  { icon:'🧎', title:'蹲下陪小朋友', text:'不要蹲到底，半程（大腿约45°）；单膝跪地优于深蹲；1分钟内换姿势' },
+  { icon:'👶', title:'抱娃', text:'收紧核心；用髋关节后移平衡重量' },
+  { icon:'🌅', title:'起床', text:'先侧身，用手撑起再坐；不要仰卧起坐式起身' },
+  { icon:'🤲', title:'弯腰捡东西', text:'不要直腿弯腰；屈膝蹲下再捡' },
+  { icon:'👞', title:'穿鞋袜', text:'不要弯腰穿；坐着翘腿穿或用长柄鞋拔' },
+  { icon:'🪥', title:'洗脸刷牙', text:'一手撑台面，微屈膝；不要长时间弯腰前倾' },
+  { icon:'🤧', title:'打喷嚏/咳嗽', text:'微微屈膝再打，减轻腰椎瞬间压力' }
+];
+
+function renderPostureTip() {
+  var tip = POSTURE_TIPS[Math.floor(Math.random() * POSTURE_TIPS.length)];
+  return '<div class="posture-tip-card" onclick="refreshPostureTip(this)">'
+    + '<span class="posture-tip-icon">' + tip.icon + '</span>'
+    + '<div class="posture-tip-body">'
+    +   '<div class="posture-tip-label">日常姿势提醒 · ' + tip.title + '</div>'
+    +   '<div class="posture-tip-text">' + escHtml(tip.text) + '</div>'
+    + '</div>'
+    + '<span class="posture-tip-refresh" title="换一条">🔄</span>'
+    + '</div>';
+}
+
+function refreshPostureTip(el) {
+  var tip = POSTURE_TIPS[Math.floor(Math.random() * POSTURE_TIPS.length)];
+  el.querySelector('.posture-tip-icon').textContent = tip.icon;
+  el.querySelector('.posture-tip-label').textContent = '日常姿势提醒 · ' + tip.title;
+  el.querySelector('.posture-tip-text').textContent = tip.text;
+  el.style.animation = 'none';
+  void el.offsetWidth;
+  el.style.animation = '';
+}
+
 function renderDashboard() {
   const d = state.dashboard;
   const todayStr = today();
@@ -1776,6 +1832,7 @@ function renderDashboard() {
         <div class="dash-date">${fmtDateCN(todayStr)}</div>
         <div class="dash-weekday">${['星期日','星期一','星期二','星期三','星期四','星期五','星期六'][new Date().getDay()]}</div>
       </div>
+      ${renderPostureTip()}
       <div class="quote-card">
         <div class="quote-text">"${q.cn}"</div>
         <div class="quote-en">"${q.en}"</div>
