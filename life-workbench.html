@@ -306,7 +306,14 @@ body {
 .card-row .card-content { flex:1; }
 
 /* Outfit item picker chips */
-.outfit-picker { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px; }
+.outfit-picker { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px; max-height:220px; overflow-y:auto; border:1px solid var(--rule); border-radius:8px; padding:6px; }
+.outfit-chip.hidden { display:none; }
+.picker-bar { display:flex; align-items:center; gap:6px; margin-bottom:6px; }
+.picker-search { flex:1; min-width:100px; padding:4px 8px; font-size:12px; border:1px solid var(--rule); border-radius:8px; background:var(--bg2); color:var(--ink); }
+.picker-count { font-size:11px; color:var(--muted); white-space:nowrap; }
+.picker-cats { display:flex; gap:4px; overflow-x:auto; margin-bottom:6px; }
+.picker-cat-btn { padding:2px 8px; border-radius:10px; font-size:11px; border:1px solid var(--rule); background:var(--bg2); color:var(--ink); cursor:pointer; white-space:nowrap; transition: all 0.12s; }
+.picker-cat-btn.active { background:var(--accent); color:#fff; border-color:var(--accent); }
 .outfit-chip {
   display:inline-flex; align-items:center; gap:4px; padding:4px 10px; border-radius:14px;
   font-size:12px; cursor:pointer; user-select:none; background:var(--bg2); color:var(--ink);
@@ -7411,12 +7418,8 @@ function renderClosetMain() {
           <button class="btn-sm danger" onclick="deleteWardrobeItem('${item.id}')">删</button>
         </div>`).join('')
     }
-    <div class="section-title">👗 每日搭配</div>
-    ${wardrobe.length > 0 ? `
-    <div class="outfit-picker" id="outfitPicker">
-      ${wardrobe.map(item => `
-        <span class="outfit-chip" data-id="${item.id}" onclick="toggleOutfitChip(this)">${closetCatIcon(item.cat)} ${escHtml(item.name)}</span>`).join('')}
-    </div>` : ''}
+    <div class="section-title">👗 搭配</div>
+    ${wardrobe.length > 0 ? buildOutfitPickerHtml(wardrobe, 'outfitPicker', []) : ''}
     <div class="form-row">
       <input class="input-field" id="outfitDesc" placeholder="搭配描述（可选）...">
       <input class="input-field" id="outfitOccasion" placeholder="场合（可选）" style="flex:0.7;">
@@ -7507,7 +7510,55 @@ function getSelectedItemsFrom(containerId) {
   document.querySelectorAll('#'+containerId+' .outfit-chip.selected').forEach(function(c) { ids.push(c.getAttribute('data-id')); });
   return ids;
 }
-function toggleOutfitChip(el) { el.classList.toggle('selected'); }
+function toggleOutfitChip(el) {
+  el.classList.toggle('selected');
+  var picker = el.closest('.outfit-picker');
+  if (picker && picker.id) {
+    var countEl = document.getElementById(picker.id + 'Count');
+    if (countEl) {
+      var selected = picker.querySelectorAll('.outfit-chip.selected').length;
+      countEl.textContent = '已选 ' + selected;
+    }
+  }
+}
+function buildOutfitPickerHtml(wardrobe, containerId, selectedIds) {
+  selectedIds = selectedIds || [];
+  var searchBar = '<div class="picker-bar">'
+    + '<input class="picker-search" id="'+containerId+'Search" placeholder="搜索单品名/品牌..." oninput="filterOutfitPicker(\''+containerId+'\')">'
+    + '<span class="picker-count" id="'+containerId+'Count">已选 '+selectedIds.length+'</span>'
+    + '</div>';
+  var catsBar = '<div class="picker-cats" id="'+containerId+'Cats">'
+    + '<span class="picker-cat-btn active" data-cat="" onclick="filterOutfitCat(\''+containerId+'\',\'\')">全部</span>'
+    + CLOSET_CATS.map(function(c) { return '<span class="picker-cat-btn" data-cat="'+c+'" onclick="filterOutfitCat(\''+containerId+'\',\''+c+'\')">'+closetCatIcon(c)+' '+c+'</span>'; }).join('')
+    + '</div>';
+  var chips = '<div class="outfit-picker" id="'+containerId+'">'
+    + wardrobe.map(function(item) {
+      var sel = selectedIds.indexOf(item.id) !== -1 ? ' selected' : '';
+      var searchText = ((item.name||'') + ' ' + (item.brand||'')).toLowerCase();
+      return '<span class="outfit-chip'+sel+'" data-id="'+item.id+'" data-name="'+escHtml(searchText)+'" data-cat="'+escHtml(item.cat)+'" onclick="toggleOutfitChip(this)">'+closetCatIcon(item.cat)+' '+escHtml(item.name)+(item.brand?' <span style="font-size:10px;opacity:0.6;">'+escHtml(item.brand)+'</span>':'')+'</span>';
+    }).join('')
+    + '</div>';
+  return searchBar + catsBar + chips;
+}
+function applyOutfitPickerFilter(containerId) {
+  var searchInput = document.getElementById(containerId+'Search');
+  var search = searchInput ? searchInput.value.toLowerCase() : '';
+  var activeCatBtn = document.querySelector('#'+containerId+'Cats .picker-cat-btn.active');
+  var cat = activeCatBtn ? (activeCatBtn.getAttribute('data-cat') || '') : '';
+  document.querySelectorAll('#'+containerId+' .outfit-chip').forEach(function(c) {
+    var name = (c.getAttribute('data-name') || '').toLowerCase();
+    var chipCat = c.getAttribute('data-cat') || '';
+    var visible = name.indexOf(search) !== -1 && (!cat || chipCat === cat);
+    c.classList.toggle('hidden', !visible);
+  });
+}
+function filterOutfitPicker(containerId) { applyOutfitPickerFilter(containerId); }
+function filterOutfitCat(containerId, cat) {
+  document.querySelectorAll('#'+containerId+'Cats .picker-cat-btn').forEach(function(b) {
+    b.classList.toggle('active', (b.getAttribute('data-cat') || '') === cat);
+  });
+  applyOutfitPickerFilter(containerId);
+}
 function setRating(el, containerId) {
   var val = parseInt(el.getAttribute('data-val'));
   var container = document.getElementById(containerId);
@@ -7543,10 +7594,7 @@ function editOutfit(id) {
   m.innerHTML = `
     <div class="modal-box" style="max-width:400px;">
       <h3>✏️ 编辑搭配</h3>
-      <div class="outfit-picker" id="editOutfitPicker" style="margin-bottom:8px;">
-        ${wardrobe.map(item => `
-          <span class="outfit-chip${selectedIds.indexOf(item.id) !== -1 ? ' selected' : ''}" data-id="${item.id}" onclick="toggleOutfitChip(this)">${closetCatIcon(item.cat)} ${escHtml(item.name)}</span>`).join('')}
-      </div>
+      ${buildOutfitPickerHtml(wardrobe, 'editOutfitPicker', selectedIds)}
       <input class="input-field" id="editOutfitDate" type="date" value="${o.date||today()}" style="display:block;width:100%;margin-bottom:8px;">
       <input class="input-field" id="editOutfitDesc" value="${escHtml(o.desc)}" placeholder="搭配描述（可选）" style="display:block;width:100%;margin-bottom:8px;">
       <input class="input-field" id="editOutfitOccasion" value="${escHtml(o.occasion||'')}" placeholder="场合（可选）" style="display:block;width:100%;margin-bottom:8px;">
@@ -7605,9 +7653,7 @@ function renderLookbook() {
     </div>
     <div id="lookbookItemMode" style="display:none;">
       ${wardrobe.length === 0 ? '<div class="empty-state">衣橱空空，请先添加单品</div>' :
-        '<div class="outfit-picker" id="lookbookItemPicker">'
-        + wardrobe.map(item => '<span class="outfit-chip" data-id="'+item.id+'" onclick="toggleOutfitChip(this)">'+closetCatIcon(item.cat)+' '+escHtml(item.name)+'</span>').join('')
-        + '</div>'
+        buildOutfitPickerHtml(wardrobe, 'lookbookItemPicker', [])
       }
     </div>
     <input class="input-field" id="lookbookNote" placeholder="穿搭备注（可选）..." style="display:block;width:100%;margin:8px 0;">
@@ -7698,9 +7744,7 @@ function editDailyOutfit(id) {
       </div>
       <div id="editLookbookItemMode" style="${d.outfitId?'display:none;':''}">
         ${wardrobe.length === 0 ? '<div class="empty-state">衣橱空空</div>' :
-          '<div class="outfit-picker" id="editLookbookItemPicker">'
-          + wardrobe.map(item => '<span class="outfit-chip'+((d.items||[]).indexOf(item.id)!==-1?' selected':'')+'" data-id="'+item.id+'" onclick="toggleOutfitChip(this)">'+closetCatIcon(item.cat)+' '+escHtml(item.name)+'</span>').join('')
-          + '</div>'
+          buildOutfitPickerHtml(wardrobe, 'editLookbookItemPicker', d.items||[])
         }
       </div>
       <input class="input-field" id="editLookbookNote" value="${escHtml(d.note||'')}" placeholder="穿搭备注（可选）" style="display:block;width:100%;margin:8px 0;">
