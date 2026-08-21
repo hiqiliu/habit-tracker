@@ -953,6 +953,20 @@ textarea.input-field { resize:vertical; min-height:60px; }
 .jm-cell.jm-today .jm-count { background:var(--bg); color:var(--accent); }
 
 /* Month legend */
+/* Diary day list — one row per day */
+.diary-day-list { display:flex; flex-direction:column; gap:2px; background:var(--rule); border-radius:12px; overflow:hidden; padding:2px; }
+.diary-row {
+  display:flex; align-items:flex-start; gap:10px; padding:10px 12px; background:var(--bg);
+  cursor:pointer; transition:background 0.12s;
+}
+.diary-row:hover { background:var(--accent-soft); }
+.diary-row-today { background:var(--accent-soft); }
+.diary-row-date { display:flex; flex-direction:column; align-items:center; min-width:36px; flex-shrink:0; }
+.diary-day-num { font-size:16px; font-weight:600; color:var(--ink); line-height:1.2; }
+.diary-day-num.today { color:var(--accent); font-weight:700; }
+.diary-weekday { font-size:10px; color:var(--muted); margin-top:2px; }
+.diary-row-mood { font-size:20px; flex-shrink:0; width:28px; text-align:center; line-height:1.4; }
+.diary-row-content { flex:1; min-width:0; font-size:13px; color:var(--ink); overflow-wrap:break-word; word-break:break-word; }
 .jm-legend {
   display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px; padding:8px 10px;
   background:var(--bg2); border-radius:8px; font-size:11px; color:var(--muted);
@@ -3211,29 +3225,28 @@ function renderDiary() {
   var entryMap = {};
   entries.forEach(function(e) { entryMap[e.date] = e; });
 
-  // Calendar grid
-  var weekdayHeaders = ['日','一','二','三','四','五','六'];
-  var headerHtml = weekdayHeaders.map(function(d) {
-    return '<div class="jm-weekday">'+d+'</div>';
-  }).join('');
-
-  var cellsHtml = '';
-  for (var i = 0; i < startDow; i++) cellsHtml += '<div class="jm-cell jm-empty"></div>';
+  // Day list — one row per day
+  var weekdayNames = ['日','一','二','三','四','五','六'];
+  var dayListHtml = '';
   for (var d = 1; d <= daysInMonth; d++) {
     var ds = cy + '-' + String(cm + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
     var entry = entryMap[ds];
     var isToday = ds === todayStr;
+    var dow = new Date(cy, cm, d).getDay();
+    var moodIcon = entry ? (MOOD_EMOJIS[entry.level] || '📝') : '';
+    var sourceTag = entry && entry.source ? '<span style="font-size:11px;color:var(--muted);background:var(--bg2);border-radius:4px;padding:1px 6px;margin-right:6px;">'+escHtml(entry.source)+'</span>' : '';
 
-    var cellContent = '';
-    if (entry) {
-      var moodIcon = MOOD_EMOJIS[entry.level] || '📝';
-      cellContent = '<div class="grate-mood">'+moodIcon+'</div>'
-        + '<div class="grate-preview">'+escHtml((entry.content||'').substring(0, 20))+((entry.content||'').length > 20 ? '...' : '')+'</div>';
-    }
-
-    cellsHtml += '<div class="jm-cell grate-cell'+(isToday?' jm-today':'')+(entry?' jm-has-act':'')+'" onclick="diaryDayClick(\''+ds+'\')">'
-      + '<div class="jm-day-num">'+d+'</div>'
-      + cellContent
+    dayListHtml += '<div class="diary-row'+(isToday?' diary-row-today':'')+'" onclick="diaryDayClick(\''+ds+'\')">'
+      + '<div class="diary-row-date">'
+      +   '<span class="diary-day-num'+(isToday?' today':'')+'">'+d+'</span>'
+      +   '<span class="diary-weekday">'+weekdayNames[dow]+'</span>'
+      + '</div>'
+      + '<div class="diary-row-mood">'+moodIcon+'</div>'
+      + '<div class="diary-row-content">'
+      +   (entry
+          ? sourceTag + '<span style="word-break:break-word;white-space:normal;line-height:1.6;">'+escHtml(entry.content||'')+'</span>'
+          : '<span style="color:var(--muted);font-size:12px;">—</span>')
+      + '</div>'
       + '</div>';
   }
 
@@ -3258,7 +3271,7 @@ function renderDiary() {
     +   '<span style="font-weight:600;font-size:15px;">'+monthTitle+'</span>'
     +   '<button class="btn-sm" onclick="changeDiaryMonth(1)">▶</button>'
     + '</div>'
-    + '<div class="journal-month-grid">' + headerHtml + cellsHtml + '</div>'
+    + '<div class="diary-day-list">' + dayListHtml + '</div>'
     + '<div class="jm-legend">'
     +   '<span class="jm-legend-item">'+MOOD_EMOJIS[1]+' '+MOOD_LABELS[1]+'</span>'
     +   '<span class="jm-legend-item">'+MOOD_EMOJIS[2]+' '+MOOD_LABELS[2]+'</span>'
