@@ -1675,7 +1675,7 @@ function renderDashboard() {
   const todayWorkouts = (state.gym.workouts || []).filter(w => w.date === todayStr);
   const todaySleep = (state.gym.sleepData || []).filter(s => s.date === todayStr);
   const todayMoods = (state.meditate.moods || []).filter(m => m.date === todayStr);
-  const todayGratitude = (state.gratitude.entries || []).find(e => e.date === todayStr);
+  const todayGratitude = (state.gratitude.entries || []).find(e => e.date === todayStr); // diary entry for today
   const todayDrinks = (state.bar.drinks || []).filter(dr => dr.date === todayStr);
   const todayMeals = (state.bar.meals || []).filter(me => me.date === todayStr);
   const todayFin = (state.finance.records || []).filter(f => f.date === todayStr);
@@ -1699,8 +1699,7 @@ function renderDashboard() {
     + ovCard('✅', checkedHabits+'/'+totalHabits, '习惯', 'plan', totalHabits === 0)
     + ovCard('🏃', todayWorkouts.length, '运动', 'gym', todayWorkouts.length === 0)
     + ovCard('😴', todaySleep.length > 0 ? todaySleep[0].hours+'h' : '—', '睡眠', 'bar', todaySleep.length === 0)
-    + ovCard('😊', todayMoods.length > 0 ? ['','😞','😕','😐','🙂','😊'][todayMoods[0].level] : '—', '情绪', 'soul', todayMoods.length === 0)
-    + ovCard('🙏', todayGratitude ? '✓' : '—', '感恩', 'soul', !todayGratitude)
+    + ovCard('📝', todayGratitude ? MOOD_EMOJIS[todayGratitude.level||3] : '—', '日记', 'soul', !todayGratitude)
     + ovCard('☕', todayDrinks.length, '饮品', 'bar', todayDrinks.length === 0)
     + ovCard('🍽️', todayMeals.length, '餐食', 'bar', todayMeals.length === 0)
     + '</div>';
@@ -1828,14 +1827,9 @@ function renderSmartTips(todayStr, todayPlans, donePlans, checkedHabits, totalHa
     tips.push({ icon:'📅', color:'#009688', msg:'课表「' + escHtml(ap.name) + '」已完成 ' + doneCnt + '/' + total + ' 课时', action:'gym', actionLabel:'继续打卡' });
   }
 
-  // 6. Mood reminder
-  if (todayMoods.length === 0) {
-    tips.push({ icon:'🌈', color:'#c62828', msg:'今天还没记录情绪，花一刻感受一下自己', action:'soul', actionLabel:'去记录' });
-  }
-
-  // 7. Gratitude reminder
+  // 6. Diary reminder
   if (!todayGratitude) {
-    tips.push({ icon:'🙏', color:'#e91e63', msg:'今天还没有感恩记录，写一件值得感恩的事吧', action:'soul', actionLabel:'去记录' });
+    tips.push({ icon:'📝', color:'#e91e63', msg:'今天还没有写日记，记录一下心情吧', action:'soul', actionLabel:'去记录' });
   }
 
   // 8. Meditation suggestion
@@ -2138,7 +2132,7 @@ const JOURNAL_CATS = [
   { id:'meal',    icon:'🍽️', label:'餐食' },
   { id:'outfit',  icon:'👗', label:'搭配' },
   { id:'finance', icon:'💰', label:'收支' },
-  { id:'gratitude', icon:'🙏', label:'感恩' },
+  { id:'gratitude', icon:'📝', label:'日记' },
   { id:'anniv',   icon:'🎂', label:'纪念' },
   { id:'note',    icon:'📝', label:'手记' }
 ];
@@ -2261,11 +2255,12 @@ function getDayActivities(dateStr) {
       acts.push({ cat:'habit', icon: isChecked?'✅':'❌', text: h.name, tag:'习惯' });
     });
   }
-  // Gratitude
+  // Diary
   (state.gratitude.entries || []).forEach(function(e) {
     if (e.date === dateStr) {
-      var moodInfo = GRATE_MOODS ? GRATE_MOODS.find(function(m){return m.id===e.mood;}) : null;
-      acts.push({ cat:'gratitude', icon: moodInfo ? moodInfo.icon : '🙏', text: e.content.substring(0, 30) + (e.content.length > 30 ? '...' : ''), tag:'感恩' });
+      var diaryIcon = MOOD_EMOJIS[e.level] || '📝';
+      var diaryText = (e.source ? '['+e.source+'] ' : '') + (e.content||'').substring(0, 30) + ((e.content||'').length > 30 ? '...' : '');
+      acts.push({ cat:'gratitude', icon: diaryIcon, text: diaryText, tag:'日记' });
     }
   });
   // Manual entries (review)
@@ -2564,7 +2559,7 @@ function renderJournalReport(dateList, mode) {
     if (moodLevels.length > 0) insights.push('情绪记录 ' + moodLevels.length + ' 次，平均 ' + avgMood + ' ' + moodEmojis[Math.round(avgMood)] || '');
     if (totalDrinks > 0 || totalMeals > 0) insights.push('饮品 ' + totalDrinks + ' 杯，餐食 ' + totalMeals + ' 餐');
     if (totalFinanceOut > 0 || totalFinanceIn > 0) insights.push('收入 ' + totalFinanceIn.toFixed(0) + '，支出 ' + totalFinanceOut.toFixed(0) + '，净' + (netFinance >= 0 ? '收入' : '支出') + ' ' + Math.abs(netFinance).toFixed(0));
-    if (gratitudeCount > 0) insights.push('感恩记录 ' + gratitudeCount + ' 篇');
+    if (gratitudeCount > 0) insights.push('日记 ' + gratitudeCount + ' 篇');
     // Find most active category
     var topCat = null, topCnt = 0;
     JOURNAL_CATS.forEach(function(c) {
@@ -3130,20 +3125,18 @@ function toggleHabitCatFilter(cat) {
 }
 
 // ═══════════════════════════════════════
-// 2c. SOUL STATION (心灵驿站) - 感恩+冥想+情绪
+// 2c. SOUL STATION (心灵驿站) - 日记+冥想
 // ═══════════════════════════════════════
-let soulSubView = 'gratitude'; // 'gratitude' | 'meditate' | 'mood'
+let soulSubView = 'diary'; // 'diary' | 'meditate'
 function renderSoul() {
   var mod = state.modules.find(function(m) { return m.id === 'soul'; });
   var toggleHtml = '<div class="journal-view-toggle" style="margin-bottom:14px;">'
-    + '<button class="jvt-btn'+(soulSubView==='gratitude'?' active':'')+'" onclick="setSoulSubView(\'gratitude\')">🙏 感恩</button>'
+    + '<button class="jvt-btn'+(soulSubView==='diary'?' active':'')+'" onclick="setSoulSubView(\'diary\')">📝 日记</button>'
     + '<button class="jvt-btn'+(soulSubView==='meditate'?' active':'')+'" onclick="setSoulSubView(\'meditate\')">🧘 冥想</button>'
-    + '<button class="jvt-btn'+(soulSubView==='mood'?' active':'')+'" onclick="setSoulSubView(\'mood\')">💭 情绪</button>'
     + '</div>';
   var contentHtml;
   if (soulSubView === 'meditate') contentHtml = renderMeditate();
-  else if (soulSubView === 'mood') contentHtml = renderMood();
-  else contentHtml = renderGratitude();
+  else contentHtml = renderDiary();
   return '<div class="page active">'
     + '<div class="module-title">'
     +   mod.icon + ' <span class="editable-title" ondblclick="editModule(\'soul\')">'+mod.name+'</span>'
@@ -3155,22 +3148,59 @@ function renderSoul() {
 }
 function setSoulSubView(v) { soulSubView = v; renderPage('soul'); }
 
-var gratitudeMonthOffset = 0;
-var GRATE_MOODS = state.gratitude.moods || [
-  { id:'happy', icon:'😊', label:'开心', isDefault:true },
-  { id:'calm', icon:'😌', label:'平静', isDefault:true },
-  { id:'moved', icon:'🥹', label:'感动', isDefault:true },
-  { id:'reflective', icon:'🤔', label:'感悟', isDefault:true }
-];
-if (!state.gratitude.moods) { state.gratitude.moods = GRATE_MOODS; }
+var diaryMonthOffset = 0;
 
-function renderGratitude() {
+// ─── 日记数据迁移（感恩mood→level + 合并情绪数据）───
+function migrateToDiary() {
+  if (state._diaryMigrated) return;
+  if (!state.gratitude) state.gratitude = {};
+  if (!state.gratitude.entries) state.gratitude.entries = [];
+  if (!state.meditate) state.meditate = {};
+  if (!state.meditate.moods) state.meditate.moods = [];
+
+  // Convert old gratitude mood to level (1-5)
+  var moodToLevel = { 'happy': 5, 'calm': 4, 'moved': 4, 'reflective': 3 };
+  state.gratitude.entries.forEach(function(e) {
+    if (!e.level) {
+      e.level = moodToLevel[e.mood] || 3;
+    }
+    if (!e.source) e.source = '';
+  });
+
+  // Merge mood entries into diary entries (by date)
+  state.meditate.moods.forEach(function(m) {
+    var existing = state.gratitude.entries.find(function(e) { return e.date === m.date; });
+    if (existing) {
+      if (!existing.level || existing.level === 3) existing.level = m.level;
+      if (!existing.source && m.source) existing.source = m.source;
+      if (!existing.content || existing.content.length < 5) {
+        existing.content = m.note || m.source || existing.content;
+      }
+      if (m.aiAdvice) existing.aiAdvice = m.aiAdvice;
+    } else {
+      state.gratitude.entries.push({
+        id: m.id || ('d' + Date.now() + Math.random()),
+        date: m.date,
+        level: m.level || 3,
+        content: m.note || m.source || '',
+        source: m.source || '',
+        aiAdvice: m.aiAdvice || ''
+      });
+    }
+  });
+
+  state._diaryMigrated = true;
+  saveData();
+  console.log('[日记] 数据迁移完成：' + state.gratitude.entries.length + ' 条日记');
+}
+
+function renderDiary() {
   var entries = state.gratitude.entries || [];
   var todayStr = today();
 
   // Get month info
   var now = new Date();
-  var target = new Date(now.getFullYear(), now.getMonth() + gratitudeMonthOffset, 1);
+  var target = new Date(now.getFullYear(), now.getMonth() + diaryMonthOffset, 1);
   var cy = target.getFullYear(), cm = target.getMonth();
   var firstDay = new Date(cy, cm, 1);
   var daysInMonth = new Date(cy, cm + 1, 0).getDate();
@@ -3193,15 +3223,15 @@ function renderGratitude() {
     var ds = cy + '-' + String(cm + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
     var entry = entryMap[ds];
     var isToday = ds === todayStr;
-    var moodInfo = entry ? GRATE_MOODS.find(function(m) { return m.id === entry.mood; }) : null;
 
     var cellContent = '';
     if (entry) {
-      cellContent = '<div class="grate-mood">'+(moodInfo ? moodInfo.icon : '🙏')+'</div>'
-        + '<div class="grate-preview">'+escHtml(entry.content.substring(0, 20))+(entry.content.length > 20 ? '...' : '')+'</div>';
+      var moodIcon = MOOD_EMOJIS[entry.level] || '📝';
+      cellContent = '<div class="grate-mood">'+moodIcon+'</div>'
+        + '<div class="grate-preview">'+escHtml((entry.content||'').substring(0, 20))+((entry.content||'').length > 20 ? '...' : '')+'</div>';
     }
 
-    cellsHtml += '<div class="jm-cell grate-cell'+(isToday?' jm-today':'')+(entry?' jm-has-act':'')+'" onclick="gratitudeDayClick(\''+ds+'\')">'
+    cellsHtml += '<div class="jm-cell grate-cell'+(isToday?' jm-today':'')+(entry?' jm-has-act':'')+'" onclick="diaryDayClick(\''+ds+'\')">'
       + '<div class="jm-day-num">'+d+'</div>'
       + cellContent
       + '</div>';
@@ -3210,119 +3240,130 @@ function renderGratitude() {
   // Today's entry
   var todayEntry = entryMap[todayStr];
 
-  return '<div class="section-title">✍️ 今日感恩</div>'
+  return '<div class="section-title">✍️ 今日日记</div>'
     + '<div class="grate-input-area">'
-    +   '<textarea class="input-field" id="grateInput" placeholder="今天，我感谢..." rows="3" style="display:block;width:100%;margin-bottom:8px;">'+escHtml(todayEntry ? todayEntry.content : '')+'</textarea>'
+    +   '<div class="mood-picker" style="margin-bottom:8px;">'
+    +     [1,2,3,4,5].map(function(l) {
+           return '<button class="mood-option'+(todayEntry&&todayEntry.level===l?' active':'')+'" onclick="selectDiaryLevel('+l+')" data-level="'+l+'" title="'+MOOD_LABELS[l]+'">'+MOOD_EMOJIS[l]+'</button>';
+         }).join('')
+    +   '</div>'
+    +   '<textarea class="input-field" id="diaryInput" placeholder="今天的心情和想记录的事..." rows="3" style="display:block;width:100%;margin-bottom:8px;">'+escHtml(todayEntry ? todayEntry.content : '')+'</textarea>'
     +   '<div class="form-row">'
-    +     '<div class="grate-mood-sel">'
-    +       GRATE_MOODS.map(function(m) {
-             return '<span class="grate-mood-opt'+(todayEntry&&todayEntry.mood===m.id?' selected':'')+'" onclick="selectGrateMood(\''+m.id+'\')" data-mood="'+m.id+'">'+m.icon+'</span>';
-           }).join('')
-    +     '</div>'
-    +     '<button class="btn-sm primary" onclick="saveGratitude()" style="margin-left:auto;">'+(todayEntry?'更新':'记录')+'</button>'
+    +     '<input class="input-field" id="diarySource" placeholder="来源（可选，如：工作、运动、家人）" value="'+escHtml(todayEntry ? (todayEntry.source||'') : '')+'" style="flex:1;font-size:13px;" onkeydown="if(event.key===\'Enter\')this.blur()">'
+    +     '<button class="btn-sm primary" onclick="saveDiary()" style="margin-left:auto;">'+(todayEntry?'更新':'记录')+'</button>'
     +   '</div>'
     + '</div>'
     + '<div class="cal-nav">'
-    +   '<button class="btn-sm" onclick="changeGratitudeMonth(-1)">◀</button>'
+    +   '<button class="btn-sm" onclick="changeDiaryMonth(-1)">◀</button>'
     +   '<span style="font-weight:600;font-size:15px;">'+monthTitle+'</span>'
-    +   '<button class="btn-sm" onclick="changeGratitudeMonth(1)">▶</button>'
+    +   '<button class="btn-sm" onclick="changeDiaryMonth(1)">▶</button>'
     + '</div>'
     + '<div class="journal-month-grid">' + headerHtml + cellsHtml + '</div>'
     + '<div class="jm-legend">'
-    +   GRATE_MOODS.map(function(m) { return '<span class="jm-legend-item">'+m.icon+' '+m.label+'</span>'; }).join('')
+    +   '<span class="jm-legend-item">'+MOOD_EMOJIS[1]+' '+MOOD_LABELS[1]+'</span>'
+    +   '<span class="jm-legend-item">'+MOOD_EMOJIS[2]+' '+MOOD_LABELS[2]+'</span>'
+    +   '<span class="jm-legend-item">'+MOOD_EMOJIS[3]+' '+MOOD_LABELS[3]+'</span>'
+    +   '<span class="jm-legend-item">'+MOOD_EMOJIS[4]+' '+MOOD_LABELS[4]+'</span>'
+    +   '<span class="jm-legend-item">'+MOOD_EMOJIS[5]+' '+MOOD_LABELS[5]+'</span>'
     +   '<span class="jm-legend-item">📅 点击日期查看/编辑</span>'
-    +   '<button class="btn-sm" onclick="openCatManager({title:\'管理感恩心情\',statePath:\'gratitude.moods\',format:\'object\',reRender:\'soul\',refs:[{dataPath:\'gratitude.entries\',field:\'mood\'}]})" style="margin-left:auto;padding:2px 8px;font-size:12px;">⚙️ 管理心情</button>'
     + '</div>';
 }
 
-var selectedGrateMood = null;
-function selectGrateMood(mood) {
-  selectedGrateMood = mood;
-  document.querySelectorAll('.grate-mood-opt').forEach(function(el) {
-    el.classList.toggle('selected', el.getAttribute('data-mood') === mood);
+var selectedDiaryLevel = null;
+function selectDiaryLevel(level) {
+  selectedDiaryLevel = level;
+  document.querySelectorAll('.mood-option[data-level]').forEach(function(el) {
+    el.classList.toggle('active', parseInt(el.getAttribute('data-level')) === level);
   });
 }
 
-function saveGratitude() {
-  var inp = $('grateInput');
-  if (!inp || !inp.value.trim()) { toast('请写下感恩内容'); return; }
+function saveDiary() {
+  var inp = $('diaryInput');
+  if (!inp || !inp.value.trim()) { toast('请写下日记内容'); return; }
+  var srcInp = $('diarySource');
   var todayStr = today();
   if (!state.gratitude.entries) state.gratitude.entries = [];
   var existing = state.gratitude.entries.find(function(e) { return e.date === todayStr; });
   if (existing) {
     existing.content = inp.value.trim();
-    if (selectedGrateMood) existing.mood = selectedGrateMood;
+    existing.source = srcInp ? srcInp.value.trim() : '';
+    if (selectedDiaryLevel) existing.level = selectedDiaryLevel;
   } else {
     state.gratitude.entries.push({
-      id: 'g'+Date.now(),
+      id: 'd'+Date.now(),
       date: todayStr,
+      level: selectedDiaryLevel || 3,
       content: inp.value.trim(),
-      mood: selectedGrateMood || 'calm'
+      source: srcInp ? srcInp.value.trim() : ''
     });
   }
-  saveData(); renderPage('soul'); toast('感恩已记录 🙏');
+  saveData(); renderPage('soul'); toast('日记已记录 📝');
 }
 
-function changeGratitudeMonth(delta) {
-  gratitudeMonthOffset += delta;
+function changeDiaryMonth(delta) {
+  diaryMonthOffset += delta;
   renderPage('soul');
 }
 
-function gratitudeDayClick(dateStr) {
+function diaryDayClick(dateStr) {
   var entry = (state.gratitude.entries || []).find(function(e) { return e.date === dateStr; });
   var m = document.createElement('div');
-  m.className = 'modal-overlay show'; m.id = 'grateDayModal';
-  var moodOpts = GRATE_MOODS.map(function(mo) {
-    return '<span class="grate-mood-opt'+(entry&&entry.mood===mo.id?' selected':'')+'" onclick="selectGrateMoodEdit(\''+mo.id+'\')" data-mood="'+mo.id+'">'+mo.icon+' '+mo.label+'</span>';
+  m.className = 'modal-overlay show'; m.id = 'diaryDayModal';
+  var moodOpts = [1,2,3,4,5].map(function(l) {
+    return '<button class="mood-option'+(entry&&entry.level===l?' active':'')+'" onclick="selectDiaryLevelEdit('+l+')" data-level="'+l+'" title="'+MOOD_LABELS[l]+'">'+MOOD_EMOJIS[l]+'</button>';
   }).join('');
 
   m.innerHTML = '<div class="modal-box" style="max-width:460px;">'
-    + '<h3>🙏 '+dateStr+' 感恩</h3>'
-    + '<textarea class="input-field" id="grateDayInput" placeholder="今天，我感谢..." rows="4" style="display:block;width:100%;margin-bottom:8px;">'+escHtml(entry ? entry.content : '')+'</textarea>'
-    + '<div class="grate-mood-sel" style="margin-bottom:8px;">'+moodOpts+'</div>'
+    + '<h3>📝 '+dateStr+' 日记</h3>'
+    + '<div class="mood-picker" style="margin-bottom:10px;" id="diaryMoodPicker">'+moodOpts+'</div>'
+    + '<input class="input-field" id="diaryDaySource" placeholder="来源（可选）" value="'+escHtml(entry ? (entry.source||'') : '')+'" style="display:block;width:100%;margin-bottom:8px;font-size:13px;" onkeydown="if(event.key===\'Enter\')document.getElementById(\'diaryDayInput\').focus()">'
+    + '<textarea class="input-field" id="diaryDayInput" placeholder="今天的心情和想记录的事..." rows="4" style="display:block;width:100%;margin-bottom:8px;">'+escHtml(entry ? entry.content : '')+'</textarea>'
+    + (entry && entry.aiAdvice ? '<div style="background:var(--bg);border-radius:8px;padding:10px;margin-bottom:8px;font-size:13px;color:var(--muted);"><strong>🤖 AI建议：</strong>'+escHtml(entry.aiAdvice)+'</div>' : '')
     + '<div class="modal-actions">'
-    +   '<button class="btn-sm" onclick="document.getElementById(\'grateDayModal\').remove()">取消</button>'
-    +   (entry ? '<button class="btn-sm danger" onclick="deleteGratitude(\''+dateStr+'\')">删除</button>' : '')
-    +   '<button class="btn-sm primary" onclick="saveGratitudeDay(\''+dateStr+'\')">保存</button>'
+    +   '<button class="btn-sm" onclick="document.getElementById(\'diaryDayModal\').remove()">取消</button>'
+    +   (entry ? '<button class="btn-sm danger" onclick="deleteDiary(\''+dateStr+'\')">删除</button>' : '')
+    +   '<button class="btn-sm primary" onclick="saveDiaryDay(\''+dateStr+'\')">保存</button>'
     + '</div></div>';
   document.body.appendChild(m);
   m.addEventListener('click', function(e) { if (e.target === m) m.remove(); });
-  // Set selected mood
-  selectedGrateMood = entry ? entry.mood : null;
+  selectedDiaryLevel = entry ? entry.level : null;
 }
 
-function selectGrateMoodEdit(mood) {
-  selectedGrateMood = mood;
-  document.querySelectorAll('#grateDayModal .grate-mood-opt').forEach(function(el) {
-    el.classList.toggle('selected', el.getAttribute('data-mood') === mood);
+function selectDiaryLevelEdit(level) {
+  selectedDiaryLevel = level;
+  document.querySelectorAll('#diaryDayModal .mood-option').forEach(function(el) {
+    el.classList.toggle('active', parseInt(el.getAttribute('data-level')) === level);
   });
 }
 
-function saveGratitudeDay(dateStr) {
-  var inp = $('grateDayInput');
-  if (!inp || !inp.value.trim()) { toast('请写下感恩内容'); return; }
+function saveDiaryDay(dateStr) {
+  var inp = $('diaryDayInput');
+  var srcInp = $('diaryDaySource');
   if (!state.gratitude.entries) state.gratitude.entries = [];
   var existing = state.gratitude.entries.find(function(e) { return e.date === dateStr; });
   if (existing) {
-    existing.content = inp.value.trim();
-    if (selectedGrateMood) existing.mood = selectedGrateMood;
+    existing.content = inp ? inp.value.trim() : '';
+    existing.source = srcInp ? srcInp.value.trim() : '';
+    if (selectedDiaryLevel) existing.level = selectedDiaryLevel;
   } else {
     state.gratitude.entries.push({
-      id: 'g'+Date.now(),
+      id: 'd'+Date.now(),
       date: dateStr,
-      content: inp.value.trim(),
-      mood: selectedGrateMood || 'calm'
+      level: selectedDiaryLevel || 3,
+      content: inp ? inp.value.trim() : '',
+      source: srcInp ? srcInp.value.trim() : ''
     });
   }
   saveData();
-  document.getElementById('grateDayModal').remove();
-  renderPage('soul'); toast('感恩已保存 🙏');
+  var modal = document.getElementById('diaryDayModal');
+  if (modal) modal.remove();
+  renderPage('soul'); toast('日记已保存 📝');
 }
 
-function deleteGratitude(dateStr) {
+function deleteDiary(dateStr) {
   state.gratitude.entries = (state.gratitude.entries || []).filter(function(e) { return e.date !== dateStr; });
   saveData();
-  var modal = document.getElementById('grateDayModal');
+  var modal = document.getElementById('diaryDayModal');
   if (modal) modal.remove();
   renderPage('soul'); toast('已删除');
 }
@@ -8733,6 +8774,7 @@ function importFinanceBooks() {
 }
 
 (function init() {
+  migrateToDiary();
   importPosturePlanV3();
   importTrainingPlanV3();
   importFinanceStudyPlan();
