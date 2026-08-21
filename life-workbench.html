@@ -8752,7 +8752,7 @@ function importTennisStretchPlan() {
 
 // ─── 体态训练计划（网课适配版）导入 ───
 function importNetClassPlan() {
-  if (state._netClassPlanImported) return;
+  if (state._netClassPlanImportedV2) return;
   if (!state.gym) state.gym = {};
   if (!state.gym.resources) state.gym.resources = [];
   if (!state.gym.plans) state.gym.plans = [];
@@ -8853,10 +8853,10 @@ function importNetClassPlan() {
   sc.push(res('松解·右大腿前外侧（泡沫轴）', '侧卧身体微前倾，找到胀痛点。\n2个点，每点60秒。', 'stretch', ['网课适配','拉伸跟练','松解']));
   sc.push(res('松解·右大腿前侧（泡沫轴）', '俯卧，股直肌上段。\n60秒。', 'stretch', ['网课适配','拉伸跟练','松解']));
 
-  // ── 7. 创建运动组 ──
-  grp('每日必做（基础）', [d1,d2,d3,d4,d5,d6,d7], 'posture', '每天先做这一套（约25分钟），再做当天的主训练。\n顺序：骨盆时钟→髂腰肌拉伸→死虫式→股四头肌拉伸→短足运动→踝关节背屈→泡沫轴松解股外侧肌。');
-  grp('激活日训练', [a1,a2,a3,a4,a5,a6,a7,a8], 'strength', '阶段一 D1/3/5 做。每日必做后接激活训练（约35分钟）。');
-  grp('休息日训练', [r1,r2,r3,r4,r5], 'stretch', '阶段一 D2/4/6 做。每日必做后接康复动作+松解（约20分钟）。');
+  // ── 7. 创建运动组（按天组织，当天只打开一个组）──
+  grp('激活日', [d1,d2,d3,d4,d5,d6,d7, a1,a2,a3,a4,a5,a6,a7,a8], 'strength', 'D1/3/5 当天做这一整组（15个动作）：先做每日必做7个，再做激活训练8个。');
+  grp('康复日', [d1,d2,d3,d4,d5,d6,d7, r1,r2,r3,r4,r5], 'stretch', 'D2/4/6 当天做这一整组（12个动作）：先做每日必做7个，再做康复动作5个。');
+  grp('基础日', [d1,d2,d3,d4,d5,d6,d7, r4], 'posture', 'D7 当天做这一整组（8个动作）：每日必做7个 + 网球松解。');
   grp('网球后拉伸（完整版）', sa, 'stretch', '打完球立刻做，10-15分钟。按顺序：下肢→躯干→上肢。右侧动作多保持15-30秒。');
   grp('网球后拉伸（简易版5个）', [sa[0], sa[5], sa[2], sa[3], sa[6]], 'stretch', '赶时间时做这5个就够（约5分钟）：髂腰肌拉伸→右侧腰方肌拉伸→小腿拉伸→梨状肌拉伸→婴儿式。');
   grp('日常腰背紧张放松', sb, 'stretch', '随时可做，10分钟。腰背紧张时的快速放松。');
@@ -8868,9 +8868,9 @@ function importNetClassPlan() {
     for (var i = 1; i <= totalDays; i++) {
       var mod = i % 7;
       var content, type;
-      if (mod === 0) { content = 'D' + i + ' 休息'; type = '拉伸放松'; }
-      else if (mod % 2 === 1) { content = 'D' + i + ' 基础+激活'; type = '力量训练'; }
-      else { content = 'D' + i + ' 基础'; type = '体态矫正'; }
+      if (mod === 0) { content = 'D' + i + ' 基础日'; type = '体态矫正'; }
+      else if (mod % 2 === 1) { content = 'D' + i + ' 激活日'; type = '力量训练'; }
+      else { content = 'D' + i + ' 康复日'; type = '拉伸放松'; }
       items.push({
         session: i, content: content,
         done: false, doneDate: '', syncedWorkoutId: '',
@@ -8888,9 +8888,9 @@ function importNetClassPlan() {
     completed: false
   });
 
-  state._netClassPlanImported = true;
+  state._netClassPlanImportedV2 = true;
   saveData();
-  console.log('[体态训练·网课适配版] 导入完成：阶段1课表(14课时) + 20个动作资源 + 12个拉伸动作 + 7个运动组');
+  console.log('[体态训练·网课适配版] 导入完成：阶段1课表(14课时) + 20个动作资源 + 12个拉伸动作 + 7个运动组(激活日/康复日/基础日)');
 }
 
 // ─── 理财书籍导入 ───
