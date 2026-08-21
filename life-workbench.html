@@ -319,6 +319,22 @@ body {
   display:inline-block; padding:2px 8px; border-radius:10px; font-size:11px;
   background: var(--accent-soft); color: var(--accent);
 }
+.rating-stars { display:inline-flex; gap:2px; }
+.rating-star { font-size:16px; cursor:pointer; color:var(--rule); user-select:none; transition: color 0.12s; }
+.rating-star.active { color:#f5a623; }
+.rating-star:hover { color:#f5c842; }
+.rating-display { color:#f5a623; font-size:13px; letter-spacing:1px; }
+.season-tag { display:inline-block; padding:1px 6px; border-radius:8px; font-size:10px; background:var(--bg2); color:var(--muted); margin-left:4px; }
+.item-pros-cons { font-size:11px; margin-top:3px; line-height:1.4; }
+.item-pros { color:#4caf50; margin-right:8px; }
+.item-cons { color:#e57373; }
+.lookbook-card { border-left:3px solid var(--accent); }
+.lookbook-mode-toggle { display:flex; gap:6px; margin-bottom:8px; }
+.lookbook-mode-btn { padding:4px 12px; border-radius:14px; font-size:12px; border:1px solid var(--rule); background:var(--bg2); color:var(--ink); cursor:pointer; transition: all 0.12s; }
+.lookbook-mode-btn.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+.outfit-select-card { padding:8px; border:1px solid var(--rule); border-radius:8px; cursor:pointer; margin-bottom:6px; transition: all 0.12s; }
+.outfit-select-card:hover { border-color: var(--accent); }
+.outfit-select-card.selected { border-color: var(--accent); background: var(--accent-soft); }
 .card-tag {
   display:inline-block; padding:2px 10px; border-radius:12px; font-size:11px;
   background: var(--accent-soft); color: var(--accent); margin-right: 6px;
@@ -1271,7 +1287,7 @@ const DEFAULT_DATA = {
   meditate: { moods:[], sessions:[] },
   stars: { inspirations:[], travelCards:[] },
   tips: { items:[], tags:[] },  // items: { id, title, content, source, category, tags:[], createdAt }
-  closet: { wardrobe:[], outfits:[] },
+  closet: { wardrobe:[], outfits:[], dailyOutfits:[] },
   bar: { drinks:[], meals:[] },  // meals: { id, date, mealType:'breakfast'|'lunch'|'dinner'|'snack', source:'外食'|'家食'|'外卖', content, note }
   finance: { records:[] }
 };
@@ -7339,70 +7355,100 @@ function saveEditTip(id) {
 // ═══════════════════════════════════════
 // 8. CLOSET (衣帽间)
 // ═══════════════════════════════════════
+let closetSubView = 'main';
 function renderCloset() {
-  const mod = state.modules.find(m => m.id === 'closet');
+  var mod = state.modules.find(function(m) { return m.id === 'closet'; });
+  var toggleHtml = '<div class="journal-view-toggle" style="margin-bottom:14px;">'
+    + '<button class="jvt-btn'+(closetSubView==='main'?' active':'')+'" onclick="setClosetSubView(\'main\')">👗 单品搭配</button>'
+    + '<button class="jvt-btn'+(closetSubView==='lookbook'?' active':'')+'" onclick="setClosetSubView(\'lookbook\')">📅 每日穿搭</button>'
+    + '</div>';
+  var contentHtml = closetSubView === 'lookbook' ? renderLookbook() : renderClosetMain();
+  return '<div class="page active">'
+    + '<div class="module-title">'
+    +   mod.icon + ' <span class="editable-title" ondblclick="editModule(\'closet\')">'+mod.name+'</span>'
+    +   '<button class="edit-icon-btn" onclick="editModule(\'closet\')" title="编辑">✏️</button>'
+    + '</div>'
+    + toggleHtml
+    + contentHtml
+    + '</div>';
+}
+function setClosetSubView(v) { closetSubView = v; renderPage('closet'); }
+function renderClosetMain() {
   const wardrobe = state.closet.wardrobe || [];
   const outfits = (state.closet.outfits || []).slice(-10).reverse();
   return `
-    <div class="page active">
-      <div class="module-title">
-        ${mod.icon} <span class="editable-title" ondblclick="editModule('closet')">${mod.name}</span>
-        <button class="edit-icon-btn" onclick="editModule('closet')" title="编辑">✏️</button>
+    <div class="section-title">👚 衣橱单品 (${wardrobe.length})</div>
+    <div class="form-row">
+      <input class="input-field" id="itemName" placeholder="单品名">
+      <input class="input-field" id="itemBrand" placeholder="品牌（可选）" style="flex:0.7;">
+    </div>
+    <div class="form-row" style="margin-top:8px;">
+      <select class="input-field" id="itemCat" style="flex:0.7;">
+        ${CLOSET_CATS.map(c => '<option>'+c+'</option>').join('')}
+      </select>
+      <input class="input-field" id="itemColor" placeholder="颜色" style="flex:0.5;">
+      <select class="input-field" id="itemSeason" style="flex:0.5;">
+        <option value="">季节</option>
+        <option value="春">春</option>
+        <option value="夏">夏</option>
+        <option value="秋">秋</option>
+        <option value="冬">冬</option>
+        <option value="全季">全季</option>
+      </select>
+      <button class="btn-sm primary" onclick="addWardrobeItem()">+</button>
+    </div>
+    <div class="form-row" style="margin-top:8px;">
+      <input class="input-field" id="itemPros" placeholder="优点（可选）" style="flex:1;">
+      <input class="input-field" id="itemCons" placeholder="缺点（可选）" style="flex:1;">
+    </div>
+    <button class="btn-sm" onclick="openCatManager({title:'管理衣橱分类',statePath:'closet.cats',format:'string',reRender:'closet',refs:[{dataPath:'closet.wardrobe',field:'cat'}]})" style="margin-bottom:8px;font-size:12px;">⚙️ 管理衣橱分类</button>
+    ${wardrobe.length === 0 ? '<div class="empty-state">衣橱空空，开始添加吧~</div>' :
+      wardrobe.map(item => `
+        <div class="card card-row">
+          <span style="font-size:18px;">${closetCatIcon(item.cat)}</span>
+          <span class="card-content">${escHtml(item.name)} <span style="font-size:11px;color:var(--muted);">${[item.brand, item.cat, item.color].filter(Boolean).join(' · ')}</span>${item.season ? '<span class="season-tag">'+item.season+'</span>' : ''}${(item.pros || item.cons) ? '<div class="item-pros-cons">'+(item.pros?'<span class="item-pros">✓ '+escHtml(item.pros)+'</span>':'')+(item.cons?'<span class="item-cons">✗ '+escHtml(item.cons)+'</span>':'')+'</div>' : ''}</span>
+          <button class="btn-sm" onclick="editWardrobeItem('${item.id}')">✏️</button>
+          <button class="btn-sm danger" onclick="deleteWardrobeItem('${item.id}')">删</button>
+        </div>`).join('')
+    }
+    <div class="section-title">👗 每日搭配</div>
+    ${wardrobe.length > 0 ? `
+    <div class="outfit-picker" id="outfitPicker">
+      ${wardrobe.map(item => `
+        <span class="outfit-chip" data-id="${item.id}" onclick="toggleOutfitChip(this)">${closetCatIcon(item.cat)} ${escHtml(item.name)}</span>`).join('')}
+    </div>` : ''}
+    <div class="form-row">
+      <input class="input-field" id="outfitDesc" placeholder="搭配描述（可选）...">
+      <input class="input-field" id="outfitOccasion" placeholder="场合（可选）" style="flex:0.7;">
+      <button class="btn-sm primary" onclick="addOutfit()">记录</button>
+    </div>
+    <div class="form-row" style="margin-top:8px;align-items:center;">
+      <span style="font-size:12px;color:var(--muted);">喜爱度：</span>
+      <div class="rating-stars" id="outfitRating" data-rating="0">
+        ${[1,2,3,4,5].map(n => '<span class="rating-star" data-val="'+n+'" onclick="setRating(this,\'outfitRating\')">★</span>').join('')}
       </div>
-      <div class="section-title">👚 衣橱单品 (${wardrobe.length})</div>
-      <div class="form-row">
-        <input class="input-field" id="itemName" placeholder="单品名">
-        <input class="input-field" id="itemBrand" placeholder="品牌（可选）" style="flex:0.7;">
-      </div>
-      <div class="form-row" style="margin-top:8px;">
-        <select class="input-field" id="itemCat" style="flex:0.7;">
-          ${CLOSET_CATS.map(c => '<option>'+c+'</option>').join('')}
-        </select>
-        <input class="input-field" id="itemColor" placeholder="颜色" style="flex:0.5;">
-        <button class="btn-sm primary" onclick="addWardrobeItem()">+</button>
-      </div>
-      <button class="btn-sm" onclick="openCatManager({title:'管理衣橱分类',statePath:'closet.cats',format:'string',reRender:'closet',refs:[{dataPath:'closet.wardrobe',field:'cat'}]})" style="margin-bottom:8px;font-size:12px;">⚙️ 管理衣橱分类</button>
-      ${wardrobe.length === 0 ? '<div class="empty-state">衣橱空空，开始添加吧~</div>' :
-        wardrobe.map(item => `
-          <div class="card card-row">
-            <span style="font-size:18px;">${item.cat==='上装'?'👕':item.cat==='下装'?'👖':item.cat==='连衣裙'?'👗':item.cat==='外套'?'🧥':item.cat==='鞋子'?'👠':'💍'}</span>
-            <span class="card-content">${escHtml(item.name)} <span style="font-size:11px;color:var(--muted);">${[item.brand, item.cat, item.color].filter(Boolean).join(' · ')}</span></span>
-            <button class="btn-sm" onclick="editWardrobeItem('${item.id}')">✏️</button>
-            <button class="btn-sm danger" onclick="deleteWardrobeItem('${item.id}')">删</button>
-          </div>`).join('')
-      }
-      <div class="section-title">👗 每日搭配</div>
-      ${wardrobe.length > 0 ? `
-      <div class="outfit-picker" id="outfitPicker">
-        ${wardrobe.map(item => `
-          <span class="outfit-chip" data-id="${item.id}" onclick="toggleOutfitChip(this)">${item.cat==='上装'?'👕':item.cat==='下装'?'👖':item.cat==='连衣裙'?'👗':item.cat==='外套'?'🧥':item.cat==='鞋子'?'👠':'💍'} ${escHtml(item.name)}</span>`).join('')}
-      </div>` : ''}
-      <div class="form-row">
-        <input class="input-field" id="outfitDesc" placeholder="搭配描述（可选）...">
-        <input class="input-field" id="outfitOccasion" placeholder="场合（可选）" style="flex:0.7;">
-        <button class="btn-sm primary" onclick="addOutfit()">记录</button>
-      </div>
-      ${outfits.length === 0 ? '<div class="empty-state">暂无搭配记录</div>' :
-        outfits.map(o => {
-          const picked = (o.items||[]).map(id => (state.closet.wardrobe||[]).find(w => w.id === id)).filter(Boolean);
-          return `
-          <div class="card">
-            <div style="font-size:12px;color:var(--muted);margin-bottom:4px;">${o.date} ${o.occasion ? '· '+escHtml(o.occasion) : ''}</div>
-            ${picked.length > 0 ? '<div class="outfit-picked" style="margin-bottom:6px;">'+picked.map(p => `<span class="outfit-picked-tag">${escHtml(p.name)}</span>`).join('')+'</div>' : ''}
-            ${o.desc ? '<div>'+escHtml(o.desc)+'</div>' : ''}
-            <div style="margin-top:6px;">
-              <button class="btn-sm" onclick="editOutfit('${o.id}')">✏️</button>
-              <button class="btn-sm danger" onclick="deleteOutfit('${o.id}')">删</button>
-            </div>
-          </div>`; }).join('')
-      }
-    </div>`;
+    </div>
+    ${outfits.length === 0 ? '<div class="empty-state">暂无搭配记录</div>' :
+      outfits.map(o => {
+        const picked = (o.items||[]).map(id => (state.closet.wardrobe||[]).find(w => w.id === id)).filter(Boolean);
+        return `
+        <div class="card">
+          <div style="font-size:12px;color:var(--muted);margin-bottom:4px;">${o.date} ${o.occasion ? '· '+escHtml(o.occasion) : ''} ${o.rating ? '<span class="rating-display">'+'★'.repeat(o.rating)+'</span>' : ''}</div>
+          ${picked.length > 0 ? '<div class="outfit-picked" style="margin-bottom:6px;">'+picked.map(p => '<span class="outfit-picked-tag">'+closetCatIcon(p.cat)+' '+escHtml(p.name)+'</span>').join('')+'</div>' : ''}
+          ${o.desc ? '<div>'+escHtml(o.desc)+'</div>' : ''}
+          <div style="margin-top:6px;">
+            <button class="btn-sm" onclick="editOutfit('${o.id}')">✏️</button>
+            <button class="btn-sm danger" onclick="deleteOutfit('${o.id}')">删</button>
+          </div>
+        </div>`; }).join('')
+    }
+  `;
 }
 function addWardrobeItem() {
-  const name = $('itemName'), cat = $('itemCat'), color = $('itemColor'), brand = $('itemBrand');
+  const name = $('itemName'), cat = $('itemCat'), color = $('itemColor'), brand = $('itemBrand'), season = $('itemSeason'), pros = $('itemPros'), cons = $('itemCons');
   if (!name.value.trim()) return;
   if (!state.closet.wardrobe) state.closet.wardrobe = [];
-  state.closet.wardrobe.push({ id:'wi'+Date.now(), name:name.value.trim(), brand:(brand && brand.value.trim())||'', cat:cat.value, color:color.value.trim() });
+  state.closet.wardrobe.push({ id:'wi'+Date.now(), name:name.value.trim(), brand:(brand && brand.value.trim())||'', cat:cat.value, color:color.value.trim(), season:(season && season.value)||'', pros:(pros && pros.value.trim())||'', cons:(cons && cons.value.trim())||'' });
   saveData(); renderPage('closet'); toast('单品已添加');
 }
 function deleteWardrobeItem(id) { state.closet.wardrobe = state.closet.wardrobe.filter(w => w.id !== id); saveData(); renderPage('closet'); }
@@ -7420,6 +7466,12 @@ function editWardrobeItem(id) {
         ${CLOSET_CATS.map(c => '<option'+(item.cat===c?' selected':'')+'>'+c+'</option>').join('')}
       </select>
       <input class="input-field" id="editWardrobeColor" value="${escHtml(item.color||'')}" placeholder="颜色" style="display:block;width:100%;margin-bottom:8px;">
+      <select class="input-field" id="editWardrobeSeason" style="display:block;width:100%;margin-bottom:8px;">
+        <option value="">季节（可选）</option>
+        ${['春','夏','秋','冬','全季'].map(s => '<option'+(item.season===s?' selected':'')+'>'+s+'</option>').join('')}
+      </select>
+      <input class="input-field" id="editWardrobePros" value="${escHtml(item.pros||'')}" placeholder="优点（可选）" style="display:block;width:100%;margin-bottom:8px;">
+      <input class="input-field" id="editWardrobeCons" value="${escHtml(item.cons||'')}" placeholder="缺点（可选）" style="display:block;width:100%;margin-bottom:8px;">
       <div class="modal-actions">
         <button class="btn-sm" onclick="document.getElementById('editWardrobeModal').remove()">取消</button>
         <button class="btn-sm primary" onclick="saveEditWardrobeItem('${id}')">保存</button>
@@ -7438,6 +7490,9 @@ function saveEditWardrobeItem(id) {
   item.brand = $('editWardrobeBrand').value.trim();
   item.cat = $('editWardrobeCat').value;
   item.color = $('editWardrobeColor').value.trim();
+  item.season = $('editWardrobeSeason').value;
+  item.pros = $('editWardrobePros').value.trim();
+  item.cons = $('editWardrobeCons').value.trim();
   saveData();
   document.getElementById('editWardrobeModal').remove();
   renderPage('closet'); toast('单品已更新');
@@ -7447,13 +7502,34 @@ function getSelectedOutfitItems() {
   document.querySelectorAll('#outfitPicker .outfit-chip.selected').forEach(function(c) { ids.push(c.getAttribute('data-id')); });
   return ids;
 }
+function getSelectedItemsFrom(containerId) {
+  var ids = [];
+  document.querySelectorAll('#'+containerId+' .outfit-chip.selected').forEach(function(c) { ids.push(c.getAttribute('data-id')); });
+  return ids;
+}
 function toggleOutfitChip(el) { el.classList.toggle('selected'); }
+function setRating(el, containerId) {
+  var val = parseInt(el.getAttribute('data-val'));
+  var container = document.getElementById(containerId);
+  if (!container) return;
+  var current = parseInt(container.getAttribute('data-rating') || '0');
+  if (current === val) val = 0;
+  container.setAttribute('data-rating', val);
+  container.querySelectorAll('.rating-star').forEach(function(s) {
+    s.classList.toggle('active', parseInt(s.getAttribute('data-val')) <= val);
+  });
+}
+function getRating(containerId) {
+  var c = document.getElementById(containerId);
+  return c ? parseInt(c.getAttribute('data-rating') || '0') : 0;
+}
 function addOutfit() {
   const desc = $('outfitDesc'), occasion = $('outfitOccasion');
   const items = getSelectedOutfitItems();
+  const rating = getRating('outfitRating');
   if (!desc.value.trim() && items.length === 0) { toast('请选择单品或填写描述'); return; }
   if (!state.closet.outfits) state.closet.outfits = [];
-  state.closet.outfits.push({ id:'o'+Date.now(), date:today(), desc:desc.value.trim(), occasion:occasion.value.trim(), items:items });
+  state.closet.outfits.push({ id:'o'+Date.now(), date:today(), desc:desc.value.trim(), occasion:occasion.value.trim(), items:items, rating:rating });
   saveData(); renderPage('closet'); toast('搭配已记录');
 }
 function deleteOutfit(id) { state.closet.outfits = state.closet.outfits.filter(o => o.id !== id); saveData(); renderPage('closet'); }
@@ -7469,11 +7545,17 @@ function editOutfit(id) {
       <h3>✏️ 编辑搭配</h3>
       <div class="outfit-picker" id="editOutfitPicker" style="margin-bottom:8px;">
         ${wardrobe.map(item => `
-          <span class="outfit-chip${selectedIds.indexOf(item.id) !== -1 ? ' selected' : ''}" data-id="${item.id}" onclick="toggleOutfitChip(this)">${escHtml(item.name)}</span>`).join('')}
+          <span class="outfit-chip${selectedIds.indexOf(item.id) !== -1 ? ' selected' : ''}" data-id="${item.id}" onclick="toggleOutfitChip(this)">${closetCatIcon(item.cat)} ${escHtml(item.name)}</span>`).join('')}
       </div>
       <input class="input-field" id="editOutfitDate" type="date" value="${o.date||today()}" style="display:block;width:100%;margin-bottom:8px;">
       <input class="input-field" id="editOutfitDesc" value="${escHtml(o.desc)}" placeholder="搭配描述（可选）" style="display:block;width:100%;margin-bottom:8px;">
       <input class="input-field" id="editOutfitOccasion" value="${escHtml(o.occasion||'')}" placeholder="场合（可选）" style="display:block;width:100%;margin-bottom:8px;">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">
+        <span style="font-size:12px;color:var(--muted);">喜爱度：</span>
+        <div class="rating-stars" id="editOutfitRating" data-rating="${o.rating||0}">
+          ${[1,2,3,4,5].map(n => '<span class="rating-star'+(n<=(o.rating||0)?' active':'')+'" data-val="'+n+'" onclick="setRating(this,\'editOutfitRating\')">★</span>').join('')}
+        </div>
+      </div>
       <div class="modal-actions">
         <button class="btn-sm" onclick="document.getElementById('editOutfitModal').remove()">取消</button>
         <button class="btn-sm primary" onclick="saveEditOutfit('${id}')">保存</button>
@@ -7494,9 +7576,180 @@ function saveEditOutfit(id) {
   o.desc = desc;
   o.occasion = $('editOutfitOccasion').value.trim();
   o.items = items;
+  o.rating = getRating('editOutfitRating');
   saveData();
   document.getElementById('editOutfitModal').remove();
   renderPage('closet'); toast('搭配已更新');
+}
+function renderLookbook() {
+  var wardrobe = state.closet.wardrobe || [];
+  var outfits = state.closet.outfits || [];
+  var daily = (state.closet.dailyOutfits || []).slice().sort(function(a,b) { return b.date.localeCompare(a.date); });
+  return `
+    <div class="section-title">📅 记录今日穿搭</div>
+    <input class="input-field" id="lookbookDate" type="date" value="${today()}" style="display:block;width:100%;margin-bottom:8px;">
+    <div class="lookbook-mode-toggle">
+      <button class="lookbook-mode-btn active" id="modeOutfit" onclick="setLookbookMode('outfit')">👗 选搭配</button>
+      <button class="lookbook-mode-btn" id="modeItem" onclick="setLookbookMode('item')">👕 选单品</button>
+    </div>
+    <div id="lookbookOutfitMode">
+      ${outfits.length === 0 ? '<div class="empty-state">暂无搭配记录，请先在「单品搭配」页创建</div>' :
+        outfits.map(o => {
+          var picked = (o.items||[]).map(id => wardrobe.find(w => w.id === id)).filter(Boolean);
+          return '<div class="outfit-select-card" data-outfit-id="'+o.id+'" onclick="toggleLookbookOutfit(this)">'
+            + '<div style="font-size:12px;color:var(--muted);">'+escHtml(o.desc||'搭配')+' '+(o.occasion?'· '+escHtml(o.occasion):'')+(o.rating?' <span class="rating-display">'+'★'.repeat(o.rating)+'</span>':'')+'</div>'
+            + (picked.length>0?'<div class="outfit-picked" style="margin-top:4px;">'+picked.map(p=>'<span class="outfit-picked-tag">'+closetCatIcon(p.cat)+' '+escHtml(p.name)+'</span>').join('')+'</div>':'')
+            + '</div>';
+        }).join('')
+      }
+    </div>
+    <div id="lookbookItemMode" style="display:none;">
+      ${wardrobe.length === 0 ? '<div class="empty-state">衣橱空空，请先添加单品</div>' :
+        '<div class="outfit-picker" id="lookbookItemPicker">'
+        + wardrobe.map(item => '<span class="outfit-chip" data-id="'+item.id+'" onclick="toggleOutfitChip(this)">'+closetCatIcon(item.cat)+' '+escHtml(item.name)+'</span>').join('')
+        + '</div>'
+      }
+    </div>
+    <input class="input-field" id="lookbookNote" placeholder="穿搭备注（可选）..." style="display:block;width:100%;margin:8px 0;">
+    <div class="form-row" style="margin-bottom:8px;align-items:center;">
+      <span style="font-size:12px;color:var(--muted);">喜爱度：</span>
+      <div class="rating-stars" id="lookbookRating" data-rating="0">
+        ${[1,2,3,4,5].map(n => '<span class="rating-star" data-val="'+n+'" onclick="setRating(this,\'lookbookRating\')">★</span>').join('')}
+      </div>
+      <button class="btn-sm primary" onclick="addDailyOutfit()" style="margin-left:auto;">记录</button>
+    </div>
+    <div class="section-title">📋 穿搭记录 (${daily.length})</div>
+    ${daily.length === 0 ? '<div class="empty-state">暂无穿搭记录</div>' :
+      daily.map(d => {
+        var items = [];
+        if (d.outfitId) {
+          var o = outfits.find(x => x.id === d.outfitId);
+          if (o) items = (o.items||[]).map(id => wardrobe.find(w => w.id === id)).filter(Boolean);
+        } else {
+          items = (d.items||[]).map(id => wardrobe.find(w => w.id === id)).filter(Boolean);
+        }
+        return '<div class="card lookbook-card">'
+          + '<div style="font-size:12px;color:var(--muted);margin-bottom:4px;">'+d.date+(d.outfitId?' · 搭配':' · 单品')+(d.rating?' <span class="rating-display">'+'★'.repeat(d.rating)+'</span>':'')+'</div>'
+          + (items.length>0?'<div class="outfit-picked" style="margin-bottom:6px;">'+items.map(p=>'<span class="outfit-picked-tag">'+closetCatIcon(p.cat)+' '+escHtml(p.name)+'</span>').join('')+'</div>':'')
+          + (d.note?'<div style="font-size:13px;">'+escHtml(d.note)+'</div>':'')
+          + '<div style="margin-top:6px;">'
+          + '<button class="btn-sm" onclick="editDailyOutfit(\''+d.id+'\')">✏️</button>'
+          + '<button class="btn-sm danger" onclick="deleteDailyOutfit(\''+d.id+'\')">删</button>'
+          + '</div></div>';
+      }).join('')
+    }
+  `;
+}
+function setLookbookMode(m) {
+  var btnO = document.getElementById('modeOutfit');
+  var btnI = document.getElementById('modeItem');
+  if (btnO) btnO.classList.toggle('active', m === 'outfit');
+  if (btnI) btnI.classList.toggle('active', m === 'item');
+  var outDiv = document.getElementById('lookbookOutfitMode');
+  var itemDiv = document.getElementById('lookbookItemMode');
+  if (outDiv) outDiv.style.display = m === 'outfit' ? '' : 'none';
+  if (itemDiv) itemDiv.style.display = m === 'item' ? '' : 'none';
+}
+function toggleLookbookOutfit(el) {
+  el.parentElement.querySelectorAll('.outfit-select-card').forEach(function(c) { c.classList.remove('selected'); });
+  el.classList.add('selected');
+}
+function addDailyOutfit() {
+  var date = document.getElementById('lookbookDate').value || today();
+  var note = document.getElementById('lookbookNote').value.trim();
+  var rating = getRating('lookbookRating');
+  var outfitId = '';
+  var items = [];
+  var selectedOutfit = document.querySelector('#lookbookOutfitMode .outfit-select-card.selected');
+  if (selectedOutfit) {
+    outfitId = selectedOutfit.getAttribute('data-outfit-id');
+  } else {
+    items = getSelectedItemsFrom('lookbookItemPicker');
+  }
+  if (!outfitId && items.length === 0 && !note) { toast('请选择搭配/单品或填写备注'); return; }
+  if (!state.closet.dailyOutfits) state.closet.dailyOutfits = [];
+  state.closet.dailyOutfits.push({ id:'do'+Date.now(), date:date, outfitId:outfitId, items:items, note:note, rating:rating });
+  saveData(); renderPage('closet'); toast('穿搭已记录');
+}
+function deleteDailyOutfit(id) { state.closet.dailyOutfits = (state.closet.dailyOutfits||[]).filter(d => d.id !== id); saveData(); renderPage('closet'); }
+function editDailyOutfit(id) {
+  var d = (state.closet.dailyOutfits||[]).find(x => x.id === id);
+  if (!d) return;
+  var wardrobe = state.closet.wardrobe || [];
+  var outfits = state.closet.outfits || [];
+  var m = document.createElement('div');
+  m.className = 'modal-overlay show'; m.id = 'editDailyOutfitModal';
+  m.innerHTML = `
+    <div class="modal-box" style="max-width:400px;">
+      <h3>✏️ 编辑穿搭</h3>
+      <input class="input-field" id="editLookbookDate" type="date" value="${d.date||today()}" style="display:block;width:100%;margin-bottom:8px;">
+      <div class="lookbook-mode-toggle">
+        <button class="lookbook-mode-btn${d.outfitId?' active':''}" id="editModeOutfit" onclick="setEditLookbookMode('outfit')">👗 选搭配</button>
+        <button class="lookbook-mode-btn${!d.outfitId?' active':''}" id="editModeItem" onclick="setEditLookbookMode('item')">👕 选单品</button>
+      </div>
+      <div id="editLookbookOutfitMode" style="${d.outfitId?'':'display:none;'}">
+        ${outfits.map(o => {
+          var picked = (o.items||[]).map(id => wardrobe.find(w => w.id === id)).filter(Boolean);
+          return '<div class="outfit-select-card'+(d.outfitId===o.id?' selected':'')+'" data-outfit-id="'+o.id+'" onclick="toggleEditLookbookOutfit(this)">'
+            + '<div style="font-size:12px;color:var(--muted);">'+escHtml(o.desc||'搭配')+' '+(o.occasion?'· '+escHtml(o.occasion):'')+(o.rating?' <span class="rating-display">'+'★'.repeat(o.rating)+'</span>':'')+'</div>'
+            + (picked.length>0?'<div class="outfit-picked" style="margin-top:4px;">'+picked.map(p=>'<span class="outfit-picked-tag">'+closetCatIcon(p.cat)+' '+escHtml(p.name)+'</span>').join('')+'</div>':'')
+            + '</div>';
+        }).join('')}
+      </div>
+      <div id="editLookbookItemMode" style="${d.outfitId?'display:none;':''}">
+        ${wardrobe.length === 0 ? '<div class="empty-state">衣橱空空</div>' :
+          '<div class="outfit-picker" id="editLookbookItemPicker">'
+          + wardrobe.map(item => '<span class="outfit-chip'+((d.items||[]).indexOf(item.id)!==-1?' selected':'')+'" data-id="'+item.id+'" onclick="toggleOutfitChip(this)">'+closetCatIcon(item.cat)+' '+escHtml(item.name)+'</span>').join('')
+          + '</div>'
+        }
+      </div>
+      <input class="input-field" id="editLookbookNote" value="${escHtml(d.note||'')}" placeholder="穿搭备注（可选）" style="display:block;width:100%;margin:8px 0;">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">
+        <span style="font-size:12px;color:var(--muted);">喜爱度：</span>
+        <div class="rating-stars" id="editLookbookRating" data-rating="${d.rating||0}">
+          ${[1,2,3,4,5].map(n => '<span class="rating-star'+(n<=(d.rating||0)?' active':'')+'" data-val="'+n+'" onclick="setRating(this,\'editLookbookRating\')">★</span>').join('')}
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-sm" onclick="document.getElementById('editDailyOutfitModal').remove()">取消</button>
+        <button class="btn-sm primary" onclick="saveEditDailyOutfit('${id}')">保存</button>
+      </div>
+    </div>`;
+  document.body.appendChild(m);
+  m.addEventListener('click', function(e) { if (e.target === m) m.remove(); });
+  setTimeout(function() { var inp = $('editLookbookNote'); if (inp) { inp.focus(); inp.select(); } }, 50);
+}
+function setEditLookbookMode(m) {
+  var btnO = document.getElementById('editModeOutfit');
+  var btnI = document.getElementById('editModeItem');
+  if (btnO) btnO.classList.toggle('active', m === 'outfit');
+  if (btnI) btnI.classList.toggle('active', m === 'item');
+  var outDiv = document.getElementById('editLookbookOutfitMode');
+  var itemDiv = document.getElementById('editLookbookItemMode');
+  if (outDiv) outDiv.style.display = m === 'outfit' ? '' : 'none';
+  if (itemDiv) itemDiv.style.display = m === 'item' ? '' : 'none';
+}
+function toggleEditLookbookOutfit(el) {
+  el.parentElement.querySelectorAll('.outfit-select-card').forEach(function(c) { c.classList.remove('selected'); });
+  el.classList.add('selected');
+}
+function saveEditDailyOutfit(id) {
+  var d = (state.closet.dailyOutfits||[]).find(x => x.id === id);
+  if (!d) return;
+  d.date = document.getElementById('editLookbookDate').value;
+  d.note = document.getElementById('editLookbookNote').value.trim();
+  d.rating = getRating('editLookbookRating');
+  var selectedOutfit = document.querySelector('#editLookbookOutfitMode .outfit-select-card.selected');
+  if (selectedOutfit) {
+    d.outfitId = selectedOutfit.getAttribute('data-outfit-id');
+    d.items = [];
+  } else {
+    d.outfitId = '';
+    d.items = getSelectedItemsFrom('editLookbookItemPicker');
+  }
+  saveData();
+  document.getElementById('editDailyOutfitModal').remove();
+  renderPage('closet'); toast('穿搭已更新');
 }
 
 // ═══════════════════════════════════════
