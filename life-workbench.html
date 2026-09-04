@@ -341,7 +341,40 @@ body {
 .lookbook-mode-btn.active { background:var(--accent); color:#fff; border-color:var(--accent); }
 .closet-filter-bar { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:10px; }
 .closet-filter-select { padding:5px 8px; font-size:12px; border:1px solid var(--rule); border-radius:8px; background:var(--bg2); color:var(--ink); font-family:inherit; }
-.wear-badge { display:inline-block; padding:1px 7px; border-radius:9px; font-size:10px; background:var(--accent-soft); color:var(--accent); margin-left:4px; white-space:nowrap; }
+.wisdom-card {
+  border:1px solid var(--rule); border-radius:12px; padding:12px 14px; margin-bottom:10px;
+  background:var(--bg); transition:all 0.2s; position:relative;
+}
+.wisdom-card:hover { border-color: var(--accent); }
+.wisdom-card-title { font-size:14px; font-weight:600; margin-bottom:4px; }
+.wisdom-card-scene { font-size:11px; color:var(--muted); margin-bottom:6px; }
+.wisdom-card-desc { font-size:13px; line-height:1.5; color:var(--ink); }
+.wisdom-cat-header {
+  display:flex; align-items:center; justify-content:space-between; cursor:pointer;
+  padding:8px 0; border-bottom:1px solid var(--rule); margin-bottom:8px;
+}
+.wisdom-cat-header .wisdom-cat-name { font-size:13px; font-weight:600; }
+.wisdom-cat-header .wisdom-cat-count { font-size:11px; color:var(--muted); }
+.wisdom-cat-body { display:none; }
+.wisdom-cat-body.open { display:block; }
+.wisdom-sub-toggle {
+  display:flex; gap:6px; margin-bottom:12px;
+}
+.wisdom-sub-toggle .ws-btn {
+  padding:4px 12px; border-radius:14px; font-size:12px; cursor:pointer;
+  border:1px solid var(--rule); background:var(--bg2); color:var(--ink); transition:all 0.12s;
+}
+.wisdom-sub-toggle .ws-btn.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+.wisdom-actions { margin-top:8px; display:flex; gap:6px; }
+.wisdom-empty { padding:20px; text-align:center; color:var(--muted); font-size:13px; }
+.wisdom-add-form { margin-bottom:16px; padding:12px; background:var(--bg2); border-radius:10px; }
+.wisdom-collapse-toggle {
+  display:flex; align-items:center; justify-content:space-between; padding:8px 12px;
+  border:1px solid var(--rule); border-radius:8px; cursor:pointer; background:var(--bg2); margin-bottom:6px; transition:all 0.12s;
+}
+.wisdom-collapse-toggle:hover { border-color: var(--accent); }
+.wisdom-collapse-body { display:none; }
+.wisdom-collapse-body.open { display:block; }
 .picker-collapse-toggle { display:flex; align-items:center; justify-content:space-between; padding:8px 12px; border:1px solid var(--rule); border-radius:8px; cursor:pointer; background:var(--bg2); margin-bottom:6px; transition: all 0.12s; }
 .picker-collapse-toggle:hover { border-color: var(--accent); }
 .picker-collapse-body { display:none; }
@@ -3245,15 +3278,17 @@ function toggleHabitCatFilter(cat) {
 // ═══════════════════════════════════════
 // 2c. SOUL STATION (心灵驿站) - 日记+冥想
 // ═══════════════════════════════════════
-let soulSubView = 'diary'; // 'diary' | 'meditate'
+let soulSubView = 'diary'; // 'diary' | 'meditate' | 'wisdom'
 function renderSoul() {
   var mod = state.modules.find(function(m) { return m.id === 'soul'; });
   var toggleHtml = '<div class="journal-view-toggle" style="margin-bottom:14px;">'
     + '<button class="jvt-btn'+(soulSubView==='diary'?' active':'')+'" onclick="setSoulSubView(\'diary\')">📝 日记</button>'
     + '<button class="jvt-btn'+(soulSubView==='meditate'?' active':'')+'" onclick="setSoulSubView(\'meditate\')">🧘 冥想</button>'
+    + '<button class="jvt-btn'+(soulSubView==='wisdom'?' active':'')+'" onclick="setSoulSubView(\'wisdom\')">💡 心法</button>'
     + '</div>';
   var contentHtml;
   if (soulSubView === 'meditate') contentHtml = renderMeditate();
+  else if (soulSubView === 'wisdom') contentHtml = renderWisdomCards();
   else contentHtml = renderDiary();
   return '<div class="page active">'
     + '<div class="module-title">'
@@ -6805,6 +6840,175 @@ function renderMeditate() {
   return timerHtml + sessionsHtml;
 }
 
+// ─── 心法卡片 ───
+var WISDOM_CATS = ['决策与选择','行动与启动','情绪与当下','兴趣与成长','生活与自我'];
+var WISDOM_CAT_ICONS = { '决策与选择':'🎯', '行动与启动':'⚡', '情绪与当下':'🌊', '兴趣与成长':'🌱', '生活与自我':'🏠' };
+var wisdomViewMode = 'active'; // 'active' | 'archived'
+
+function initWisdomCards() {
+  if (state._wisdomCardsImported) return;
+  if (!state.soul) state.soul = {};
+  var initialCards = [
+    { cat:'决策与选择', scene:'想买的东西先收藏，等3天还想买再买。大部分冲动都会消退。', method:'72小时冷静期', desc:'购物冲动时', archived:false },
+    { cat:'决策与选择', scene:'找餐厅最多5家，逛街最多3家店，试衣最多5件。有上限才会停止。', method:'搜索上限法则', desc:'选择焦虑时', archived:false },
+    { cat:'决策与选择', scene:'每买一件新的，必须处理掉一件旧的。给购买增加决策成本。', method:'一进一出规则', desc:'买买买前', archived:false },
+    { cat:'决策与选择', scene:'列出10件"不纠结"的小事（穿什么、吃什么等），遇到直接够好模式。', method:'不纠结清单', desc:'日常小事', archived:false },
+    { cat:'行动与启动', scene:'不想做的时候，只想最小的那一步（开灯、接水、铺开垫子）。开始了就好办。', method:'就做第一步', desc:'拖延不想动时', archived:false },
+    { cat:'行动与启动', scene:'告诉自己"就做2分钟"，到点不想继续就停。启动才是最难的。', method:'2分钟启动法', desc:'面对不想做的事', archived:false },
+    { cat:'行动与启动', scene:'整理、打扫这类事，就做20分钟，到时间就停。不用一次性做完。', method:'20分钟法则', desc:'大任务面前', archived:false },
+    { cat:'行动与启动', scene:'故意只做一半就停，训练对"未完成状态"的容忍度。天不会塌。', method:'做一半练习', desc:'闭合需求太强时', archived:false },
+    { cat:'行动与启动', scene:'不是"一次做完"，是"先做一点，随时可以回来继续"。暂停不是放弃，是中场休息。', method:'随时可以回来', desc:'总想一口气做完时', archived:false },
+    { cat:'情绪与当下', scene:'说5个看到的、4个摸到的、3个听到的、2个闻到的、1个尝到的。把自己拉回当下。', method:'5-4-3-2-1 落地法', desc:'焦虑/想太多时', archived:false },
+    { cat:'情绪与当下', scene:'每天固定15分钟专门想焦虑的事。其余时间焦虑来了就说："下午3点再说。"', method:'焦虑预约时间', desc:'反复想未来时', archived:false },
+    { cat:'情绪与当下', scene:'心里骂自己的时候，问："如果是最好的朋友遇到这件事，我会怎么跟她说？"', method:'自我慈悲提问', desc:'自我批判时', archived:false },
+    { cat:'情绪与当下', scene:'每天睡前想一件今天的小好事。不用大，一杯好喝的咖啡、一朵好看的云都行。', method:'今日小确幸', desc:'每天睡前', archived:false },
+    { cat:'情绪与当下', scene:'想吃东西时问自己："如果是一杯水我愿意喝吗？"不愿意=不是饿，是情绪需要被填。', method:'饿了还是空了？', desc:'想吃东西但刚吃过时', archived:false },
+    { cat:'兴趣与成长', scene:'1个主线兴趣深入挖，N个小支线提供新鲜感。主线占7成精力，支线占3成。', method:'1 + N 兴趣公式', desc:'兴趣规划', archived:false },
+    { cat:'兴趣与成长', scene:'对一个新方向感兴趣，至少投入3个月再判断喜不喜欢。熬过笨拙期才知道。', method:'3个月原则', desc:'又想换新爱好时', archived:false },
+    { cat:'兴趣与成长', scene:'做这件事是因为做的过程开心，不是为了"做好"、"做出成果"。开心就是目的本身。', method:'过程导向，不是结果导向', desc:'把兴趣变成压力时', archived:false },
+    { cat:'生活与自我', scene:'不是"等重要的日子再穿好看的"，是"穿了好看的，今天就是重要的日子"。', method:'创造场合，不等场合', desc:'又想"留到以后"时', archived:false },
+    { cat:'生活与自我', scene:'每天给自己一段"不当妈妈"的时间。下班了就是你自己，不用对任何人负责。', method:'妈妈下班时间', desc:'身份压力大时', archived:false },
+    { cat:'生活与自我', scene:'每天选30分钟不碰手机。注意力不是用来刷碎片的，收回来人才不涣散。', method:'手机断食30分钟', desc:'精力不足时', archived:false },
+    { cat:'生活与自我', scene:'休息先做滋养型的事（洗澡、散步、看小说），剩下的时间再做消耗型的（刷手机）。', method:'先充电，再消耗', desc:'安排休息时', archived:false }
+  ];
+  state.soul.wisdomCards = initialCards.map(function(c, i) {
+    return { id:'wc'+Date.now()+i, cat:c.cat, scene:c.scene, method:c.method, desc:c.desc, archived:c.archived };
+  });
+  state._wisdomCardsImported = true;
+  saveData();
+  console.log('[心法] 初始卡片已导入：' + state.soul.wisdomCards.length + ' 张');
+}
+
+function renderWisdomCards() {
+  if (!state.soul) state.soul = {};
+  if (!state.soul.wisdomCards) initWisdomCards();
+  var cards = state.soul.wisdomCards || [];
+  var activeCards = cards.filter(function(c) { return !c.archived; });
+  var archivedCards = cards.filter(function(c) { return c.archived; });
+  var showCards = wisdomViewMode === 'archived' ? archivedCards : activeCards;
+
+  var subToggle = '<div class="wisdom-sub-toggle">'
+    + '<span class="ws-btn'+(wisdomViewMode==='active'?' active':'')+'" onclick="setWisdomViewMode(\'active\')">💡 在用 ('+activeCards.length+')</span>'
+    + '<span class="ws-btn'+(wisdomViewMode==='archived'?' active':'')+'" onclick="setWisdomViewMode(\'archived\')">📦 存档 ('+archivedCards.length+')</span>'
+    + '</div>';
+
+  var addForm = '';
+  if (wisdomViewMode === 'active') {
+    addForm = '<div class="wisdom-add-form">'
+      + '<div class="form-row" style="margin-bottom:6px;">'
+      +   '<select class="input-field" id="wisdomAddCat" style="flex:0.5;">'
+      +   WISDOM_CATS.map(function(c) { return '<option value="'+c+'">'+(WISDOM_CAT_ICONS[c]||'')+' '+c+'</option>'; }).join('')
+      +   '</select>'
+      +   '<input class="input-field" id="wisdomAddMethod" placeholder="方法名称" style="flex:1;">'
+      +   '<button class="btn-sm primary" onclick="addWisdomCard()">+ 新增</button>'
+      +   '</div>'
+      +   '<input class="input-field" id="wisdomAddScene" placeholder="场景说明（怎么做）" style="display:block;width:100%;margin-bottom:6px;">'
+      +   '<input class="input-field" id="wisdomAddDesc" placeholder="适用时机（如：焦虑时、拖延时）" style="display:block;width:100%;">'
+      + '</div>';
+  }
+
+  var catHtml = '';
+  if (showCards.length === 0) {
+    catHtml = '<div class="wisdom-empty">'+(wisdomViewMode==='archived' ? '存档区空空，不需要的卡片可以存档到这里' : '暂无在用心法卡片')+'</div>';
+  } else {
+    WISDOM_CATS.forEach(function(cat) {
+      var catCards = showCards.filter(function(c) { return c.cat === cat; });
+      if (catCards.length === 0) return;
+      var catId = 'wisdomCat' + cat.replace(/[^a-zA-Z]/g,'');
+      catHtml += '<div class="wisdom-cat-header" onclick="toggleWisdomCat(\''+catId+'\')">'
+        + '<span class="wisdom-cat-name">'+(WISDOM_CAT_ICONS[cat]||'')+' '+cat+' ('+catCards.length+')</span>'
+        + '<span style="font-size:12px;color:var(--muted);">展开 ▼</span>'
+        + '</div>'
+        + '<div class="wisdom-cat-body open" id="'+catId+'">'
+        + catCards.map(function(c) {
+          return '<div class="wisdom-card">'
+            + '<div class="wisdom-card-scene">📌 '+escHtml(c.desc||'')+'</div>'
+            + '<div class="wisdom-card-title">'+escHtml(c.method)+'</div>'
+            + '<div class="wisdom-card-desc">'+escHtml(c.scene)+'</div>'
+            + '<div class="wisdom-actions">'
+            + (wisdomViewMode === 'active'
+              ? '<button class="btn-sm" onclick="archiveWisdomCard(\''+c.id+'\')">📦 存档</button><button class="btn-sm" onclick="editWisdomCard(\''+c.id+'\')">✏️</button><button class="btn-sm danger" onclick="deleteWisdomCard(\''+c.id+'\')">删</button>'
+              : '<button class="btn-sm primary" onclick="restoreWisdomCard(\''+c.id+'\')">↩️ 恢复</button><button class="btn-sm danger" onclick="deleteWisdomCard(\''+c.id+'\')">删</button>')
+            + '</div>'
+            + '</div>';
+        }).join('')
+        + '</div>';
+    });
+  }
+
+  var footer = '<div style="text-align:center;padding:16px 0;color:var(--muted);font-size:12px;line-height:1.6;">'
+    + '不用全部做到。每次遇到具体的事，挑一个最有感的试试就行。<br><strong>慢慢来，比较快。</strong>'
+    + '</div>';
+
+  return '<div class="section-title">💡 心法卡片</div>'
+    + subToggle
+    + addForm
+    + catHtml
+    + footer;
+}
+
+function setWisdomViewMode(m) { wisdomViewMode = m; renderPage('soul'); }
+function toggleWisdomCat(catId) {
+  var body = document.getElementById(catId);
+  if (body) body.classList.toggle('open');
+}
+function addWisdomCard() {
+  var cat = document.getElementById('wisdomAddCat');
+  var method = document.getElementById('wisdomAddMethod');
+  var scene = document.getElementById('wisdomAddScene');
+  var desc = document.getElementById('wisdomAddDesc');
+  if (!method || !method.value.trim()) { toast('请输入方法名称'); return; }
+  if (!state.soul.wisdomCards) state.soul.wisdomCards = [];
+  state.soul.wisdomCards.push({ id:'wc'+Date.now(), cat:cat.value, scene:scene.value.trim(), method:method.value.trim(), desc:desc.value.trim(), archived:false });
+  saveData(); renderPage('soul'); toast('心法卡片已添加');
+}
+function archiveWisdomCard(id) {
+  var c = (state.soul.wisdomCards||[]).find(function(x) { return x.id === id; });
+  if (c) { c.archived = true; saveData(); renderPage('soul'); toast('已存档'); }
+}
+function restoreWisdomCard(id) {
+  var c = (state.soul.wisdomCards||[]).find(function(x) { return x.id === id; });
+  if (c) { c.archived = false; saveData(); renderPage('soul'); toast('已恢复'); }
+}
+function deleteWisdomCard(id) {
+  state.soul.wisdomCards = (state.soul.wisdomCards||[]).filter(function(c) { return c.id !== id; });
+  saveData(); renderPage('soul');
+}
+function editWisdomCard(id) {
+  var c = (state.soul.wisdomCards||[]).find(function(x) { return x.id === id; });
+  if (!c) return;
+  var m = document.createElement('div');
+  m.className = 'modal-overlay show'; m.id = 'editWisdomModal';
+  m.innerHTML = '<div class="modal-box" style="max-width:400px;">'
+    + '<h3>✏️ 编辑心法卡片</h3>'
+    + '<select class="input-field" id="editWisdomCat" style="display:block;width:100%;margin-bottom:8px;">'
+    + WISDOM_CATS.map(function(cat) { return '<option value="'+cat+'"'+(c.cat===cat?' selected':'')+'>'+(WISDOM_CAT_ICONS[cat]||'')+' '+cat+'</option>'; }).join('')
+    + '</select>'
+    + '<input class="input-field" id="editWisdomMethod" value="'+escHtml(c.method)+'" placeholder="方法名称" style="display:block;width:100%;margin-bottom:8px;">'
+    + '<input class="input-field" id="editWisdomScene" value="'+escHtml(c.scene)+'" placeholder="场景说明" style="display:block;width:100%;margin-bottom:8px;">'
+    + '<input class="input-field" id="editWisdomDesc" value="'+escHtml(c.desc)+'" placeholder="适用时机" style="display:block;width:100%;margin-bottom:8px;">'
+    + '<div class="modal-actions">'
+    + '<button class="btn-sm" onclick="document.getElementById(\'editWisdomModal\').remove()">取消</button>'
+    + '<button class="btn-sm primary" onclick="saveEditWisdomCard(\''+id+'\')">保存</button>'
+    + '</div></div>';
+  document.body.appendChild(m);
+  m.addEventListener('click', function(e) { if (e.target === m) m.remove(); });
+  setTimeout(function() { var inp = document.getElementById('editWisdomMethod'); if (inp) { inp.focus(); inp.select(); } }, 50);
+}
+function saveEditWisdomCard(id) {
+  var c = (state.soul.wisdomCards||[]).find(function(x) { return x.id === id; });
+  if (!c) return;
+  var method = document.getElementById('editWisdomMethod').value.trim();
+  if (!method) { toast('方法名称不能为空'); return; }
+  c.cat = document.getElementById('editWisdomCat').value;
+  c.method = method;
+  c.scene = document.getElementById('editWisdomScene').value.trim();
+  c.desc = document.getElementById('editWisdomDesc').value.trim();
+  saveData();
+  document.getElementById('editWisdomModal').remove();
+  renderPage('soul'); toast('卡片已更新');
+}
+
 let moodView = 'list';
 let moodDetailId = null;
 const MOOD_EMOJIS = ['','😞','😕','😐','🙂','😊'];
@@ -9465,6 +9669,7 @@ function importFinanceBooks() {
   importTennisStretchPlan();
   importNetClassPlan();
   importFinanceBooks();
+  initWisdomCards();
   // Migrate old resources: add category and createdAt
   var needMigrate = false;
   (state.gym.resources || []).forEach(function(r) {
