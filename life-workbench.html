@@ -375,6 +375,23 @@ body {
 .wisdom-collapse-toggle:hover { border-color: var(--accent); }
 .wisdom-collapse-body { display:none; }
 .wisdom-collapse-body.open { display:block; }
+.outfit-compact-card { border:1px solid var(--rule); border-radius:12px; margin-bottom:10px; overflow:hidden; transition:all 0.2s; background:var(--bg); }
+.outfit-compact-card:hover { border-color: var(--accent); }
+.outfit-compact-summary { display:flex; align-items:center; justify-content:space-between; padding:10px 14px; cursor:pointer; }
+.outfit-compact-info { flex:1; min-width:0; }
+.outfit-compact-desc { font-size:13px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.outfit-compact-meta { display:flex; align-items:center; gap:6px; margin-top:3px; }
+.outfit-occasion-tag { display:inline-block; padding:1px 8px; border-radius:10px; font-size:10px; background:var(--accent-soft); color:var(--accent); white-space:nowrap; }
+.outfit-wear-badge { display:inline-block; padding:1px 7px; border-radius:9px; font-size:10px; white-space:nowrap; }
+.outfit-wear-badge.worn { background:var(--accent-soft); color:var(--accent); }
+.outfit-wear-badge.unworn { background:var(--bg2); color:var(--muted); }
+.outfit-rating-inline { color:#f0a020; font-size:13px; white-space:nowrap; }
+.outfit-rating-inline .dim { color:var(--rule); }
+.outfit-compact-items { font-size:11px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.outfit-expand-body { display:none; padding:0 14px 12px; border-top:1px solid var(--rule); margin-top:0; }
+.outfit-expand-body.open { display:block; }
+.outfit-cat-group { margin-bottom:16px; }
+.outfit-cat-header { font-size:13px; font-weight:600; padding:6px 0; border-bottom:2px solid var(--rule); margin-bottom:8px; display:flex; align-items:center; gap:6px; }
 .picker-collapse-toggle { display:flex; align-items:center; justify-content:space-between; padding:8px 12px; border:1px solid var(--rule); border-radius:8px; cursor:pointer; background:var(--bg2); margin-bottom:6px; transition: all 0.12s; }
 .picker-collapse-toggle:hover { border-color: var(--accent); }
 .picker-collapse-body { display:none; }
@@ -7614,6 +7631,14 @@ function computeItemWearCounts() {
   });
   return counts;
 }
+function computeOutfitWearCounts() {
+  var counts = {};
+  var daily = state.closet.dailyOutfits || [];
+  daily.forEach(function(d) {
+    if (d.outfitId) counts[d.outfitId] = (counts[d.outfitId] || 0) + 1;
+  });
+  return counts;
+}
 function getClosetBrands() {
   var set = {};
   (state.closet.wardrobe || []).forEach(function(w) { if (w.brand) set[w.brand] = true; });
@@ -7696,7 +7721,17 @@ function renderClosetItems() {
 }
 function renderClosetOutfits() {
   const wardrobe = state.closet.wardrobe || [];
-  const outfits = (state.closet.outfits || []).slice(-50).reverse();
+  const outfits = (state.closet.outfits || []).slice().reverse();
+  const wearCounts = computeOutfitWearCounts();
+  var occasions = {};
+  outfits.forEach(function(o) {
+    var key = o.occasion || '未分类';
+    if (!occasions[key]) occasions[key] = [];
+    occasions[key].push(o);
+  });
+  var occasionKeys = Object.keys(occasions).sort(function(a,b) {
+    if (a === '未分类') return 1; if (b === '未分类') return -1; return a.localeCompare(b);
+  });
   return `
     <div class="section-title">👗 搭配</div>
     ${wardrobe.length > 0 ? `
@@ -7709,7 +7744,7 @@ function renderClosetOutfits() {
     </div>` : ''}
     <div class="form-row">
       <input class="input-field" id="outfitDesc" placeholder="搭配描述（可选）...">
-      <input class="input-field" id="outfitOccasion" placeholder="场合（可选）" style="flex:0.7;">
+      <input class="input-field" id="outfitOccasion" placeholder="场合（如：上班/约会/居家）" style="flex:0.7;">
       <button class="btn-sm primary" onclick="addOutfit()">记录</button>
     </div>
     <div class="form-row" style="margin-top:8px;align-items:center;">
@@ -7718,19 +7753,52 @@ function renderClosetOutfits() {
         ${[1,2,3,4,5].map(n => '<span class="rating-star" data-val="'+n+'" onclick="setRating(this,\'outfitRating\')">★</span>').join('')}
       </div>
     </div>
-    ${outfits.length === 0 ? '<div class="empty-state">暂无搭配记录</div>' :
-      outfits.map(o => {
-        const picked = (o.items||[]).map(id => (state.closet.wardrobe||[]).find(w => w.id === id)).filter(Boolean);
-        return `
-        <div class="card">
-          <div style="font-size:12px;color:var(--muted);margin-bottom:4px;">${o.date} ${o.occasion ? '· '+escHtml(o.occasion) : ''} ${o.rating ? '<span class="rating-display">'+'★'.repeat(o.rating)+'</span>' : ''}</div>
-          ${picked.length > 0 ? '<div class="outfit-picked" style="margin-bottom:6px;">'+picked.map(p => '<span class="outfit-picked-tag">'+closetCatIcon(p.cat)+' '+escHtml(p.name)+'</span>').join('')+'</div>' : ''}
-          ${o.desc ? '<div>'+escHtml(o.desc)+'</div>' : ''}
-          <div style="margin-top:6px;">
-            <button class="btn-sm" onclick="editOutfit('${o.id}')">✏️</button>
-            <button class="btn-sm danger" onclick="deleteOutfit('${o.id}')">删</button>
-          </div>
-        </div>`; }).join('')
+    ${outfits.length === 0 ? '<div class="empty-state">暂无搭配记录，先选单品创建搭配吧~</div>' :
+      occasionKeys.map(function(occ) {
+        var list = occasions[occ];
+        return '<div class="outfit-cat-group">'
+          + '<div class="outfit-cat-header">📌 '+escHtml(occ)+' ('+list.length+')</div>'
+          + list.map(function(o) {
+            var wc = wearCounts[o.id] || 0;
+            var picked = (o.items||[]).map(id => wardrobe.find(w => w.id === id)).filter(Boolean);
+            var ratingHtml = '';
+            if (o.rating) {
+              for (var i = 1; i <= 5; i++) { ratingHtml += i <= o.rating ? '★' : '<span class="dim">★</span>'; }
+            }
+            var itemSummary = picked.map(function(p) { return closetCatIcon(p.cat)+' '+p.name; }).join(' · ');
+            return '<div class="outfit-compact-card">'
+              + '<div class="outfit-compact-summary" onclick="toggleOutfitExpand(\''+o.id+'\')">'
+              +   '<div class="outfit-compact-info">'
+              +     '<div class="outfit-compact-desc">'+escHtml(o.desc||'搭配')+'</div>'
+              +     '<div class="outfit-compact-meta">'
+              +       '<span class="outfit-occasion-tag">'+escHtml(occ)+'</span>'
+              +       (wc > 0 ? '<span class="outfit-wear-badge worn">已穿 '+wc+' 次</span>' : '<span class="outfit-wear-badge unworn">未穿</span>')
+              +       (itemSummary ? '<span class="outfit-compact-items">'+escHtml(itemSummary)+'</span>' : '')
+              +     '</div>'
+              +   '</div>'
+              +   (o.rating ? '<div class="outfit-rating-inline">'+ratingHtml+'</div>' : '<span style="font-size:12px;color:var(--muted);">▶</span>')
+              + '</div>'
+              + '<div class="outfit-expand-body" id="outfitExpand_'+o.id+'">'
+              +   '<div style="padding-top:10px;">'
+              +     '<div style="font-size:12px;color:var(--muted);margin-bottom:4px;">'+o.date+(o.occasion?' · '+escHtml(o.occasion):'')+'</div>'
+              +     (picked.length > 0 ? '<div class="outfit-picked" style="margin-bottom:8px;">'+picked.map(p => '<span class="outfit-picked-tag">'+closetCatIcon(p.cat)+' '+escHtml(p.name)+'</span>').join('')+'</div>' : '')
+              +     (o.desc ? '<div style="font-size:13px;margin-bottom:8px;">'+escHtml(o.desc)+'</div>' : '')
+              +     '<div style="display:flex;gap:6px;align-items:center;margin-bottom:8px;">'
+              +       '<span style="font-size:12px;color:var(--muted);">喜爱度：</span>'
+              +       (o.rating ? '<span class="outfit-rating-inline">'+'★'.repeat(o.rating)+'</span>' : '<span style="font-size:12px;color:var(--muted);">未评分</span>')
+              +       '<span style="margin-left:12px;font-size:12px;color:var(--muted);">穿着频率：</span>'
+              +       (wc > 0 ? '<span class="outfit-wear-badge worn">'+wc+' 次</span>' : '<span class="outfit-wear-badge unworn">未穿过</span>')
+              +     '</div>'
+              +     '<div>'
+              +       '<button class="btn-sm" onclick="editOutfit(\''+o.id+'\')">✏️ 编辑</button>'
+              +       '<button class="btn-sm danger" onclick="deleteOutfit(\''+o.id+'\')">删</button>'
+              +     '</div>'
+              +   '</div>'
+              + '</div>'
+              + '</div>';
+          }).join('')
+          + '</div>';
+      }).join('')
     }
   `;
 }
@@ -7856,6 +7924,10 @@ function filterOutfitCat(containerId, cat) {
 }
 function togglePickerCollapse(wrapId) {
   var body = document.getElementById(wrapId);
+  if (body) body.classList.toggle('open');
+}
+function toggleOutfitExpand(id) {
+  var body = document.getElementById('outfitExpand_'+id);
   if (body) body.classList.toggle('open');
 }
 function setRating(el, containerId) {
