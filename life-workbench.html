@@ -9618,9 +9618,9 @@ function importTennisStretchPlan() {
   console.log('[网球后拉伸] 导入完成：10个拉伸动作 + 2个动作组（完整版10个 + 简易版5个）');
 }
 
-// ─── 体态训练计划（网课适配版）导入 ───
+// ─── 体态训练计划（网课适配版）导入 V3 ───
 function importNetClassPlan() {
-  if (state._netClassPlanImportedV2) return;
+  if (state._netClassPlanV3Imported) return;
   if (!state.gym) state.gym = {};
   if (!state.gym.resources) state.gym.resources = [];
   if (!state.gym.plans) state.gym.plans = [];
@@ -9629,23 +9629,42 @@ function importNetClassPlan() {
   var ts = Date.now();
   var todayStr = today();
 
-  // 清理旧的网课适配数据（幂等）
+  // ── 0. 清理所有旧的导入数据（运动资源+课表）──
+  var oldResPrefixes = [
+    'posture-v3-res-', 'posture-v3-grp-', 'posture-res-', 'res_posture_', 'res_group_daily_', 'res_group_full_',
+    'train-v3-res-', 'train-v3-grp-',
+    'netcls-res-', 'netcls-grp-', 'netcls-v3-res-', 'netcls-v3-grp-',
+    'tennis-stretch-'
+  ];
   state.gym.resources = (state.gym.resources || []).filter(function(r) {
-    return !(r.id && r.id.indexOf('netcls-') === 0);
+    if (!r.id) return true;
+    for (var i = 0; i < oldResPrefixes.length; i++) {
+      if (r.id.indexOf(oldResPrefixes[i]) === 0) return false;
+    }
+    return true;
   });
+  var oldPlanPrefixes = [
+    'posture-daily-', 'posture-activate-', 'posture-v3-daily-', 'posture-v3-activate-', 'posture-v3-rehab-',
+    'train-v3-plan',
+    'netcls-plan-', 'netcls-v3-plan-'
+  ];
   state.gym.plans = (state.gym.plans || []).filter(function(p) {
-    return !(p.id && p.id.indexOf('netcls-') === 0);
+    if (!p.id) return true;
+    for (var i = 0; i < oldPlanPrefixes.length; i++) {
+      if (p.id.indexOf(oldPlanPrefixes[i]) === 0) return false;
+    }
+    return true;
   });
 
   // 标签
-  ['网课适配','每日必做','激活日','休息日','拉伸跟练'].forEach(function(t) {
+  ['网课适配','每日必做','激活内容','康复内容'].forEach(function(t) {
     if (state.gym.resourceTags.indexOf(t) === -1) state.gym.resourceTags.push(t);
   });
 
   // helper：创建单个动作资源
   var rc = 0;
   function res(title, note, category, tags) {
-    var id = 'netcls-res-' + ts + '-' + (++rc);
+    var id = 'netcls-v3-res-' + ts + '-' + (++rc);
     state.gym.resources.push({
       id: id, title: title, link: '', note: note,
       category: category || 'posture', tags: tags || ['网课适配'],
@@ -9656,7 +9675,7 @@ function importNetClassPlan() {
   // helper：创建运动组
   var gc = 0;
   function grp(title, memberIds, category, note) {
-    var id = 'netcls-grp-' + ts + '-' + (++gc);
+    var id = 'netcls-v3-grp-' + ts + '-' + (++gc);
     state.gym.resources.push({
       id: id, title: title, link: '', note: note || '',
       category: category || 'posture', tags: ['网课适配'],
@@ -9665,80 +9684,57 @@ function importNetClassPlan() {
     return id;
   }
 
-  // ── 1. 每日必做（7个动作）──
-  var d1 = res('骨盆时钟', '不做前倾（12点方向）；重点找中立位；骶骨下垫薄毛巾。\n10分钟。', 'posture', ['网课适配','每日必做']);
-  var d2 = res('髂腰肌拉伸', '骨盆后倾再做，不弹震，右侧多保持。\n每侧30-60秒，2-3组。', 'stretch', ['网课适配','每日必做']);
-  var d3 = res('死虫式', '腰部始终不离地。\n每侧8-10次，3组。', 'strength', ['网课适配','每日必做']);
-  var d4 = res('股四头肌拉伸', '侧卧版，下方腿弯屈垫枕头。\n每侧30秒，2组。', 'stretch', ['网课适配','每日必做']);
-  var d5 = res('短足运动', '脚趾不蜷，足弓主动拱起。\n10次，3组。', 'posture', ['网课适配','每日必做']);
-  var d6 = res('踝关节背屈', '弓步站立不蹲下，重心70%在后腿；右脚微内旋5-10°；可压住大脚趾。\n每侧10次，2组。', 'posture', ['网课适配','每日必做']);
-  var d7 = res('泡沫轴松解股外侧肌', '侧卧身体微前倾，右2个点左1个点。\n每点60秒。', 'stretch', ['网课适配','每日必做']);
+  // ── 1. 每日必做（11个动作）──
+  var d1  = res('① 骨盆时钟', '不做前倾（12点方向）；重点找中立位；骶骨下垫薄毛巾。\n10分钟。', 'posture', ['网课适配','每日必做']);
+  var d2  = res('② 髂腰肌拉伸', '骨盆后倾再做，不弹震，右侧多保持；膝盖不适可换门框版（脚蹬低处45°，静态保持30-45秒）。\n每侧30-60秒，2-3组。', 'stretch', ['网课适配','每日必做']);
+  var d3  = res('③ 死虫式', '腰部始终不离地。\n每侧8-10次，3组。', 'strength', ['网课适配','每日必做']);
+  var d4  = res('④ 股四头肌拉伸', '侧卧版，下方腿弯屈垫枕头。\n每侧30秒，2组。', 'stretch', ['网课适配','每日必做']);
+  var d5  = res('⑤ 短足运动', '脚趾不蜷，足弓主动拱起。\n10次，3组。', 'posture', ['网课适配','每日必做']);
+  var d6  = res('⑥ 踝关节背屈', '弓步站立不蹲下，重心70%在后腿；右脚微内旋5-10°；可压住大脚趾。\n每侧10次，2组。', 'posture', ['网课适配','每日必做']);
+  var d7  = res('⑦ 泡沫轴松解股外侧肌', '侧卧身体微前倾，右2个点左1个点。\n每点60秒。', 'stretch', ['网课适配','每日必做']);
+  var d8  = res('⑧ 坐姿胸椎伸展', '坐椅子前半段，上背靠椅背沿，缓慢后仰，感受上胸椎打开；腰部不动。\n10次。', 'posture', ['网课适配','每日必做']);
+  var d9  = res('⑨ 肘撑跪姿胸椎旋转（体验版）', '双膝分开骨盆固定，泡沫轴放上背，小幅度旋转，每侧只做5次；腰部不适立即停。\n每侧5次，1组。', 'posture', ['网课适配','每日必做']);
+  var d10 = res('⑩ 靠墙排列检查', '背靠墙，脚跟离墙5cm，检查后脑勺/上背/骶骨能否贴墙；腰1-2指空隙；不用力贴，只检查。\n1分钟。', 'posture', ['网课适配','每日必做']);
+  var d11 = res('⑪ 靠墙对齐呼吸', '三点贴墙（后脑勺/上背/骶骨），膝微屈，核心轻度激活，深呼吸3分钟；吸气后背撑开，呼气核心轻收。\n3分钟。', 'posture', ['网课适配','每日必做']);
 
-  // ── 2. 激活日（8个动作）──
-  var a1 = res('臀桥（夹砖版）', '小幅度，身体一条线即停；慢速3秒上3秒下。\n12-15次，3组。', 'strength', ['网课适配','激活日']);
-  var a2 = res('弹力带俯卧勾腿', '肚子下垫毛巾顶骨盆后倾；大腿不离开地面。\n每侧10-12次，3组。', 'strength', ['网课适配','激活日']);
-  var a3 = res('侧卧蚌式', '右侧多加1组。\n右15-20次，左10-12次，3组。', 'strength', ['网课适配','激活日']);
-  var a4 = res('单腿站立', '膝盖微屈；足弓发力；右侧多加15秒。\n每侧30秒，3组。', 'strength', ['网课适配','激活日']);
-  var a5 = res('鸟狗式', '脊柱中立不塌腰。\n每侧8-10次，3组。', 'strength', ['网课适配','激活日']);
-  var a6 = res('泡沫轴放松', '右侧QL + 右侧TFL + 右大腿前外侧重点；不滚骶骨。\n5分钟。', 'stretch', ['网课适配','激活日']);
-  var a7 = res('仰卧骶骨放松', '腿搭高处版（沙发/椅子）；骶骨下垫薄毛巾。\n10分钟。', 'stretch', ['网课适配','激活日']);
-  var a8 = res('步态再训练', '沿直线走，脚尖朝前。\n3分钟。', 'posture', ['网课适配','激活日']);
+  // ── 2. 激活内容（12个动作，D1/3/5）──
+  var a1  = res('侧卧蚌式', '先做，先激活深层臀中肌；右侧多加1组。\n右15-20次，左10-12次，3组。', 'strength', ['网课适配','激活内容']);
+  var a2  = res('臀桥（夹砖版优先）', '小幅度，身体一条线即停；慢速3秒上3秒下。\n12-15次，3组。', 'strength', ['网课适配','激活内容']);
+  var a3  = res('弹力带俯卧勾腿', '肚子下垫毛巾顶骨盆后倾；大腿不离开地面。\n每侧10-12次，3组。', 'strength', ['网课适配','激活内容']);
+  var a4  = res('单腿站立', '膝盖微屈；足弓发力；右侧多加15秒。\n每侧30秒，3组。', 'strength', ['网课适配','激活内容']);
+  var a5  = res('鸟狗式', '脊柱中立不塌腰。\n每侧8-10次，3组。', 'strength', ['网课适配','激活内容']);
+  var a6  = res('YTWL（Y和T）', '俯卧额头垫毛巾，手臂抬起成Y字/T字，肩胛骨后缩下沉；圆身背厚+圆肩改善。\n每个动作10次，2组。', 'strength', ['网课适配','激活内容']);
+  var a7  = res('胸肌门框拉伸', '前臂贴门框，身体前倾，打开胸腔；右侧多保持。\n每侧30秒，2组。', 'stretch', ['网课适配','激活内容']);
+  var a8  = res('收下巴', '后脑勺贴墙，下巴水平向后收，感受颈部后侧发力。\n10次，每次保持5秒。', 'posture', ['网课适配','激活内容']);
+  var a9  = res('单腿硬拉（轻量版）', '手扶椅子，单腿站，另一腿后伸直，身体前倾到背平；腰椎安全：幅度小，背保持平直，不弯腰够地。\n每侧8次，2组。', 'strength', ['网课适配','激活内容']);
+  var a10 = res('泡沫轴放松', '右侧QL + 右侧TFL + 右大腿前外侧重点；不滚骶骨。\n5分钟。', 'stretch', ['网课适配','激活内容']);
+  var a11 = res('仰卧骶骨放松', '腿搭高处版（沙发/椅子）；骶骨下垫薄毛巾。\n10分钟。', 'stretch', ['网课适配','激活内容']);
+  var a12 = res('步态再训练', '沿直线走，脚尖朝前。\n3分钟。', 'posture', ['网课适配','激活内容']);
 
-  // ── 3. 休息日（5个动作）──
-  var r1 = res('麦肯基伸展法', '俯卧放松→前臂撑起→保持30秒；疼痛向腿部放射立即停。\n5-8次。', 'stretch', ['网课适配','休息日']);
-  var r2 = res('仰卧屈膝滚动', '抱膝左右摇摆按摩下背部。\n2-3分钟。', 'stretch', ['网课适配','休息日']);
-  var r3 = res('仰卧腹式呼吸', '腿搭高处，手放腹部，吸气鼓起呼气下沉。\n3分钟。', 'stretch', ['网课适配','休息日']);
-  var r4 = res('网球松解', '竖脊肌下段 + 右侧QL + 骶骨旁。\n10-15分钟。', 'stretch', ['网课适配','休息日']);
-  var r5 = res('热敷腰部', '40-45°C，隔衣服，放腰椎两侧肌肉。\n15分钟。', 'stretch', ['网课适配','休息日']);
+  // ── 3. 康复内容（5个动作，D2/4）──
+  var r1 = res('麦肯基伸展法', '俯卧放松→前臂撑起→保持30秒；疼痛向腿部放射立即停。\n5-8次。', 'stretch', ['网课适配','康复内容']);
+  var r2 = res('仰卧屈膝滚动', '抱膝左右摇摆按摩下背部。\n2-3分钟。', 'stretch', ['网课适配','康复内容']);
+  var r3 = res('仰卧腹式呼吸', '腿搭高处，手放腹部，吸气鼓起呼气下沉。\n3分钟。', 'stretch', ['网课适配','康复内容']);
+  var r4 = res('网球松解', '竖脊肌下段 + 右侧QL + 骶骨旁。\n10-15分钟。', 'stretch', ['网课适配','康复内容']);
+  var r5 = res('热敷腰部', '40-45°C，隔衣服，放腰椎两侧肌肉。\n15分钟。', 'stretch', ['网课适配','康复内容']);
 
-  // ── 4. 拉伸板块 A：网球后拉伸（10个动作）──
-  var sa = [];
-  sa.push(res('网球拉伸·髂腰肌拉伸', '弓步跪地，骨盆后倾，右侧多保持。\n右60秒/左30秒。', 'stretch', ['网课适配','拉伸跟练','网球后拉伸']));
-  sa.push(res('网球拉伸·股四头肌拉伸', '侧卧版，下方腿垫枕头。\n每侧30秒。', 'stretch', ['网课适配','拉伸跟练','网球后拉伸']));
-  sa.push(res('网球拉伸·小腿拉伸', '弓步站立，后腿伸直脚跟着地。\n每侧30秒。', 'stretch', ['网课适配','拉伸跟练','网球后拉伸']));
-  sa.push(res('网球拉伸·梨状肌拉伸', '坐姿翘二郎腿前倾，右侧多保持。\n右30秒/左20秒。', 'stretch', ['网课适配','拉伸跟练','网球后拉伸']));
-  sa.push(res('网球拉伸·腘绳肌拉伸', '坐地一腿伸直前倾。\n每侧30秒。', 'stretch', ['网课适配','拉伸跟练','网球后拉伸']));
-  sa.push(res('网球拉伸·右侧腰方肌拉伸', '右手举过头顶，身体向左侧弯。\n45-60秒。', 'stretch', ['网课适配','拉伸跟练','网球后拉伸']));
-  sa.push(res('网球拉伸·婴儿式', '跪坐前趴，完全放松。\n30-60秒。', 'stretch', ['网课适配','拉伸跟练','网球后拉伸']));
-  sa.push(res('网球拉伸·胸椎旋转拉伸', '侧卧，上方手臂划向身后打开。\n每侧8-10次。', 'stretch', ['网课适配','拉伸跟练','网球后拉伸']));
-  sa.push(res('网球拉伸·胸肌门框拉伸', '前臂贴门框前倾，右侧多保持。\n每侧30秒。', 'stretch', ['网课适配','拉伸跟练','网球后拉伸']));
-  sa.push(res('网球拉伸·前臂拉伸', '手臂伸直手指下压，右手多保持。\n每侧20秒。', 'stretch', ['网课适配','拉伸跟练','网球后拉伸']));
+  // ── 4. 创建运动组 ──
+  grp('每日必做', [d1,d2,d3,d4,d5,d6,d7,d8,d9,d10,d11], 'posture',
+    '每天先做这一套，再做当天的主训练。最后两项⑩⑪是整体排列整合，放在收尾。\n约35分钟。');
+  grp('激活内容', [a1,a2,a3,a4,a5,a6,a7,a8,a9,a10,a11,a12], 'strength',
+    'D1/3/5 激活日训练内容（约40分钟+松解15分钟）。\n顺序：先激活深层臀中肌（蚌式），再练大动作（臀桥），效率更高。');
+  grp('康复内容', [r1,r2,r3,r4,r5], 'stretch',
+    'D2/4 康复日训练内容（约20分钟）。\n每日必做 + 康复动作 + 松解。');
 
-  // ── 5. 拉伸板块 B：日常腰背紧张放松（6个动作）──
-  var sb = [];
-  sb.push(res('日常放松·右侧腰方肌拉伸', '右手举过头顶，身体向左侧弯，骨盆不动。\n45-60秒。', 'stretch', ['网课适配','拉伸跟练','日常放松']));
-  sb.push(res('日常放松·婴儿式', '跪坐前趴，额头贴地，完全放松。\n1-2分钟。', 'stretch', ['网课适配','拉伸跟练','日常放松']));
-  sb.push(res('日常放松·麦肯基伸展法', '俯卧→前臂撑起，保持30秒。\n5-8次。', 'stretch', ['网课适配','拉伸跟练','日常放松']));
-  sb.push(res('日常放松·仰卧屈膝滚动', '抱膝左右摇摆按摩下背部。\n2-3分钟。', 'stretch', ['网课适配','拉伸跟练','日常放松']));
-  sb.push(res('日常放松·仰卧腹式呼吸', '腿搭高处，手放腹部，深呼吸。\n3分钟。', 'stretch', ['网课适配','拉伸跟练','日常放松']));
-  sb.push(res('日常放松·9090呼吸', '脚蹬地卷尾骨，腹部柔软，呼气下沉肋骨。\n10个呼吸。', 'stretch', ['网课适配','拉伸跟练','日常放松']));
-
-  // ── 6. 拉伸板块 C：泡沫轴/网球松解（5个动作）──
-  var sc = [];
-  sc.push(res('松解·竖脊肌下段（网球）', '腰椎两侧，离脊柱2-3cm，压住不动。\n每侧1-2分钟。', 'stretch', ['网课适配','拉伸跟练','松解']));
-  sc.push(res('松解·右侧腰方肌（网球）', '侧卧，腰部侧面，右侧重点。\n1-2分钟。', 'stretch', ['网课适配','拉伸跟练','松解']));
-  sc.push(res('松解·骶骨旁（网球）', '骶骨两侧凹陷处，不压正中。\n每侧1分钟。', 'stretch', ['网课适配','拉伸跟练','松解']));
-  sc.push(res('松解·右大腿前外侧（泡沫轴）', '侧卧身体微前倾，找到胀痛点。\n2个点，每点60秒。', 'stretch', ['网课适配','拉伸跟练','松解']));
-  sc.push(res('松解·右大腿前侧（泡沫轴）', '俯卧，股直肌上段。\n60秒。', 'stretch', ['网课适配','拉伸跟练','松解']));
-
-  // ── 7. 创建运动组（按天组织，当天只打开一个组）──
-  grp('激活日', [d1,d2,d3,d4,d5,d6,d7, a1,a2,a3,a4,a5,a6,a7,a8], 'strength', 'D1/3/5 当天做这一整组（15个动作）：先做每日必做7个，再做激活训练8个。');
-  grp('康复日', [d1,d2,d3,d4,d5,d6,d7, r1,r2,r3,r4,r5], 'stretch', 'D2/4/6 当天做这一整组（12个动作）：先做每日必做7个，再做康复动作5个。');
-  grp('基础日', [d1,d2,d3,d4,d5,d6,d7, r4], 'posture', 'D7 当天做这一整组（8个动作）：每日必做7个 + 网球松解。');
-  grp('网球后拉伸（完整版）', sa, 'stretch', '打完球立刻做，10-15分钟。按顺序：下肢→躯干→上肢。右侧动作多保持15-30秒。');
-  grp('网球后拉伸（简易版5个）', [sa[0], sa[5], sa[2], sa[3], sa[6]], 'stretch', '赶时间时做这5个就够（约5分钟）：髂腰肌拉伸→右侧腰方肌拉伸→小腿拉伸→梨状肌拉伸→婴儿式。');
-  grp('日常腰背紧张放松', sb, 'stretch', '随时可做，10分钟。腰背紧张时的快速放松。');
-  grp('泡沫轴/网球松解', sc, 'stretch', '每日松解（15分钟），针对竖脊肌、腰方肌、骶骨旁和股外侧肌。');
-
-  // ── 8. 创建阶段1课表（7天循环，共14课时=2周）──
+  // ── 5. 创建阶段1课表（7天循环，共14课时=2周）──
   function genStage1Items(totalDays) {
     var items = [];
     for (var i = 1; i <= totalDays; i++) {
       var mod = i % 7;
       var content, type;
-      if (mod === 0) { content = 'D' + i + ' 基础日'; type = '体态矫正'; }
-      else if (mod % 2 === 1) { content = 'D' + i + ' 激活日'; type = '力量训练'; }
-      else { content = 'D' + i + ' 康复日'; type = '拉伸放松'; }
+      if (mod === 0) { content = 'D' + i + ' 必做'; type = '体态矫正'; }
+      else if (mod % 2 === 1) { content = 'D' + i + ' 必做+激活'; type = '力量训练'; }
+      else { content = 'D' + i + ' 必做+康复'; type = '拉伸放松'; }
       items.push({
         session: i, content: content,
         done: false, doneDate: '', syncedWorkoutId: '',
@@ -9749,16 +9745,19 @@ function importNetClassPlan() {
   }
 
   state.gym.plans.push({
-    id: 'netcls-plan-stage1-' + ts,
-    name: '阶段1：每日康复（7天循环）',
+    id: 'netcls-v3-plan-stage1-' + ts,
+    name: '阶段1：D1/3/5必做+激活 D2/4必做+康复 D7必做',
     totalSessions: 14,
     items: genStage1Items(14),
     completed: false
   });
 
-  state._netClassPlanImportedV2 = true;
+  // 清理旧版本标记
+  delete state._netClassPlanImported;
+  delete state._netClassPlanImportedV2;
+  state._netClassPlanV3Imported = true;
   saveData();
-  console.log('[体态训练·网课适配版] 导入完成：阶段1课表(14课时) + 20个动作资源 + 12个拉伸动作 + 7个运动组(激活日/康复日/基础日)');
+  console.log('[体态训练·网课适配版 V3] 导入完成：阶段1课表(14课时) + 28个动作资源 + 3个运动组(每日必做/激活内容/康复内容)');
 }
 
 // ─── 理财书籍导入 ───
