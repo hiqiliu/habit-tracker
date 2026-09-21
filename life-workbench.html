@@ -3917,7 +3917,8 @@ function renderGym() {
   const mod = state.modules.find(m => m.id === 'gym');
   switch (gymView) {
     case 'workout': return renderGymWorkout(mod);
-    case 'schedule': return renderGymSchedule(mod);
+    case 'weekly': return renderGymWeekly(mod);
+    case 'profile': return renderGymProfile(mod);
     case 'body': return renderGymBody(mod);
     case 'condition': return renderGymCondition(mod);
     case 'resource': return renderGymResource(mod);
@@ -3943,6 +3944,13 @@ function renderGymOverview(mod) {
   const weekMinutes = weekWorkouts.reduce((a,w)=>a+(w.duration||0),0);
   const activePlan = plans.find(p => !p.completed);
   const planProgress = activePlan ? (activePlan.items.filter(i=>i.done).length / (activePlan.totalSessions||activePlan.items.length) * 100) : 0;
+  // Weekly tracker: count this week's completions
+  const tracker = state.gym.weeklyTracker || {};
+  var weeklyDoneCount = 0;
+  Object.keys(tracker).forEach(function(k) {
+    var t = tracker[k];
+    if (t && t.logs) weeklyDoneCount += t.logs.filter(function(l) { return l.date >= weekStr && l.date <= todayStr; }).length;
+  });
 
   return `
     <div class="page active">
@@ -3956,9 +3964,9 @@ function renderGymOverview(mod) {
           <div class="gqc-icon">🏃</div>
           <div class="gqc-info"><div class="gqc-num">${weekWorkouts.length}</div><div class="gqc-lbl">本周运动</div></div>
         </div>
-        <div class="gym-quick-card" onclick="setGymView('schedule')">
+        <div class="gym-quick-card" onclick="setGymView('weekly')">
           <div class="gqc-icon">📅</div>
-          <div class="gqc-info"><div class="gqc-num">${activePlan?Math.round(planProgress)+'%':'-'}</div><div class="gqc-lbl">课表进度</div></div>
+          <div class="gqc-info"><div class="gqc-num">${weeklyDoneCount}</div><div class="gqc-lbl">本周完成</div></div>
         </div>
         <div class="gym-quick-card" onclick="setGymView('body')">
           <div class="gqc-icon">📊</div>
@@ -3987,13 +3995,23 @@ function renderGymOverview(mod) {
         <div class="stat-card"><div class="stat-val">${weekWorkouts.length>0?Math.round(weekMinutes/weekWorkouts.length):0}</div><div class="stat-lbl">平均时长</div></div>
       </div>
 
-      ${activePlan ? `
-      <div class="section-title">📋 当前课表：${escHtml(activePlan.name)}</div>
-      <div class="card">
-        <div style="margin-bottom:6px;font-size:13px;">共${activePlan.totalSessions||activePlan.items.length}课时 · 已完成 ${activePlan.items.filter(i=>i.done).length}/${activePlan.totalSessions||activePlan.items.length} 课时</div>
-        <div class="progress-bar"><div class="progress-fill" style="width:${planProgress}%"></div></div>
-        <div style="margin-top:8px;"><button class="btn-sm" onclick="setGymView('schedule')">查看课表 →</button></div>
-      </div>` : ''}
+      ${(() => {
+        const tracker = state.gym.weeklyTracker || {};
+        const trackerKeys = Object.keys(tracker);
+        if (trackerKeys.length === 0) return '';
+        var items = trackerKeys.map(function(k) {
+          var t = tracker[k];
+          var weekLogs = (t.logs||[]).filter(function(l) { return l.date >= weekStr && l.date <= todayStr; });
+          var target = t.target || 0;
+          var pct = target > 0 ? Math.min(100, Math.round(weekLogs.length / target * 100)) : 0;
+          return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:12px;">'
+            + '<span style="flex:0 0 80px;">' + (t.icon||'') + ' ' + escHtml(t.name||k) + '</span>'
+            + '<div class="progress-bar" style="flex:1;margin:0;"><div class="progress-fill" style="width:' + pct + '%;"></div></div>'
+            + '<span style="flex:0 0 50px;text-align:right;color:var(--muted);">' + weekLogs.length + (target>0?'/' + target:'') + '</span>'
+            + '</div>';
+        }).join('');
+        return '<div class="section-title">📋 本周追踪</div><div class="card">' + items + '<div style="margin-top:8px;"><button class="btn-sm" onclick="setGymView(\'weekly\')">查看详情 →</button></div></div>';
+      })()}
 
       ${workouts.length > 0 ? `
       <div class="section-title">🗓️ 最近运动</div>
@@ -4017,7 +4035,8 @@ function renderGymOverview(mod) {
       <div class="section-title">🗂️ 进入子页面</div>
       <div class="gym-sub-grid">
         <button class="gym-sub-btn" onclick="setGymView('workout')">🏃 运动记录</button>
-        <button class="gym-sub-btn" onclick="setGymView('schedule')">📅 运动课表</button>
+        <button class="gym-sub-btn" onclick="setGymView('weekly')">📅 本周追踪</button>
+        <button class="gym-sub-btn" onclick="setGymView('profile')">🩺 身体档案</button>
         <button class="gym-sub-btn" onclick="setGymView('body')">📊 身体数据</button>
         <button class="gym-sub-btn" onclick="setGymView('condition')">🫀 身体状况</button>
         <button class="gym-sub-btn" onclick="setGymView('resource')">💡 运动资源</button>
@@ -4161,6 +4180,199 @@ function addWorkoutType() {
   openCatManager({title:'管理运动类别',statePath:'gym.workoutTypes',format:'string',reRender:'gym',refs:[{dataPath:'gym.workouts',field:'type'}]});
 }
 function deleteWorkout(id) { state.gym.workouts = (state.gym.workouts||[]).filter(function(w){ return w.id !== id; }); saveData(); }
+
+// ─── PROFILE (身体档案) ───
+function renderGymProfile(mod) {
+  return `
+    <div class="page active">
+      <div class="detail-header">
+        <button class="btn-sm" onclick="setGymView('overview')">← 返回</button>
+        <span style="flex:1;text-align:center;font-weight:600;">🩺 身体档案</span>
+      </div>
+
+      <div class="card" style="margin-bottom:14px;">
+        <div class="section-title" style="margin-bottom:10px;">📋 基本情况</div>
+        <div style="font-size:13px;line-height:1.8;color:var(--text);">
+          <div>· L5S1腰椎曲度变直 + 轻度膨出</div>
+          <div>· 胸椎变直 + 翼状肩胛 + 头前伸</div>
+          <div>· 骨盆后倾 → 膝超伸 → 重心前移</div>
+          <div>· 身形沙漏/圆身/长腰特征</div>
+          <div>· 左侧主力腿（天然更紧更强）</div>
+        </div>
+        <div style="font-size:12px;color:var(--muted);margin-top:8px;line-height:1.6;">
+          连锁反应：L5S1曲度变直 → 骨盆后倾 → 胸椎代偿变直 → 翼状肩胛 → 头前伸 → 髋伸展受限 → 重心前移 → 膝超伸
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:14px;">
+        <div class="section-title" style="margin-bottom:10px;">⚠️ 腰椎活动原则</div>
+        <table style="width:100%;font-size:12px;border-collapse:collapse;">
+          <tr style="background:var(--bg2);"><th style="padding:6px;text-align:left;">方向</th><th style="padding:6px;">能不能做</th><th style="padding:6px;text-align:left;">关键条件</th></tr>
+          <tr><td style="padding:6px;">前屈（弯腰）</td><td style="padding:6px;text-align:center;">⚠️ 大部分避免</td><td style="padding:6px;">唯一允许：仰卧屈膝腰贴地的轻微屈曲</td></tr>
+          <tr style="background:var(--bg2);"><td style="padding:6px;">后伸（仰腰）</td><td style="padding:6px;text-align:center;">✅ 温和可以</td><td style="padding:6px;">麦肯基伸展可以；猛烈甩腰不行</td></tr>
+          <tr><td style="padding:6px;">侧屈（左右弯）</td><td style="padding:6px;text-align:center;">⚠️ 轻微可以</td><td style="padding:6px;">大幅度会挤压椎间盘单侧</td></tr>
+          <tr style="background:var(--bg2);"><td style="padding:6px;">旋转（扭转）</td><td style="padding:6px;text-align:center;">⚠️ 小幅度可以</td><td style="padding:6px;">旋转发生在胸椎；旋转+前屈=最危险</td></tr>
+        </table>
+        <div style="font-size:11px;color:var(--muted);margin-top:8px;line-height:1.5;">
+          危险排序：前屈+旋转 > 纯前屈 > 大幅度后伸 > 大幅度侧屈 > 小幅度旋转 > 温和后伸 > 中立位训练
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:14px;">
+        <div class="section-title" style="margin-bottom:10px;">🧘 瑜伽动作禁忌</div>
+        <div style="font-size:13px;margin-bottom:10px;">
+          <div style="color:#e74c3c;font-weight:600;margin-bottom:4px;">❌ 禁止做</div>
+          <div style="font-size:12px;color:var(--muted);line-height:1.6;">坐姿前屈、站立前屈、鸽子式、眼镜蛇式、上犬式、骆驼式、轮式</div>
+        </div>
+        <div style="font-size:13px;margin-bottom:10px;">
+          <div style="color:#f39c12;font-weight:600;margin-bottom:4px;">⚠️ 需要改良</div>
+          <div style="font-size:12px;color:var(--muted);line-height:1.6;">下犬式（膝微屈）、战士一式（后脚角度调小）、三角式（幅度减小）、坐姿扭转（改跪姿/站姿）、桥式（小幅度不顶高）、直腿前屈（微屈膝）</div>
+        </div>
+        <div style="font-size:13px;">
+          <div style="color:#27ae60;font-weight:600;margin-bottom:4px;">✅ 适合做</div>
+          <div style="font-size:12px;color:var(--muted);line-height:1.6;">猫式、婴儿式、战士二式、树式、山式、小眼镜蛇（前臂撑版）、仰卧扭转、泡沫轴猫牛</div>
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-top:10px;padding:8px;background:var(--bg2);border-radius:8px;line-height:1.6;">
+          <strong>判断原则：</strong>腰会后弯？→ 减幅度或跳过。腰会前屈+手触地？→ 微屈膝。大幅度旋转腰椎？→ 让胸椎转。三个都"否"就可以做。
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:14px;">
+        <div class="section-title" style="margin-bottom:10px;">🔁 左右不对称策略</div>
+        <table style="width:100%;font-size:12px;border-collapse:collapse;">
+          <tr style="background:var(--bg2);"><th style="padding:6px;text-align:left;">侧别</th><th style="padding:6px;text-align:left;">定位</th><th style="padding:6px;text-align:left;">策略</th></tr>
+          <tr><td style="padding:6px;">左侧（主力腿）</td><td style="padding:6px;">天然更紧、更强</td><td style="padding:6px;">以松解+拉伸为主（腘绳肌、小腿后侧多放松）</td></tr>
+          <tr style="background:var(--bg2);"><td style="padding:6px;">右侧（非主力腿）</td><td style="padding:6px;">偏弱，臀中肌无力</td><td style="padding:6px;">以强化为主（蚌式、单腿站立右侧多加）</td></tr>
+        </table>
+        <div style="font-size:11px;color:var(--muted);margin-top:8px;">核心逻辑：右侧练"力"（强化臀中肌），左侧练"松"（松解腘绳肌和小腿）。</div>
+      </div>
+
+      <div class="card" style="margin-bottom:14px;">
+        <div class="section-title" style="margin-bottom:10px;">🚫 禁止动作清单</div>
+        <div style="font-size:12px;color:var(--muted);line-height:1.8;">
+          1. 瑜伽后弯（轮式、骆驼式、深度上犬式）<br>
+          2. 俯卧两头起<br>
+          3. 仰卧起坐 / 卷腹<br>
+          4. 直腿弯腰够脚<br>
+          5. 坐姿扭腰拉伸<br>
+          6. 哥本哈根支撑<br>
+          7. 跳绳等高冲击跳跃<br>
+          8. 猫牛式牛式段（只做猫式）
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="section-title" style="margin-bottom:10px;">📝 日常姿势提醒</div>
+        <table style="width:100%;font-size:12px;border-collapse:collapse;">
+          <tr style="background:var(--bg2);"><th style="padding:6px;text-align:left;">场景</th><th style="padding:6px;text-align:left;">怎么做</th></tr>
+          <tr><td style="padding:6px;">坐姿</td><td style="padding:6px;">坐骨坐稳，腰垫支撑，每30分钟起身</td></tr>
+          <tr style="background:var(--bg2);"><td style="padding:6px;">站姿</td><td style="padding:6px;">膝盖微屈，轻度核心激活</td></tr>
+          <tr><td style="padding:6px;">弯腰</td><td style="padding:6px;">屈膝蹲下捡东西</td></tr>
+          <tr style="background:var(--bg2);"><td style="padding:6px;">起床</td><td style="padding:6px;">先侧身，手撑起再坐</td></tr>
+          <tr><td style="padding:6px;">睡觉</td><td style="padding:6px;">侧卧（右侧在上）膝间夹枕 / 仰卧膝下垫枕</td></tr>
+          <tr style="background:var(--bg2);"><td style="padding:6px;">打喷嚏</td><td style="padding:6px;">微微屈膝再打</td></tr>
+        </table>
+      </div>
+    </div>`;
+}
+
+// ─── WEEKLY (本周追踪) ───
+function getWeekStart() {
+  var d = new Date();
+  var day = d.getDay(); // 0=Sun
+  var diff = day === 0 ? -6 : 1 - day; // Monday as week start
+  d.setDate(d.getDate() + diff);
+  return fmtDate(d);
+}
+function renderGymWeekly(mod) {
+  var tracker = state.gym.weeklyTracker || {};
+  var keys = Object.keys(tracker);
+  var weekStart = getWeekStart();
+  var todayStr = today();
+  var weekEnd = today();
+  var endD = new Date(weekStart);
+  endD.setDate(endD.getDate() + 6);
+  weekEnd = fmtDate(endD);
+
+  var cards = keys.map(function(k) {
+    var t = tracker[k];
+    var logs = t.logs || [];
+    var weekLogs = logs.filter(function(l) { return l.date >= weekStart && l.date <= weekEnd; });
+    var totalLogs = logs.length;
+    var target = t.target || 0;
+    var totalTarget = t.totalTarget || 0;
+    var pct = target > 0 ? Math.min(100, Math.round(weekLogs.length / target * 100)) : 0;
+    var totalPct = totalTarget > 0 ? Math.min(100, Math.round(totalLogs / totalTarget * 100)) : 0;
+    var recentLogs = logs.slice(-5).reverse();
+
+    var weekBar = target > 0
+      ? '<div class="progress-bar" style="margin:4px 0;"><div class="progress-fill" style="width:' + pct + '%;"></div></div>'
+      : '';
+    var totalBar = totalTarget > 0
+      ? '<div style="margin-top:6px;"><div style="font-size:11px;color:var(--muted);margin-bottom:2px;">总进度 ' + totalLogs + '/' + totalTarget + '</div><div class="progress-bar" style="margin:0;"><div class="progress-fill" style="width:' + totalPct + '%;"></div></div></div>'
+      : '';
+
+    var logsHtml = recentLogs.length > 0
+      ? recentLogs.map(function(l) {
+          return '<div style="font-size:11px;color:var(--muted);padding:2px 0;border-bottom:1px solid var(--border);">'
+            + '<span style="color:var(--text);">' + l.date.substring(5) + '</span>'
+            + (l.note ? ' · ' + escHtml(l.note) : '')
+            + ' <button class="btn-sm danger" style="font-size:10px;padding:1px 4px;margin-left:4px;" onclick="removeWeeklyLog(\'' + k + '\',\'' + l.id + '\')">✕</button>'
+            + '</div>';
+          }).join('')
+      : '<div style="font-size:11px;color:var(--muted);">暂无记录</div>';
+
+    return '<div class="card" style="margin-bottom:12px;">'
+      + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">'
+      +   '<span style="font-size:20px;">' + (t.icon||'📋') + '</span>'
+      +   '<div style="flex:1;">'
+      +     '<div style="font-weight:600;font-size:14px;">' + escHtml(t.name||k) + '</div>'
+      +     '<div style="font-size:11px;color:var(--muted);">' + (t.desc||'') + '</div>'
+      +   '</div>'
+      +   '<div style="text-align:right;font-size:12px;color:var(--muted);">' + weekLogs.length + (target>0?'/' + target:'') + ' 本周</div>'
+      + '</div>'
+      + weekBar
+      + totalBar
+      + '<div style="display:flex;gap:6px;margin-top:8px;">'
+      +   '<input class="input-field" id="wklog_' + k + '" placeholder="备注（可选）" style="flex:1;font-size:12px;" onkeydown="if(event.key===\'Enter\')addWeeklyLog(\'' + k + '\')">'
+      +   '<button class="btn-sm primary" onclick="addWeeklyLog(\'' + k + '\')" style="font-size:12px;">+ 打卡</button>'
+      + '</div>'
+      + '<div style="margin-top:8px;border-top:1px solid var(--border);padding-top:6px;">'
+      +   '<div style="font-size:11px;color:var(--muted);margin-bottom:4px;">最近记录</div>'
+      +   logsHtml
+      + '</div>'
+      + '</div>';
+  }).join('');
+
+  return '<div class="page active">'
+    + '<div class="detail-header">'
+    +   '<button class="btn-sm" onclick="setGymView(\'overview\')">← 返回</button>'
+    +   '<span style="flex:1;text-align:center;font-weight:600;">📅 本周追踪</span>'
+    + '</div>'
+    + '<div style="font-size:12px;color:var(--muted);background:var(--bg2);padding:8px 12px;border-radius:8px;margin-bottom:14px;text-align:center;">'
+    +   '本周：' + weekStart.substring(5) + ' ~ ' + weekEnd.substring(5)
+    + '</div>'
+    + (cards || '<div class="empty-state">暂无追踪项目</div>')
+    + '<div style="font-size:11px;color:var(--muted);text-align:center;padding:12px 0;line-height:1.6;">'
+    +   '每日必做底线版15分钟（骨盆时钟+死虫式+髂腰肌拉伸+靠墙排列呼吸）<br>'
+    +   '打网球当天：底线版 + 网球后拉伸A套 + 松解，不做其他主训练'
+    + '</div>'
+    + '</div>';
+}
+function addWeeklyLog(key) {
+  var input = $('wklog_' + key);
+  var note = input ? input.value.trim() : '';
+  if (!state.gym.weeklyTracker) state.gym.weeklyTracker = {};
+  if (!state.gym.weeklyTracker[key]) state.gym.weeklyTracker[key] = { logs: [] };
+  if (!state.gym.weeklyTracker[key].logs) state.gym.weeklyTracker[key].logs = [];
+  state.gym.weeklyTracker[key].logs.push({ id: 'wl'+Date.now(), date: today(), note: note });
+  saveData(); renderPage('gym'); toast('已打卡');
+}
+function removeWeeklyLog(key, logId) {
+  if (!state.gym.weeklyTracker || !state.gym.weeklyTracker[key]) return;
+  state.gym.weeklyTracker[key].logs = (state.gym.weeklyTracker[key].logs||[]).filter(function(l) { return l.id !== logId; });
+  saveData(); renderPage('gym'); toast('已删除');
+}
 
 // ─── SCHEDULE (运动课表) ───
 var collapsedPlans = {}; // track collapsed plan IDs
@@ -9621,9 +9833,9 @@ function importTennisStretchPlan() {
   console.log('[网球后拉伸] 导入完成：10个拉伸动作 + 2个动作组（完整版10个 + 简易版5个）');
 }
 
-// ─── 体态训练计划（网课适配版）导入 V4 ───
+// ─── 体态训练计划（网课适配版）导入 V5 ───
 function importNetClassPlan() {
-  if (state._netClassPlanV4Imported) return;
+  if (state._netClassPlanV5Imported) return;
   if (!state.gym) state.gym = {};
   if (!state.gym.resources) state.gym.resources = [];
   if (!state.gym.plans) state.gym.plans = [];
@@ -9636,7 +9848,7 @@ function importNetClassPlan() {
   var oldResPrefixes = [
     'posture-v3-res-', 'posture-v3-grp-', 'posture-res-', 'res_posture_', 'res_group_daily_', 'res_group_full_',
     'train-v3-res-', 'train-v3-grp-',
-    'netcls-res-', 'netcls-grp-', 'netcls-v3-res-', 'netcls-v3-grp-', 'netcls-v4-res-', 'netcls-v4-grp-',
+    'netcls-res-', 'netcls-grp-', 'netcls-v3-res-', 'netcls-v3-grp-', 'netcls-v4-res-', 'netcls-v4-grp-', 'netcls-v5-res-', 'netcls-v5-grp-',
     'tennis-stretch-'
   ];
   state.gym.resources = (state.gym.resources || []).filter(function(r) {
@@ -9649,7 +9861,7 @@ function importNetClassPlan() {
   var oldPlanPrefixes = [
     'posture-daily-', 'posture-activate-', 'posture-v3-daily-', 'posture-v3-activate-', 'posture-v3-rehab-',
     'train-v3-plan',
-    'netcls-plan-', 'netcls-v3-plan-', 'netcls-v4-plan-'
+    'netcls-plan-', 'netcls-v3-plan-', 'netcls-v4-plan-', 'netcls-v5-plan-'
   ];
   state.gym.plans = (state.gym.plans || []).filter(function(p) {
     if (!p.id) return true;
@@ -9667,7 +9879,7 @@ function importNetClassPlan() {
   // helper：创建单个动作资源
   var rc = 0;
   function res(title, note, category, tags) {
-    var id = 'netcls-v4-res-' + ts + '-' + (++rc);
+    var id = 'netcls-v5-res-' + ts + '-' + (++rc);
     state.gym.resources.push({
       id: id, title: title, link: '', note: note,
       category: category || 'posture', tags: tags || ['网课适配'],
@@ -9678,7 +9890,7 @@ function importNetClassPlan() {
   // helper：创建运动组
   var gc = 0;
   function grp(title, memberIds, category, note) {
-    var id = 'netcls-v4-grp-' + ts + '-' + (++gc);
+    var id = 'netcls-v5-grp-' + ts + '-' + (++gc);
     state.gym.resources.push({
       id: id, title: title, link: '', note: note || '',
       category: category || 'posture', tags: ['网课适配'],
@@ -9766,39 +9978,24 @@ function importNetClassPlan() {
   grp('泡沫轴/网球松解', [sc1,sc2,sc3,sc4,sc5,sc6,sc7], 'stretch',
     '每日松解（15分钟），针对竖脊肌、腰方肌、骶骨旁、股外侧肌、腘绳肌（左）、小腿后侧（右重点）。');
 
-  // ── 8. 创建阶段1课表（7天循环，共14课时=2周）──
-  function genStage1Items(totalDays) {
-    var items = [];
-    for (var i = 1; i <= totalDays; i++) {
-      var mod = i % 7;
-      var content, type;
-      if (mod === 0) { content = 'D' + i + ' 必做'; type = '体态矫正'; }
-      else if (mod % 2 === 1) { content = 'D' + i + ' 必做+激活'; type = '力量训练'; }
-      else { content = 'D' + i + ' 必做+康复'; type = '拉伸放松'; }
-      items.push({
-        session: i, content: content,
-        done: false, doneDate: '', syncedWorkoutId: '',
-        workoutType: type
-      });
-    }
-    return items;
-  }
-
-  state.gym.plans.push({
-    id: 'netcls-v4-plan-stage1-' + ts,
-    name: '阶段1：D1/3/5必做+激活 D2/4必做+康复 D7必做',
-    totalSessions: 14,
-    items: genStage1Items(14),
-    completed: false
-  });
+  // ── 8. 初始化周追踪数据 ──
+  state.gym.weeklyTracker = {
+    daily: { name:'每日必做', icon:'📌', desc:'底线版15min（骨盆时钟+死虫式+髂腰肌拉伸+靠墙排列呼吸）', target:7, totalTarget:0, logs:[] },
+    yoga: { name:'瑜伽课', icon:'🧘', desc:'每周2次，每次1节30-40分钟，15节约7-8周', target:2, totalTarget:15, logs:[] },
+    netcourse: { name:'体态网课', icon:'📺', desc:'第一遍倍速过课，每天1节15-20分钟，约35-40天过70节', target:5, totalTarget:70, logs:[] },
+    trainer: { name:'私教课', icon:'🏋️', desc:'每10天1次，共6节', target:0, totalTarget:6, logs:[] },
+    tennis: { name:'打网球', icon:'🎾', desc:'当天：底线版+网球后拉伸A套+松解', target:0, totalTarget:0, logs:[] },
+    live: { name:'直播回放', icon:'🎬', desc:'哪天没安排其他训练、精力还行就看一节', target:0, totalTarget:0, logs:[] }
+  };
 
   // 清理旧版本标记
   delete state._netClassPlanImported;
   delete state._netClassPlanImportedV2;
   delete state._netClassPlanV3Imported;
-  state._netClassPlanV4Imported = true;
+  delete state._netClassPlanV4Imported;
+  state._netClassPlanV5Imported = true;
   saveData();
-  console.log('[体态训练·网课适配版 V4] 导入完成：阶段1课表(14课时) + 46个动作资源 + 7个运动组');
+  console.log('[体态训练·网课适配版 V5] 导入完成：46个动作资源 + 7个运动组 + 6项周追踪');
 }
 
 // ─── 理财书籍导入 ───
