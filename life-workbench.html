@@ -1093,6 +1093,83 @@ textarea.input-field { resize:vertical; min-height:60px; }
 .jm-legend-item { display:flex; align-items:center; gap:4px; }
 .jm-legend-item .jm-dot { width:7px; height:7px; }
 
+/* Diary Detail */
+.diary-detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.diary-detail-left, .diary-detail-right {
+  background: var(--bg2);
+  border-radius: 12px;
+  padding: 14px;
+}
+.diary-detail-left textarea {
+  min-height: 180px;
+}
+
+/* Timeline */
+.tl-add-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+  align-items: center;
+}
+.timeline-container {
+  position: relative;
+  padding-left: 20px;
+}
+.timeline-container::before {
+  content: '';
+  position: absolute;
+  left: 7px;
+  top: 4px;
+  bottom: 4px;
+  width: 2px;
+  background: var(--rule);
+}
+.tl-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 14px;
+  position: relative;
+}
+.tl-dot {
+  position: absolute;
+  left: -17px;
+  top: 6px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid var(--bg2);
+  flex-shrink: 0;
+}
+.tl-content {
+  flex: 1;
+  min-width: 0;
+}
+.tl-time {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+  margin-bottom: 2px;
+}
+.tl-text {
+  font-size: 13px;
+  color: var(--text);
+  line-height: 1.6;
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+
+@media (max-width:640px) {
+  .diary-detail-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width:540px) {
   .jm-cell { min-height:48px; padding:3px 1px; }
   .jm-day-num { font-size:12px; }
@@ -1312,7 +1389,7 @@ const STORAGE_KEY = 'life_workbench_data';
 const DEFAULT_MODULES = [
   { id:'plan', icon:'📋', name:'每日计划' },
   { id:'review', icon:'📔', name:'手账本' },
-  { id:'soul', icon:'🌿', name:'心灵驿站' },
+  { id:'soul', icon:'📖', name:'日记本' },
   { id:'study', icon:'📚', name:'学习桌' },
   { id:'gym', icon:'💪', name:'健身房' },
   { id:'library', icon:'📖', name:'图书馆' },
@@ -1411,8 +1488,8 @@ function runMigrations() {
   if (state.modules && !state.modules.find(m => m.id === 'soul')) {
     state.modules = state.modules.filter(m => !['habit','gratitude','meditate','stars'].includes(m.id));
     var planIdx = state.modules.findIndex(m => m.id === 'plan');
-    if (planIdx >= 0) state.modules.splice(planIdx + 1, 0, { id:'soul', icon:'🌿', name:'心灵驿站' });
-    else state.modules.unshift({ id:'soul', icon:'🌿', name:'心灵驿站' });
+    if (planIdx >= 0) state.modules.splice(planIdx + 1, 0, { id:'soul', icon:'📖', name:'日记本' });
+    else state.modules.unshift({ id:'soul', icon:'📖', name:'日记本' });
   }
   // Always remove 'habit' module from sidebar (merged into plan)
   if (state.modules) {
@@ -3296,30 +3373,34 @@ function toggleHabitCatFilter(cat) {
 }
 
 // ═══════════════════════════════════════
-// 2c. SOUL STATION (心灵驿站) - 日记+冥想
+// 2c. DIARY (日记本)
 // ═══════════════════════════════════════
-let soulSubView = 'diary'; // 'diary' | 'meditate' | 'wisdom'
+let diaryView = 'list'; // 'list' | 'detail'
+let diaryDetailDate = '';
 function renderSoul() {
   var mod = state.modules.find(function(m) { return m.id === 'soul'; });
-  var toggleHtml = '<div class="journal-view-toggle" style="margin-bottom:14px;">'
-    + '<button class="jvt-btn'+(soulSubView==='diary'?' active':'')+'" onclick="setSoulSubView(\'diary\')">📝 日记</button>'
-    + '<button class="jvt-btn'+(soulSubView==='meditate'?' active':'')+'" onclick="setSoulSubView(\'meditate\')">🧘 冥想</button>'
-    + '<button class="jvt-btn'+(soulSubView==='wisdom'?' active':'')+'" onclick="setSoulSubView(\'wisdom\')">💡 心法</button>'
-    + '</div>';
   var contentHtml;
-  if (soulSubView === 'meditate') contentHtml = renderMeditate();
-  else if (soulSubView === 'wisdom') contentHtml = renderWisdomCards();
+  if (diaryView === 'detail') contentHtml = renderDiaryDetail();
   else contentHtml = renderDiary();
   return '<div class="page active">'
     + '<div class="module-title">'
     +   mod.icon + ' <span class="editable-title" ondblclick="editModule(\'soul\')">'+mod.name+'</span>'
     +   '<button class="edit-icon-btn" onclick="editModule(\'soul\')" title="编辑">✏️</button>'
+    +   (diaryView === 'list' ? '<button class="btn-sm primary" style="margin-left:auto;font-size:13px;" onclick="openTodayDiary()">✍️ 记录</button>' : '')
     + '</div>'
-    + toggleHtml
     + contentHtml
     + '</div>';
 }
-function setSoulSubView(v) { soulSubView = v; renderPage('soul'); }
+function openTodayDiary() {
+  diaryDetailDate = today();
+  diaryView = 'detail';
+  renderPage('soul');
+}
+function closeDiaryDetail() {
+  diaryView = 'list';
+  diaryDetailDate = '';
+  renderPage('soul');
+}
 
 var diaryMonthOffset = 0;
 
@@ -3392,84 +3473,41 @@ function renderDiary() {
     var entry = entryMap[ds];
     var isToday = ds === todayStr;
     var dow = new Date(cy, cm, d).getDay();
-    var moodIcon = entry ? (MOOD_EMOJIS[entry.level] || '📝') : '';
-    var sourceTag = entry && entry.source ? '<span style="font-size:11px;color:var(--muted);background:var(--bg2);border-radius:4px;padding:1px 6px;margin-right:6px;">'+escHtml(entry.source)+'</span>' : '';
+    var hasContent = entry && (entry.joys || entry.improve || (entry.timeline && entry.timeline.length > 0) || entry.content);
+    var previewIcon = hasContent ? '📝' : '';
+    var previewText = '';
+    if (entry) {
+      if (entry.joys) previewText = '小确幸：' + entry.joys.substring(0, 30);
+      else if (entry.content) previewText = entry.content.substring(0, 40);
+    }
 
-    dayListHtml += '<div class="diary-row'+(isToday?' diary-row-today':'')+'" onclick="diaryDayClick(\''+ds+'\')">'
+    dayListHtml += '<div class="diary-row'+(isToday?' diary-row-today':'')+'" onclick="openDiaryDetail(\''+ds+'\')">'
       + '<div class="diary-row-date">'
       +   '<span class="diary-day-num'+(isToday?' today':'')+'">'+d+'</span>'
       +   '<span class="diary-weekday">'+weekdayNames[dow]+'</span>'
       + '</div>'
-      + '<div class="diary-row-mood">'+moodIcon+'</div>'
+      + '<div class="diary-row-mood">'+previewIcon+'</div>'
       + '<div class="diary-row-content">'
-      +   (entry
-          ? sourceTag + '<span style="word-break:break-word;white-space:normal;line-height:1.6;">'+escHtml(entry.content||'')+'</span>'
-          : '<span style="color:var(--muted);font-size:12px;">—</span>')
+      +   (hasContent
+          ? '<span style="word-break:break-word;white-space:normal;line-height:1.6;">'+escHtml(previewText)+'</span>'
+          : '<span style="color:var(--muted);font-size:12px;">— 点击记录 —</span>')
       + '</div>'
       + '</div>';
   }
 
-  // Today's entry
-  var todayEntry = entryMap[todayStr];
-
-  return '<div class="section-title">✍️ 今日日记</div>'
-    + '<div class="grate-input-area">'
-    +   '<div class="mood-picker" style="margin-bottom:8px;">'
-    +     [1,2,3,4,5].map(function(l) {
-           return '<button class="mood-option'+(todayEntry&&todayEntry.level===l?' active':'')+'" onclick="selectDiaryLevel('+l+')" data-level="'+l+'" title="'+MOOD_LABELS[l]+'">'+MOOD_EMOJIS[l]+'</button>';
-         }).join('')
-    +   '</div>'
-    +   '<textarea class="input-field" id="diaryInput" placeholder="今天的心情和想记录的事..." rows="3" style="display:block;width:100%;margin-bottom:8px;">'+escHtml(todayEntry ? todayEntry.content : '')+'</textarea>'
-    +   '<div class="form-row">'
-    +     '<input class="input-field" id="diarySource" placeholder="来源（可选，如：工作、运动、家人）" value="'+escHtml(todayEntry ? (todayEntry.source||'') : '')+'" style="flex:1;font-size:13px;" onkeydown="if(event.key===\'Enter\')this.blur()">'
-    +     '<button class="btn-sm primary" onclick="saveDiary()" style="margin-left:auto;">'+(todayEntry?'更新':'记录')+'</button>'
-    +   '</div>'
-    + '</div>'
-    + '<div class="cal-nav">'
+  return '<div class="cal-nav">'
     +   '<button class="btn-sm" onclick="changeDiaryMonth(-1)">◀</button>'
     +   '<span style="font-weight:600;font-size:15px;">'+monthTitle+'</span>'
     +   '<button class="btn-sm" onclick="changeDiaryMonth(1)">▶</button>'
     + '</div>'
     + '<div class="diary-day-list">' + dayListHtml + '</div>'
-    + '<div class="jm-legend">'
-    +   '<span class="jm-legend-item">'+MOOD_EMOJIS[1]+' '+MOOD_LABELS[1]+'</span>'
-    +   '<span class="jm-legend-item">'+MOOD_EMOJIS[2]+' '+MOOD_LABELS[2]+'</span>'
-    +   '<span class="jm-legend-item">'+MOOD_EMOJIS[3]+' '+MOOD_LABELS[3]+'</span>'
-    +   '<span class="jm-legend-item">'+MOOD_EMOJIS[4]+' '+MOOD_LABELS[4]+'</span>'
-    +   '<span class="jm-legend-item">'+MOOD_EMOJIS[5]+' '+MOOD_LABELS[5]+'</span>'
-    +   '<span class="jm-legend-item">📅 点击日期查看/编辑</span>'
-    + '</div>';
+    + '<div style="text-align:center;font-size:12px;color:var(--muted);padding:8px 0;">点击日期查看 / 记录日记</div>';
 }
 
-var selectedDiaryLevel = null;
-function selectDiaryLevel(level) {
-  selectedDiaryLevel = level;
-  document.querySelectorAll('.mood-option[data-level]').forEach(function(el) {
-    el.classList.toggle('active', parseInt(el.getAttribute('data-level')) === level);
-  });
-}
-
-function saveDiary() {
-  var inp = $('diaryInput');
-  if (!inp || !inp.value.trim()) { toast('请写下日记内容'); return; }
-  var srcInp = $('diarySource');
-  var todayStr = today();
-  if (!state.gratitude.entries) state.gratitude.entries = [];
-  var existing = state.gratitude.entries.find(function(e) { return e.date === todayStr; });
-  if (existing) {
-    existing.content = inp.value.trim();
-    existing.source = srcInp ? srcInp.value.trim() : '';
-    if (selectedDiaryLevel) existing.level = selectedDiaryLevel;
-  } else {
-    state.gratitude.entries.push({
-      id: 'd'+Date.now(),
-      date: todayStr,
-      level: selectedDiaryLevel || 3,
-      content: inp.value.trim(),
-      source: srcInp ? srcInp.value.trim() : ''
-    });
-  }
-  saveData(); renderPage('soul'); toast('日记已记录 📝');
+function openDiaryDetail(dateStr) {
+  diaryDetailDate = dateStr;
+  diaryView = 'detail';
+  renderPage('soul');
 }
 
 function changeDiaryMonth(delta) {
@@ -3477,67 +3515,138 @@ function changeDiaryMonth(delta) {
   renderPage('soul');
 }
 
-function diaryDayClick(dateStr) {
+// ─── 日记详情页（两栏布局）───
+function renderDiaryDetail() {
+  var dateStr = diaryDetailDate;
   var entry = (state.gratitude.entries || []).find(function(e) { return e.date === dateStr; });
-  var m = document.createElement('div');
-  m.className = 'modal-overlay show'; m.id = 'diaryDayModal';
-  var moodOpts = [1,2,3,4,5].map(function(l) {
-    return '<button class="mood-option'+(entry&&entry.level===l?' active':'')+'" onclick="selectDiaryLevelEdit('+l+')" data-level="'+l+'" title="'+MOOD_LABELS[l]+'">'+MOOD_EMOJIS[l]+'</button>';
-  }).join('');
+  var joys = entry ? (entry.joys || '') : '';
+  var improve = entry ? (entry.improve || '') : '';
+  var timeline = entry && entry.timeline ? entry.timeline.slice().sort(function(a,b) { return a.time.localeCompare(b.time); }) : [];
+  var weekdayNames = ['星期日','星期一','星期二','星期三','星期四','星期五','星期六'];
+  var d = new Date(dateStr);
+  var weekday = weekdayNames[d.getDay()];
+  var isToday = dateStr === today();
 
-  m.innerHTML = '<div class="modal-box" style="max-width:460px;">'
-    + '<h3>📝 '+dateStr+' 日记</h3>'
-    + '<div class="mood-picker" style="margin-bottom:10px;" id="diaryMoodPicker">'+moodOpts+'</div>'
-    + '<input class="input-field" id="diaryDaySource" placeholder="来源（可选）" value="'+escHtml(entry ? (entry.source||'') : '')+'" style="display:block;width:100%;margin-bottom:8px;font-size:13px;" onkeydown="if(event.key===\'Enter\')document.getElementById(\'diaryDayInput\').focus()">'
-    + '<textarea class="input-field" id="diaryDayInput" placeholder="今天的心情和想记录的事..." rows="4" style="display:block;width:100%;margin-bottom:8px;">'+escHtml(entry ? entry.content : '')+'</textarea>'
-    + (entry && entry.aiAdvice ? '<div style="background:var(--bg);border-radius:8px;padding:10px;margin-bottom:8px;font-size:13px;color:var(--muted);"><strong>🤖 AI建议：</strong>'+escHtml(entry.aiAdvice)+'</div>' : '')
-    + '<div class="modal-actions">'
-    +   '<button class="btn-sm" onclick="document.getElementById(\'diaryDayModal\').remove()">取消</button>'
-    +   (entry ? '<button class="btn-sm danger" onclick="deleteDiary(\''+dateStr+'\')">删除</button>' : '')
-    +   '<button class="btn-sm primary" onclick="saveDiaryDay(\''+dateStr+'\')">保存</button>'
-    + '</div></div>';
-  document.body.appendChild(m);
-  m.addEventListener('click', function(e) { if (e.target === m) m.remove(); });
-  selectedDiaryLevel = entry ? entry.level : null;
+  // Build timeline HTML
+  var timelineHtml = '';
+  if (timeline.length > 0) {
+    timelineHtml = timeline.map(function(item) {
+      return '<div class="tl-item">'
+        + '<div class="tl-dot"></div>'
+        + '<div class="tl-content">'
+        +   '<div class="tl-time">'+item.time+'</div>'
+        +   '<div class="tl-text">'+escHtml(item.content||'')+'</div>'
+        + '</div>'
+        + '<button class="btn-sm danger" style="font-size:11px;padding:1px 6px;" onclick="deleteTimelineItem(\''+item.id+'\')" title="删除">✕</button>'
+        + '</div>';
+    }).join('');
+  } else {
+    timelineHtml = '<div style="text-align:center;color:var(--muted);font-size:12px;padding:20px 0;">暂无时间点记录<br>在下方添加时间点记录当下的事件/感受</div>';
+  }
+
+  return '<div class="diary-detail">'
+    + '<div class="detail-header">'
+    +   '<button class="btn-sm" onclick="closeDiaryDetail()">← 返回</button>'
+    +   '<span style="flex:1;text-align:center;font-weight:600;">'+dateStr+' '+weekday+(isToday?' · 今天':'')+'</span>'
+    +   '<button class="btn-sm primary" onclick="saveDiaryDetail()">保存</button>'
+    + '</div>'
+    + '<div class="diary-detail-grid">'
+    // 左栏：全天总结
+    + '<div class="diary-detail-left">'
+    +   '<div class="section-title" style="margin-top:0;">📋 全天总结</div>'
+    +   '<div style="margin-bottom:14px;">'
+    +     '<label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;color:var(--text);">✨ 小确幸</label>'
+    +     '<textarea class="input-field" id="detailJoys" placeholder="今天值得开心/感恩的小事..." rows="8" style="width:100%;resize:vertical;line-height:1.8;">'+escHtml(joys)+'</textarea>'
+    +   '</div>'
+    +   '<div>'
+    +     '<label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;color:var(--text);">🌱 做更好</label>'
+    +     '<textarea class="input-field" id="detailImprove" placeholder="可以改进的地方/明天想做的事..." rows="8" style="width:100%;resize:vertical;line-height:1.8;">'+escHtml(improve)+'</textarea>'
+    +   '</div>'
+    + '</div>'
+    // 右栏：时间轴
+    + '<div class="diary-detail-right">'
+    +   '<div class="section-title" style="margin-top:0;">⏰ 时间轴</div>'
+    +   '<div class="tl-add-row">'
+    +     '<input class="input-field" id="tlTimeInput" type="time" style="flex:0 0 90px;font-size:13px;" value="'+getCurrentTime()+'">'
+    +     '<input class="input-field" id="tlContentInput" placeholder="记录此刻的事件或感受..." style="flex:1;font-size:13px;" onkeydown="if(event.key===\'Enter\')addTimelineItem()">'
+    +     '<button class="btn-sm primary" onclick="addTimelineItem()" style="font-size:13px;">+ 添加</button>'
+    +   '</div>'
+    +   '<div class="timeline-container">' + timelineHtml + '</div>'
+    + '</div>'
+    + '</div>'
+    + '<div style="text-align:center;padding:12px 0;">'
+    +   (entry ? '<button class="btn-sm danger" onclick="deleteDiaryEntry()">删除这天日记</button>' : '')
+    + '</div>'
+    + '</div>';
 }
 
-function selectDiaryLevelEdit(level) {
-  selectedDiaryLevel = level;
-  document.querySelectorAll('#diaryDayModal .mood-option').forEach(function(el) {
-    el.classList.toggle('active', parseInt(el.getAttribute('data-level')) === level);
-  });
+function getCurrentTime() {
+  var d = new Date();
+  return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
 }
 
-function saveDiaryDay(dateStr) {
-  var inp = $('diaryDayInput');
-  var srcInp = $('diaryDaySource');
+function saveDiaryDetail() {
+  var dateStr = diaryDetailDate;
+  var joysInp = $('detailJoys');
+  var improveInp = $('detailImprove');
+  var joys = joysInp ? joysInp.value.trim() : '';
+  var improve = improveInp ? improveInp.value.trim() : '';
   if (!state.gratitude.entries) state.gratitude.entries = [];
   var existing = state.gratitude.entries.find(function(e) { return e.date === dateStr; });
   if (existing) {
-    existing.content = inp ? inp.value.trim() : '';
-    existing.source = srcInp ? srcInp.value.trim() : '';
-    if (selectedDiaryLevel) existing.level = selectedDiaryLevel;
+    existing.joys = joys;
+    existing.improve = improve;
   } else {
     state.gratitude.entries.push({
       id: 'd'+Date.now(),
       date: dateStr,
-      level: selectedDiaryLevel || 3,
-      content: inp ? inp.value.trim() : '',
-      source: srcInp ? srcInp.value.trim() : ''
+      joys: joys,
+      improve: improve,
+      timeline: []
     });
   }
   saveData();
-  var modal = document.getElementById('diaryDayModal');
-  if (modal) modal.remove();
-  renderPage('soul'); toast('日记已保存 📝');
+  toast('日记已保存 📝');
 }
 
-function deleteDiary(dateStr) {
+function addTimelineItem() {
+  var timeInp = $('tlTimeInput');
+  var contentInp = $('tlContentInput');
+  if (!contentInp || !contentInp.value.trim()) { toast('请输入内容'); return; }
+  var dateStr = diaryDetailDate;
+  if (!state.gratitude.entries) state.gratitude.entries = [];
+  var entry = state.gratitude.entries.find(function(e) { return e.date === dateStr; });
+  if (!entry) {
+    entry = { id: 'd'+Date.now(), date: dateStr, joys: '', improve: '', timeline: [] };
+    state.gratitude.entries.push(entry);
+  }
+  if (!entry.timeline) entry.timeline = [];
+  entry.timeline.push({
+    id: 'tl'+Date.now(),
+    time: timeInp ? timeInp.value : getCurrentTime(),
+    content: contentInp.value.trim()
+  });
+  contentInp.value = '';
+  saveData();
+  renderPage('soul');
+  toast('已添加时间点');
+}
+
+function deleteTimelineItem(itemId) {
+  var dateStr = diaryDetailDate;
+  var entry = (state.gratitude.entries || []).find(function(e) { return e.date === dateStr; });
+  if (!entry || !entry.timeline) return;
+  entry.timeline = entry.timeline.filter(function(t) { return t.id !== itemId; });
+  saveData();
+  renderPage('soul');
+}
+
+function deleteDiaryEntry() {
+  var dateStr = diaryDetailDate;
   state.gratitude.entries = (state.gratitude.entries || []).filter(function(e) { return e.date !== dateStr; });
   saveData();
-  var modal = document.getElementById('diaryDayModal');
-  if (modal) modal.remove();
-  renderPage('soul'); toast('已删除');
+  closeDiaryDetail();
+  toast('已删除');
 }
 
 // ═══════════════════════════════════════
