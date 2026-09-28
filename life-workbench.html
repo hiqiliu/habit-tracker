@@ -9064,56 +9064,75 @@ function renderBarPerfumes() {
       + '</div>';
   }).join('');
 
-  return '<div class="section-title">🌸 新增试香</div>'
-    + '<div class="card" style="margin-bottom:16px;">'
-    +   '<div class="form-row" style="margin-bottom:8px;">'
-    +     '<input class="input-field" id="perfumeName" placeholder="香水名称" style="flex:1.2;font-size:13px;">'
-    +     '<input class="input-field" id="perfumeBrand" placeholder="品牌" style="flex:1;font-size:13px;">'
-    +     '<select class="input-field" id="perfumeScent" style="flex:0.8;font-size:13px;">'
-    +       PERFUME_SCENTS.map(function(s){ return '<option value="'+s+'">'+s+'</option>'; }).join('')
-    +     '</select>'
-    +   '</div>'
-    +   '<div class="form-row" style="margin-bottom:8px;">'
-    +     '<input class="input-field" id="perfumeChannel" placeholder="试香渠道" style="flex:1;font-size:13px;">'
-    +     '<input class="input-field" id="perfumePrice" type="number" placeholder="价格" style="flex:0.6;font-size:13px;">'
-    +     '<select class="input-field" id="perfumeRating" style="flex:0.6;font-size:13px;">'
-    +       [1,2,3,4,5].map(function(r){ return '<option value="'+r+'">'+r+' 分</option>'; }).join('')
-    +     '</select>'
-    +   '</div>'
-    +   '<div class="form-row" style="margin-bottom:8px;">'
-    +     '<input class="input-field" id="perfumeTop" placeholder="前调（用、分隔）" style="flex:1;font-size:13px;">'
-    +     '<input class="input-field" id="perfumeMid" placeholder="中调（用、分隔）" style="flex:1;font-size:13px;">'
-    +     '<input class="input-field" id="perfumeBase" placeholder="后调（用、分隔）" style="flex:1;font-size:13px;">'
-    +   '</div>'
-    +   '<div class="form-row">'
-    +     '<textarea class="input-field" id="perfumeNotes" placeholder="试香感受..." rows="2" style="flex:1;font-size:13px;"></textarea>'
-    +     '<button class="btn-sm primary" onclick="addPerfume()" style="align-self:flex-end;">+ 记录</button>'
-    +   '</div>'
+  return '<div class="section-title" style="display:flex;align-items:center;justify-content:space-between;">'
+    +   '<span>📋 我的香水 ('+total+')</span>'
+    +   '<button class="btn-sm primary" onclick="openAddPerfumeModal()">+ 新增试香</button>'
     + '</div>'
-    + '<div class="section-title">📋 我的香水 ('+total+')</div>'
-    + (total === 0 ? '<div class="empty-state">还没有记录过香水</div>'
+    + (total === 0 ? '<div class="empty-state">还没有记录过香水<br><br><button class="btn-sm primary" onclick="openAddPerfumeModal()">+ 记录第一瓶</button></div>'
        : '<div class="perfume-grid">' + cards + '</div>');
 }
 
+function openAddPerfumeModal() {
+  var m = document.createElement('div');
+  m.className = 'modal-overlay show'; m.id = 'addPerfumeModal';
+  m.innerHTML = '<div class="modal-box" style="max-width:520px;">'
+    + '<h3>🌸 新增试香</h3>'
+    + '<div class="form-row" style="margin-bottom:8px;">'
+    +   '<input class="input-field" id="apName" placeholder="香水名称 *" style="flex:1.2;">'
+    +   '<input class="input-field" id="apBrand" placeholder="品牌" style="flex:1;">'
+    + '</div>'
+    + '<div class="form-row" style="margin-bottom:8px;">'
+    +   '<select class="input-field" id="apScent" style="flex:1;">'
+    +     PERFUME_SCENTS.map(function(s){ return '<option value="'+s+'">'+s+'</option>'; }).join('')
+    +   '</select>'
+    +   '<input class="input-field" id="apChannel" placeholder="试香渠道" style="flex:1;">'
+    +   '<input class="input-field" id="apPrice" type="number" placeholder="价格" style="flex:0.6;">'
+    + '</div>'
+    + '<div class="form-row" style="margin-bottom:8px;">'
+    +   '<select class="input-field" id="apRating" style="flex:0.5;">'
+    +     '<option value="5">5 分</option>'
+    +     '<option value="4">4 分</option>'
+    +     '<option value="3" selected>3 分</option>'
+    +     '<option value="2">2 分</option>'
+    +     '<option value="1">1 分</option>'
+    +   '</select>'
+    +   '<input class="input-field" id="apDate" type="date" value="'+today()+'" style="flex:0.8;">'
+    + '</div>'
+    + '<div class="form-row" style="margin-bottom:8px;">'
+    +   '<input class="input-field" id="apTop" placeholder="前调（用、分隔）" style="flex:1;">'
+    +   '<input class="input-field" id="apMid" placeholder="中调（用、分隔）" style="flex:1;">'
+    +   '<input class="input-field" id="apBase" placeholder="后调（用、分隔）" style="flex:1;">'
+    + '</div>'
+    + '<textarea class="input-field" id="apNotes" placeholder="试香感受..." rows="4" style="width:100%;margin-bottom:10px;"></textarea>'
+    + '<div class="modal-actions">'
+    +   '<button class="btn-sm" onclick="document.getElementById(\'addPerfumeModal\').remove()">取消</button>'
+    +   '<button class="btn-sm primary" onclick="addPerfume()">保存</button>'
+    + '</div></div>';
+  document.body.appendChild(m);
+  m.addEventListener('click', function(e) { if (e.target === m) m.remove(); });
+}
+
 function addPerfume() {
-  var name = $('perfumeName').value.trim();
+  var name = $('apName').value.trim();
   if (!name) { toast('请输入香水名称'); return; }
   if (!state.bar.perfumes) state.bar.perfumes = [];
   state.bar.perfumes.push({
     id: 'p'+Date.now(),
     name: name,
-    brand: $('perfumeBrand').value.trim(),
-    scent: $('perfumeScent').value,
-    topNotes: $('perfumeTop').value.trim(),
-    midNotes: $('perfumeMid').value.trim(),
-    baseNotes: $('perfumeBase').value.trim(),
-    channel: $('perfumeChannel').value.trim(),
-    price: parseFloat($('perfumePrice').value) || 0,
-    rating: parseInt($('perfumeRating').value) || 0,
-    notes: $('perfumeNotes').value.trim(),
-    date: today()
+    brand: $('apBrand').value.trim(),
+    scent: $('apScent').value,
+    topNotes: $('apTop').value.trim(),
+    midNotes: $('apMid').value.trim(),
+    baseNotes: $('apBase').value.trim(),
+    channel: $('apChannel').value.trim(),
+    price: parseFloat($('apPrice').value) || 0,
+    rating: parseInt($('apRating').value) || 0,
+    notes: $('apNotes').value.trim(),
+    date: $('apDate').value || today()
   });
   saveData();
+  var modal = document.getElementById('addPerfumeModal');
+  if (modal) modal.remove();
   renderPage('bar');
   toast('试香已记录 🌸');
 }
