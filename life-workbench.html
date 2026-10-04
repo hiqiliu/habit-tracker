@@ -4568,11 +4568,12 @@ function renderGymWeekly(mod) {
     return '<div class="card" style="margin-bottom:12px;">'
       + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">'
       +   '<span style="font-size:20px;">' + (t.icon||'📋') + '</span>'
-      +   '<div style="flex:1;">'
+      +   '<div style="flex:1;min-width:0;">'
       +     '<div style="font-weight:600;font-size:14px;">' + escHtml(t.name||k) + '</div>'
-      +     '<div style="font-size:11px;color:var(--muted);">' + (t.desc||'') + '</div>'
+      +     '<div style="font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + (t.desc||'') + '</div>'
       +   '</div>'
       +   '<div style="text-align:right;font-size:12px;color:var(--muted);">' + weekLogs.length + (target>0?'/' + target:'') + ' 本周</div>'
+      +   '<button class="btn-sm" onclick="openEditWeeklyItemModal(\'' + k + '\')" style="font-size:11px;padding:2px 6px;" title="编辑">✏️</button>'
       + '</div>'
       + weekBar
       + totalBar
@@ -4595,10 +4596,9 @@ function renderGymWeekly(mod) {
     + '<div style="font-size:12px;color:var(--muted);background:var(--bg2);padding:8px 12px;border-radius:8px;margin-bottom:14px;text-align:center;">'
     +   '本周：' + weekStart.substring(5) + ' ~ ' + weekEnd.substring(5)
     + '</div>'
-    + (cards || '<div class="empty-state">暂无追踪项目</div>')
-    + '<div style="font-size:11px;color:var(--muted);text-align:center;padding:12px 0;line-height:1.6;">'
-    +   '每日必做底线版15分钟（骨盆时钟+死虫式+髂腰肌拉伸+靠墙排列呼吸）<br>'
-    +   '打网球当天：底线版 + 网球后拉伸A套 + 松解，不做其他主训练'
+    + (cards || '<div class="empty-state">暂无追踪项目<br><br><button class="btn-sm primary" onclick="openAddWeeklyItemModal()">+ 添加第一个项目</button></div>')
+    + '<div style="text-align:center;padding:8px 0 16px;">'
+    +   '<button class="btn-sm" onclick="openAddWeeklyItemModal()">+ 添加追踪项目</button>'
     + '</div>'
     + '</div>';
 }
@@ -4615,6 +4615,125 @@ function removeWeeklyLog(key, logId) {
   if (!state.gym.weeklyTracker || !state.gym.weeklyTracker[key]) return;
   state.gym.weeklyTracker[key].logs = (state.gym.weeklyTracker[key].logs||[]).filter(function(l) { return l.id !== logId; });
   saveData(); renderPage('gym'); toast('已删除');
+}
+
+function openAddWeeklyItemModal() {
+  var m = document.createElement('div');
+  m.className = 'modal-overlay show'; m.id = 'addWeeklyItemModal';
+  m.innerHTML = '<div class="modal-box" style="max-width:460px;">'
+    + '<h3>➕ 添加追踪项目</h3>'
+    + '<div style="margin-bottom:8px;">'
+    +   '<label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px;">项目名称</label>'
+    +   '<input class="input-field" id="awiName" placeholder="如：每日必做、瑜伽课">'
+    + '</div>'
+    + '<div class="form-row" style="margin-bottom:8px;">'
+    +   '<div style="flex:0 0 80px;">'
+    +     '<label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px;">图标</label>'
+    +     '<input class="input-field" id="awiIcon" placeholder="📌" value="📌" style="text-align:center;">'
+    +   '</div>'
+    +   '<div style="flex:1;">'
+    +     '<label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px;">每周目标次数（0=不设限）</label>'
+    +     '<input class="input-field" id="awiTarget" type="number" value="3" min="0">'
+    +   '</div>'
+    +   '<div style="flex:1;">'
+    +     '<label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px;">总目标次数（0=不设限）</label>'
+    +     '<input class="input-field" id="awiTotal" type="number" value="0" min="0">'
+    +   '</div>'
+    + '</div>'
+    + '<div style="margin-bottom:10px;">'
+    +   '<label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px;">描述（可选）</label>'
+    +   '<textarea class="input-field" id="awiDesc" rows="2" placeholder="简单描述一下这个项目"></textarea>'
+    + '</div>'
+    + '<div class="modal-actions">'
+    +   '<button class="btn-sm" onclick="document.getElementById(\'addWeeklyItemModal\').remove()">取消</button>'
+    +   '<button class="btn-sm primary" onclick="addWeeklyItem()">添加</button>'
+    + '</div></div>';
+  document.body.appendChild(m);
+  m.addEventListener('click', function(e) { if (e.target === m) m.remove(); });
+}
+
+function addWeeklyItem() {
+  var name = $('awiName').value.trim();
+  if (!name) { toast('请输入项目名称'); return; }
+  if (!state.gym.weeklyTracker) state.gym.weeklyTracker = {};
+  var id = 'wi_' + Date.now();
+  state.gym.weeklyTracker[id] = {
+    name: name,
+    icon: $('awiIcon').value.trim() || '📌',
+    target: parseInt($('awiTarget').value) || 0,
+    totalTarget: parseInt($('awiTotal').value) || 0,
+    desc: $('awiDesc').value.trim(),
+    logs: []
+  };
+  saveData();
+  document.getElementById('addWeeklyItemModal').remove();
+  renderPage('gym'); toast('已添加');
+}
+
+function openEditWeeklyItemModal(key) {
+  var t = state.gym.weeklyTracker && state.gym.weeklyTracker[key];
+  if (!t) return;
+  var m = document.createElement('div');
+  m.className = 'modal-overlay show'; m.id = 'editWeeklyItemModal';
+  m.innerHTML = '<div class="modal-box" style="max-width:460px;">'
+    + '<h3>✏️ 编辑项目</h3>'
+    + '<div style="margin-bottom:8px;">'
+    +   '<label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px;">项目名称</label>'
+    +   '<input class="input-field" id="ewiName" value="' + escHtml(t.name||'') + '">'
+    + '</div>'
+    + '<div class="form-row" style="margin-bottom:8px;">'
+    +   '<div style="flex:0 0 80px;">'
+    +     '<label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px;">图标</label>'
+    +     '<input class="input-field" id="ewiIcon" value="' + escHtml(t.icon||'📌') + '" style="text-align:center;">'
+    +   '</div>'
+    +   '<div style="flex:1;">'
+    +     '<label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px;">每周目标</label>'
+    +     '<input class="input-field" id="ewiTarget" type="number" value="' + (t.target||0) + '" min="0">'
+    +   '</div>'
+    +   '<div style="flex:1;">'
+    +     '<label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px;">总目标</label>'
+    +     '<input class="input-field" id="ewiTotal" type="number" value="' + (t.totalTarget||0) + '" min="0">'
+    +   '</div>'
+    + '</div>'
+    + '<div style="margin-bottom:10px;">'
+    +   '<label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px;">描述</label>'
+    +   '<textarea class="input-field" id="ewiDesc" rows="2">' + escHtml(t.desc||'') + '</textarea>'
+    + '</div>'
+    + '<div style="font-size:11px;color:var(--muted);margin-bottom:10px;padding:6px 8px;background:var(--bg2);border-radius:6px;">'
+    +   '已打卡 ' + (t.logs||[]).length + ' 次'
+    + '</div>'
+    + '<div class="modal-actions">'
+    +   '<button class="btn-sm danger" onclick="deleteWeeklyItem(\'' + key + '\')">删除项目</button>'
+    +   '<button class="btn-sm" onclick="document.getElementById(\'editWeeklyItemModal\').remove()">取消</button>'
+    +   '<button class="btn-sm primary" onclick="saveWeeklyItem(\'' + key + '\')">保存</button>'
+    + '</div></div>';
+  document.body.appendChild(m);
+  m.addEventListener('click', function(e) { if (e.target === m) m.remove(); });
+}
+
+function saveWeeklyItem(key) {
+  var t = state.gym.weeklyTracker && state.gym.weeklyTracker[key];
+  if (!t) return;
+  var name = $('ewiName').value.trim();
+  if (!name) { toast('请输入项目名称'); return; }
+  t.name = name;
+  t.icon = $('ewiIcon').value.trim() || '📌';
+  t.target = parseInt($('ewiTarget').value) || 0;
+  t.totalTarget = parseInt($('ewiTotal').value) || 0;
+  t.desc = $('ewiDesc').value.trim();
+  saveData();
+  document.getElementById('editWeeklyItemModal').remove();
+  renderPage('gym'); toast('已保存');
+}
+
+function deleteWeeklyItem(key) {
+  if (!confirm('确定删除这个追踪项目？所有打卡记录也会被删除。')) return;
+  if (!state.gym.weeklyTracker) return;
+  delete state.gym.weeklyTracker[key];
+  saveData();
+  var modal = document.getElementById('editWeeklyItemModal');
+  if (modal) modal.remove();
+  renderPage('gym'); toast('已删除');
 }
 
 // ─── SCHEDULE (运动课表) ───
