@@ -4327,7 +4327,10 @@ function renderWorkoutList(mod) {
           +     '<strong>'+escHtml(w.type)+'</strong>'+(' <span style="font-size:12px;color:var(--muted);">'+(w.duration>0?w.duration+'分钟':'未记时长')+'</span>')+(w.fromPlan?' <span style="font-size:11px;" title="来自课表">📋</span>':'')
           +     (preview ? '<div style="font-size:11px;color:var(--muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+escHtml(preview)+'</div>' : '')
           +   '</span>'
-          +   '<span style="font-size:11px;color:var(--muted);flex-shrink:0;">'+w.date.substring(5)+'</span>'
+          +   '<span style="display:flex;align-items:center;gap:4px;flex-shrink:0;">'
+          +     '<button class="btn-sm" onclick="event.stopPropagation();syncWorkoutToWeekly(\''+w.id+'\')" style="font-size:11px;padding:2px 6px;" title="同步到本周追踪">📅</button>'
+          +     '<span style="font-size:11px;color:var(--muted);">'+w.date.substring(5)+'</span>'
+          +   '</span>'
           + '</div>'
           + '</div>';
       }).join('');
@@ -4423,6 +4426,103 @@ function addWorkoutType() {
   openCatManager({title:'管理运动类别',statePath:'gym.workoutTypes',format:'string',reRender:'gym',refs:[{dataPath:'gym.workouts',field:'type'}]});
 }
 function deleteWorkout(id) { state.gym.workouts = (state.gym.workouts||[]).filter(function(w){ return w.id !== id; }); saveData(); }
+
+// ─── SYNC WORKOUT TO WEEKLY TRACKER ───
+function syncWorkoutToWeekly(workoutId) {
+  var w = (state.gym.workouts||[]).find(function(x){ return x.id === workoutId; });
+  if (!w) return;
+  var tracker = state.gym.weeklyTracker || {};
+  var keys = Object.keys(tracker);
+  if (keys.length === 0) { toast('还没有追踪项目，先去添加一个吧'); return; }
+
+  // 智能匹配：按类型名关键词匹配
+  var suggestKey = null;
+  for (var i = 0; i < keys.length; i++) {
+    var k = keys[i];
+    var t = tracker[k];
+    var name = (t.name||'').toLowerCase();
+    var wtype = (w.type||'').toLowerCase();
+    if (name.indexOf(wtype) >= 0 || wtype.indexOf(name) >= 0) { suggestKey = k; break; }
+    // 常见别名匹配
+    var aliases = {
+      '瑜伽': ['瑜伽课','yoga'],
+      '每日必做': ['必做','每日','daily'],
+      '体态网课': ['网课','netcourse'],
+      '私教课': ['私教','trainer'],
+      '打网球': ['网球','tennis','球类'],
+      '直播回放': ['直播','live','回放']
+    };
+    for (var key in aliases) {
+      if (name.indexOf(key) >= 0 || (aliases[key].some(function(a){ return name.indexOf(a) >= 0; }))) {
+        if (wtype.indexOf(key) >= 0 || (aliases[key].some(function(a){ return wtype.indexOf(a) >= 0; }))) {
+          suggestKey = k; break;
+        }
+      }
+    }
+    if (suggestKey) break;
+  }
+
+  var m = document.createElement('div');
+  m.className = 'modal-overlay show'; m.id = 'syncWorkoutModal';
+  var opts = keys.map(function(k) {
+    var t = tracker[k];
+    return '<option value="'+k+'"'+(k===suggestKey?' selected':'')+'>'
+      + (t.icon||'📌')+' '+escHtml(t.name||k)
+      + '</option>';
+  }).join('');
+
+  var notePreview = w.type + (w.duration ? ' · '+w.duration+'分钟' : '') + (w.note ? ' · '+w.note : '');
+
+  m.innerHTML = '<div class="modal-box" style="max-width:420px;">'
+    + '<h3>📅 同步到本周追踪</h3>'
+    + '<div style="font-size:13px;color:var(--muted);margin-bottom:10px;padding:8px;background:var(--bg2);border-radius:6px;">'
+    +   '<div style="font-weight:500;color:var(--text);">'+workoutIcon(w.type)+' '+escHtml(w.type)+'</div>'
+    +   '<div>'+w.date+(w.duration ? ' · '+w.duration+'分钟' : '')+'</div>'
+    +   (w.note ? '<div style="margin-top:4px;">'+escHtml(w.note)+'</div>' : '')
+    + '</div>'
+    + '<div style="margin-bottom:8px;">'
+    +   '<label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px;">同步到哪个项目？</label>'
+    +   '<select class="input-field" id="syncTarget">'+opts+'</select>'
+    + '</div>'
+    + '<div style="margin-bottom:10px;">'
+    +   '<label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px;">打卡备注</label>'
+    +   '<input class="input-field" id="syncNote" value="'+escHtml(notePreview)+'">'
+    + '</div>'
+    + '<div class="modal-actions">'
+    +   '<button class="btn-sm" onclick="document.getElementById(\'syncWorkoutModal\').remove()">取消</button>'
+    +   '<button class="btn-sm primary" onclick="doSyncWorkout(\''+workoutId+'\')">同步打卡</button>'
+    + '</div></div>';
+  document.body.appendChild(m);
+  m.addEventListener('click', function(e) { if (e.target === m) m.remove(); });
+}
+
+function doSyncWorkout(workoutId) {
+  var targetKey = $('syncTarget').value;
+  var note = $('syncNote').value.trim();
+  if (!targetKey || !state.gym.weeklyTracker || !state.gym.weeklyTracker[targetKey]) {
+    toast('请选择项目'); return;
+  }
+  var w = (state.gym.workouts||[]).find(function(x){ return x.id === workoutId; });
+  if (!w) return;
+  if (!state.gym.weeklyTracker[targetKey].logs) state.gym.weeklyTracker[targetKey].logs = [];
+  // 检查当天是否已同步过同一条运动记录
+  var alreadySynced = (state.gym.weeklyTracker[targetKey].logs||[]).some(function(l){
+    return l.note && l.note.indexOf('_w'+workoutId) >= 0;
+  });
+  if (alreadySynced) {
+    if (!confirm('这条运动记录今天已经同步过一次了，还要再同步吗？')) return;
+  }
+  state.gym.weeklyTracker[targetKey].logs.push({
+    id: 'wl'+Date.now(),
+    date: w.date,
+    note: note + ' _w'+workoutId
+  });
+  saveData();
+  var modal = document.getElementById('syncWorkoutModal');
+  if (modal) modal.remove();
+  renderPage('gym');
+  toast('已同步到本周追踪 ✅');
+}
 
 // ─── PROFILE (身体档案) ───
 function renderGymProfile(mod) {
