@@ -4230,6 +4230,21 @@ function renderGymOverview(mod) {
         <input class="input-field" id="quickNote" placeholder="备注" style="flex:1;">
         <button class="btn-sm primary" onclick="quickAddWorkout()">+ 记录</button>
       </div>
+      ${(() => {
+        var tracker = state.gym.weeklyTracker || {};
+        var keys = Object.keys(tracker);
+        if (keys.length === 0) return '';
+        var opts = keys.map(function(k) {
+          var t = tracker[k];
+          return '<option value="'+k+'">'+(t.icon||'📌')+' '+escHtml(t.name||k)+'</option>';
+        }).join('');
+        return '<div class="form-row" style="margin-top:6px;">'
+          + '<select class="input-field" id="quickSync" style="flex:1;font-size:12px;color:var(--muted);">'
+          +   '<option value="">📅 同步到本周追踪（可选）</option>'
+          +   opts
+          + '</select>'
+          + '</div>';
+      })()}
 
       <div class="section-title">📈 本周概况</div>
       <div class="gym-stat-row">
@@ -4291,8 +4306,18 @@ function quickAddWorkout() {
   const type = $('quickType'), dur = $('quickDur'), note = $('quickNote');
   if (!dur.value) { toast('请输入时长'); return; }
   if (!state.gym.workouts) state.gym.workouts = [];
-  state.gym.workouts.push({ id:'w'+Date.now(), date:today(), type:type.value, duration:parseInt(dur.value), note:note.value.trim() });
-  saveData(); dur.value=''; note.value=''; renderPage('gym'); toast('运动已记录');
+  var wId = 'w'+Date.now();
+  state.gym.workouts.push({ id:wId, date:today(), type:type.value, duration:parseInt(dur.value), note:note.value.trim() });
+  // 自动同步到本周追踪
+  var syncSel = $('quickSync');
+  if (syncSel && syncSel.value && state.gym.weeklyTracker && state.gym.weeklyTracker[syncSel.value]) {
+    var tk = state.gym.weeklyTracker[syncSel.value];
+    if (!tk.logs) tk.logs = [];
+    tk.logs.push({ id:'wl'+Date.now(), date:today(), note: type.value + (dur.value?' · '+dur.value+'分钟':'') + (note.value?' · '+note.value:'') + ' _w'+wId });
+    saveData(); dur.value=''; note.value=''; renderPage('gym'); toast('运动已记录 ✅ 已同步到'+(tk.name||'追踪'));
+  } else {
+    saveData(); dur.value=''; note.value=''; renderPage('gym'); toast('运动已记录');
+  }
 }
 
 // ─── WORKOUT (运动记录) ───
@@ -4351,8 +4376,23 @@ function renderWorkoutList(mod) {
       </div>
       <div class="form-row">
         <input class="input-field" id="wkNote" placeholder="备注（如：5公里、感受等）" style="flex:1;">
-        <button class="btn-sm" onclick="openCatManager({title:'管理运动类别',statePath:'gym.workoutTypes',format:'string',reRender:'gym',refs:[{dataPath:'gym.workouts',field:'type'}]})">⚙️ 管理类别</button>
+        <button class="btn-sm" onclick="openCatManager({title:'管理运动类别',statePath:'gym.workoutTypes',format:'string',reRender:'gym',refs:[{dataPath:'gym.workouts',field:'type'}]})">⚙️</button>
       </div>
+      ${(() => {
+        var tracker = state.gym.weeklyTracker || {};
+        var keys = Object.keys(tracker);
+        if (keys.length === 0) return '';
+        var opts = keys.map(function(k) {
+          var t = tracker[k];
+          return '<option value="'+k+'">'+(t.icon||'📌')+' '+escHtml(t.name||k)+'</option>';
+        }).join('');
+        return '<div class="form-row" style="margin-bottom:12px;">'
+          + '<select class="input-field" id="wkSync" style="flex:1;font-size:12px;color:var(--muted);">'
+          +   '<option value="">📅 同步到本周追踪（可选）</option>'
+          +   opts
+          + '</select>'
+          + '</div>';
+      })()}
       <div class="section-title">🔍 筛选</div>
       <div class="form-row">
         <select class="input-field" id="wkFilterTypeSel" style="flex:0.6;" onchange="wkFilterType=this.value;renderPage('gym')">
@@ -4418,9 +4458,19 @@ function addWorkout() {
   const type = $('wkType'), date = $('wkDate'), dur = $('wkDur'), note = $('wkNote');
   if (!dur.value) { toast('请输入时长'); return; }
   if (!state.gym.workouts) state.gym.workouts = [];
-  state.gym.workouts.push({ id:'w'+Date.now(), date:date.value||today(), type:type.value, duration:parseInt(dur.value), note:note.value.trim() });
-  dur.value=''; note.value='';
-  saveData(); renderPage('gym'); toast('运动已记录');
+  var wId = 'w'+Date.now();
+  var wDate = date.value||today();
+  state.gym.workouts.push({ id:wId, date:wDate, type:type.value, duration:parseInt(dur.value), note:note.value.trim() });
+  // 自动同步到本周追踪
+  var syncSel = $('wkSync');
+  if (syncSel && syncSel.value && state.gym.weeklyTracker && state.gym.weeklyTracker[syncSel.value]) {
+    var tk = state.gym.weeklyTracker[syncSel.value];
+    if (!tk.logs) tk.logs = [];
+    tk.logs.push({ id:'wl'+Date.now(), date:wDate, note: type.value + ' · ' + dur.value + '分钟' + (note.value?' · '+note.value:'') + ' _w'+wId });
+    saveData(); dur.value=''; note.value=''; renderPage('gym'); toast('运动已记录 ✅ 已同步到'+(tk.name||'追踪'));
+  } else {
+    saveData(); dur.value=''; note.value=''; renderPage('gym'); toast('运动已记录');
+  }
 }
 function addWorkoutType() {
   openCatManager({title:'管理运动类别',statePath:'gym.workoutTypes',format:'string',reRender:'gym',refs:[{dataPath:'gym.workouts',field:'type'}]});
