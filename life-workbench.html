@@ -667,13 +667,10 @@ textarea.input-field { resize:vertical; min-height:60px; }
 .perfume-filter-bar {
   display: flex;
   gap: 6px;
-  overflow-x: auto;
-  padding-bottom: 8px;
+  flex-wrap: wrap;
+  padding-bottom: 4px;
   margin-bottom: 14px;
-  scrollbar-width: thin;
 }
-.perfume-filter-bar::-webkit-scrollbar { height: 4px; }
-.perfume-filter-bar::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); border-radius: 2px; }
 .pf-btn {
   display: inline-flex;
   align-items: center;
@@ -9442,7 +9439,9 @@ function saveEditDrink(id) {
 function renderBarPerfumes() {
   var perfumes = state.bar.perfumes || [];
   var total = perfumes.length;
-  var scentOrder = state.bar.perfumeScents || PERFUME_SCENTS;
+  var scentOrder = (state.bar.perfumeScents || PERFUME_SCENTS).slice().sort(function(a, b) {
+    return a.localeCompare(b, 'zh-CN');
+  });
   var filter = window.__perfumeFilter || 'all';
 
   // 构建每组香水：遍历每个 perfume 的 scents，包含匹配
