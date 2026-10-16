@@ -606,6 +606,31 @@ textarea.input-field { resize:vertical; min-height:60px; }
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
 }
+.perfume-rating-label {
+  display: inline-block;
+  font-size: 11px;
+  padding: 2px 10px;
+  border-radius: 10px;
+  font-weight: 600;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.perfume-rating-label.prl-love { background: #fce4ec; color: #c2185b; }
+.perfume-rating-label.prl-ok   { background: #fff3e0; color: #e65100; }
+.perfume-rating-label.prl-no   { background: #eceff1; color: #455a64; }
+.perfume-review-section {
+  margin-top: 12px;
+  padding: 12px;
+  background: #fff8e1;
+  border-left: 3px solid #ffb300;
+  border-radius: 6px;
+}
+.perfume-review-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #ef6c00;
+  margin-bottom: 6px;
+}
 
 /* perfume detail modal */
 .perfume-detail-bottle {
@@ -9009,6 +9034,8 @@ if (!state.bar.mealSources) { state.bar.mealSources = MEAL_SOURCES; }
 var DRINK_TYPES = state.bar.drinkTypes || ['胶囊咖啡','手冲咖啡','拿铁','美式','茶','果汁','其他'];
 if (!state.bar.drinkTypes) { state.bar.drinkTypes = DRINK_TYPES; }
 if (!state.bar.perfumes) { state.bar.perfumes = []; }
+var PERFUME_SCENTS = state.bar.perfumeScents || ['木质调','花香调','果香调','柑橘调','东方调','皮革调','水生调','绿叶调','美食调','醛香调','中性木质调','其他'];
+if (!state.bar.perfumeScents) { state.bar.perfumeScents = PERFUME_SCENTS.slice(); }
 var CLOSET_CATS = state.closet.cats || ['上装','下装','连衣裙','外套','鞋子','配饰'];
 if (!state.closet.cats) { state.closet.cats = CLOSET_CATS; }
 function closetCatIcon(cat) {
@@ -9304,7 +9331,7 @@ function saveEditDrink(id) {
 }
 
 // ─── PERFUME (香水记录) ───
-var PERFUME_SCENTS = ['木质调','花香调','果香调','柑橘调','东方调','皮革调','水生调','绿叶调','美食调','醛香调','中性木质调','其他'];
+// PERFUME_SCENTS defined in init section above
 
 function renderBarPerfumes() {
   var perfumes = state.bar.perfumes || [];
@@ -9315,15 +9342,15 @@ function renderBarPerfumes() {
   var total = perfumes.length;
 
   var cards = perfumes.slice().reverse().map(function(p) {
-    var stars = '';
-    for (var i = 1; i <= 5; i++) { stars += i <= (p.rating||0) ? '❤️' : '🤍'; }
+    var label = perfumeRatingLabel(p);
+    var labelClass = perfumeRatingClass(label);
     return '<div class="perfume-card drink-card" onclick="openPerfumeDetail(\''+p.id+'\')">'
       + '<div class="perfume-card-top">'
       +   '<div class="perfume-card-info">'
       +     '<div class="perfume-card-name">'+escHtml(p.name||'未命名')+'</div>'
       +     '<div class="perfume-card-brand">'+escHtml(p.brand||'')+'</div>'
       +   '</div>'
-      +   '<div class="perfume-card-rating">'+stars+'</div>'
+      +   '<span class="perfume-rating-label '+labelClass+'">'+label+'</span>'
       + '</div>'
       + '<div class="perfume-card-scent">'
       +   '<span class="perfume-scent-tag">'+escHtml(p.scent||'未分类')+'</span>'
@@ -9342,6 +9369,7 @@ function renderBarPerfumes() {
 }
 
 function openAddPerfumeModal() {
+  var scents = (state.bar.perfumeScents || PERFUME_SCENTS);
   var m = document.createElement('div');
   m.className = 'modal-overlay show'; m.id = 'addPerfumeModal';
   m.innerHTML = '<div class="modal-box" style="max-width:520px;">'
@@ -9352,18 +9380,17 @@ function openAddPerfumeModal() {
     + '</div>'
     + '<div class="form-row" style="margin-bottom:8px;">'
     +   '<select class="input-field" id="apScent" style="flex:1;">'
-    +     PERFUME_SCENTS.map(function(s){ return '<option value="'+s+'">'+s+'</option>'; }).join('')
+    +     scents.map(function(s){ return '<option value="'+s+'">'+s+'</option>'; }).join('')
     +   '</select>'
+    +   '<button class="btn-sm" style="flex:0.2;padding:0 8px;" title="管理调性" onclick="openCatManager({title:\'管理香水调性\',statePath:\'bar.perfumeScents\',format:\'string\',reRender:\'bar\'})">⚙️</button>'
     +   '<input class="input-field" id="apChannel" placeholder="试香渠道" style="flex:1;">'
     +   '<input class="input-field" id="apPrice" type="number" placeholder="价格" style="flex:0.6;">'
     + '</div>'
     + '<div class="form-row" style="margin-bottom:8px;">'
-    +   '<select class="input-field" id="apRating" style="flex:0.5;">'
-    +     '<option value="5">5 分</option>'
-    +     '<option value="4">4 分</option>'
-    +     '<option value="3" selected>3 分</option>'
-    +     '<option value="2">2 分</option>'
-    +     '<option value="1">1 分</option>'
+    +   '<select class="input-field" id="apRatingLabel" style="flex:0.8;">'
+    +     '<option value="我超爱">❤️ 我超爱</option>'
+    +     '<option value="我可以" selected>🧡 我可以</option>'
+    +     '<option value="我不行">🖤 我不行</option>'
     +   '</select>'
     +   '<input class="input-field" id="apDate" type="date" value="'+today()+'" style="flex:0.8;">'
     + '</div>'
@@ -9372,7 +9399,8 @@ function openAddPerfumeModal() {
     +   '<input class="input-field" id="apMid" placeholder="中调（用、分隔）" style="flex:1;">'
     +   '<input class="input-field" id="apBase" placeholder="后调（用、分隔）" style="flex:1;">'
     + '</div>'
-    + '<textarea class="input-field" id="apNotes" placeholder="试香感受..." rows="4" style="width:100%;margin-bottom:10px;"></textarea>'
+    + '<textarea class="input-field" id="apReview" placeholder="香评（卖家/主流观点...）" rows="3" style="width:100%;margin-bottom:8px;"></textarea>'
+    + '<textarea class="input-field" id="apNotes" placeholder="我的试香感受..." rows="4" style="width:100%;margin-bottom:10px;"></textarea>'
     + '<div class="modal-actions">'
     +   '<button class="btn-sm" onclick="document.getElementById(\'addPerfumeModal\').remove()">取消</button>'
     +   '<button class="btn-sm primary" onclick="addPerfume()">保存</button>'
@@ -9385,6 +9413,7 @@ function addPerfume() {
   var name = $('apName').value.trim();
   if (!name) { toast('请输入香水名称'); return; }
   if (!state.bar.perfumes) state.bar.perfumes = [];
+  var rl = $('apRatingLabel').value;
   state.bar.perfumes.push({
     id: 'p'+Date.now(),
     name: name,
@@ -9395,7 +9424,9 @@ function addPerfume() {
     baseNotes: $('apBase').value.trim(),
     channel: $('apChannel').value.trim(),
     price: parseFloat($('apPrice').value) || 0,
-    rating: parseInt($('apRating').value) || 0,
+    ratingLabel: rl,
+    rating: (rl==='我超爱'?5:rl==='我可以'?3:1),
+    review: $('apReview').value.trim(),
     notes: $('apNotes').value.trim(),
     date: $('apDate').value || today()
   });
@@ -9406,11 +9437,24 @@ function addPerfume() {
   toast('试香已记录 🌸');
 }
 
+function perfumeRatingLabel(p) {
+  if (p.ratingLabel) return p.ratingLabel;
+  var r = p.rating || 0;
+  if (r >= 5) return '我超爱';
+  if (r >= 3) return '我可以';
+  return '我不行';
+}
+function perfumeRatingClass(label) {
+  if (label === '我超爱') return 'prl-love';
+  if (label === '我可以') return 'prl-ok';
+  return 'prl-no';
+}
+
 function openPerfumeDetail(id) {
   var p = (state.bar.perfumes || []).find(function(x) { return x.id === id; });
   if (!p) return;
-  var stars = '';
-  for (var i = 1; i <= 5; i++) { stars += i <= (p.rating||0) ? '❤️' : '🤍'; }
+  var label = perfumeRatingLabel(p);
+  var labelClass = perfumeRatingClass(label);
   var m = document.createElement('div');
   m.className = 'modal-overlay show'; m.id = 'perfumeDetailModal';
 
@@ -9422,7 +9466,7 @@ function openPerfumeDetail(id) {
     +     '<div class="perfume-detail-brand">'+escHtml(p.brand||'')+'</div>'
     +     '<div style="margin-top:6px;">'
     +       '<span class="perfume-scent-tag">'+escHtml(p.scent||'未分类')+'</span>'
-    +       '<span style="font-size:14px;margin-left:8px;">'+stars+'</span>'
+    +       '<span class="perfume-rating-label '+labelClass+'">'+label+'</span>'
     +     '</div>'
     +   '</div>'
     + '</div>'
@@ -9440,6 +9484,10 @@ function openPerfumeDetail(id) {
     +     '<div class="perfume-notes-content">'+escHtml(p.baseNotes||'—')+'</div>'
     +   '</div>'
     + '</div>'
+    + (p.review ? '<div class="perfume-review-section">'
+      + '<div class="perfume-review-title">📝 香评（主流观点）</div>'
+      + '<div style="font-size:13px;line-height:1.8;white-space:pre-wrap;">'+escHtml(p.review)+'</div>'
+      + '</div>' : '')
     + '<div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--rule);">'
     +   '<div style="display:flex;gap:12px;font-size:12px;color:var(--muted);margin-bottom:8px;">'
     +     (p.channel ? '<span>渠道：'+escHtml(p.channel)+'</span>' : '')
@@ -9469,6 +9517,8 @@ function deletePerfume(id) {
 function editPerfume(id) {
   var p = (state.bar.perfumes||[]).find(function(x) { return x.id === id; });
   if (!p) return;
+  var scents = (state.bar.perfumeScents || PERFUME_SCENTS);
+  var currentLabel = perfumeRatingLabel(p);
   var m = document.createElement('div');
   m.className = 'modal-overlay show'; m.id = 'editPerfumeModal';
   m.innerHTML = '<div class="modal-box" style="max-width:520px;">'
@@ -9479,14 +9529,17 @@ function editPerfume(id) {
     + '</div>'
     + '<div class="form-row" style="margin-bottom:8px;">'
     +   '<select class="input-field" id="epScent" style="flex:1;">'
-    +     PERFUME_SCENTS.map(function(s){ return '<option value="'+s+'"'+(p.scent===s?' selected':'')+'>'+s+'</option>'; }).join('')
+    +     scents.map(function(s){ return '<option value="'+s+'"'+(p.scent===s?' selected':'')+'>'+s+'</option>'; }).join('')
     +   '</select>'
+    +   '<button class="btn-sm" style="flex:0.2;padding:0 8px;" title="管理调性" onclick="openCatManager({title:\'管理香水调性\',statePath:\'bar.perfumeScents\',format:\'string\',reRender:\'bar\'})">⚙️</button>'
     +   '<input class="input-field" id="epChannel" placeholder="试香渠道" value="'+escHtml(p.channel||'')+'" style="flex:1;">'
     +   '<input class="input-field" id="epPrice" type="number" placeholder="价格" value="'+(p.price||'')+'" style="flex:0.6;">'
     + '</div>'
     + '<div class="form-row" style="margin-bottom:8px;">'
-    +   '<select class="input-field" id="epRating" style="flex:0.5;">'
-    +     [1,2,3,4,5].map(function(r){ return '<option value="'+r+'"'+(p.rating===r?' selected':'')+'>'+r+' 分</option>'; }).join('')
+    +   '<select class="input-field" id="epRatingLabel" style="flex:0.8;">'
+    +     '<option value="我超爱"'+(currentLabel==='我超爱'?' selected':'')+'>❤️ 我超爱</option>'
+    +     '<option value="我可以"'+(currentLabel==='我可以'?' selected':'')+'>🧡 我可以</option>'
+    +     '<option value="我不行"'+(currentLabel==='我不行'?' selected':'')+'>🖤 我不行</option>'
     +   '</select>'
     +   '<input class="input-field" id="epDate" type="date" value="'+p.date+'" style="flex:0.8;">'
     + '</div>'
@@ -9495,6 +9548,7 @@ function editPerfume(id) {
     +   '<input class="input-field" id="epMid" placeholder="中调" value="'+escHtml(p.midNotes||'')+'" style="flex:1;">'
     +   '<input class="input-field" id="epBase" placeholder="后调" value="'+escHtml(p.baseNotes||'')+'" style="flex:1;">'
     + '</div>'
+    + '<textarea class="input-field" id="epReview" placeholder="香评（卖家/主流观点...）" rows="3" style="width:100%;margin-bottom:8px;">'+escHtml(p.review||'')+'</textarea>'
     + '<textarea class="input-field" id="epNotes" placeholder="试香感受..." rows="4" style="width:100%;margin-bottom:10px;">'+escHtml(p.notes||'')+'</textarea>'
     + '<div class="modal-actions">'
     +   '<button class="btn-sm" onclick="document.getElementById(\'editPerfumeModal\').remove()">取消</button>'
@@ -9512,11 +9566,14 @@ function saveEditPerfume(id) {
   p.scent = $('epScent').value;
   p.channel = $('epChannel').value.trim();
   p.price = parseFloat($('epPrice').value) || 0;
-  p.rating = parseInt($('epRating').value) || 0;
+  var rl = $('epRatingLabel').value;
+  p.ratingLabel = rl;
+  p.rating = (rl==='我超爱'?5:rl==='我可以'?3:1);
   p.date = $('epDate').value || today();
   p.topNotes = $('epTop').value.trim();
   p.midNotes = $('epMid').value.trim();
   p.baseNotes = $('epBase').value.trim();
+  p.review = $('epReview').value.trim();
   p.notes = $('epNotes').value.trim();
   saveData();
   document.getElementById('editPerfumeModal').remove();
