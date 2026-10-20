@@ -4300,8 +4300,7 @@ function renderGymOverview(mod) {
   const bodyData = (state.gym.bodyData||[]).slice(-1)[0] || null;
   const todayStr = today();
   const todayCondition = (state.gym.conditionLogs||[]).find(l => l.date === todayStr);
-  const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate()-6);
-  const weekStr = fmtDate(weekAgo);
+  const weekStr = getWeekStart();
   const weekWorkouts = workouts.filter(w => w.date >= weekStr && w.date <= todayStr);
   const weekMinutes = weekWorkouts.reduce((a,w)=>a+(w.duration||0),0);
   const activePlan = plans.find(p => !p.completed);
