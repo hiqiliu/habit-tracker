@@ -1157,6 +1157,7 @@ textarea.input-field { resize:vertical; min-height:60px; }
   background:var(--bg); font-size:12px; color:var(--ink); cursor:pointer; transition:all 0.15s;
 }
 .jar-tab.on { background:#f57f17; border-color:#f57f17; color:#fff; }
+.jar-quick-actions { display:flex; gap:8px; margin-bottom:10px; flex-wrap:wrap; }
 .jar-section-title {
   font-size:13px; font-weight:600; color:var(--muted); margin:14px 0 6px; padding-left:4px;
 }
@@ -10173,6 +10174,11 @@ function renderJar() {
     + '</div>';
   // 概览内容：最近心愿 + 避雷清单
   if (finView === 'jar') {
+    // 快捷操作按钮
+    html += '<div class="jar-quick-actions">'
+      + '<button class="btn-sm primary" onclick="openAddWishModal()">+ 添加心愿</button>'
+      + '<button class="btn-sm primary" onclick="openAddDeclutterModal()">+ 添加断舍离</button>'
+      + '</div>';
     // 待冷静清单
     var coolList = wishPending.slice().sort(function(a,b){
       return new Date(a.addedDate) - new Date(b.addedDate);
@@ -10180,6 +10186,14 @@ function renderJar() {
     if (coolList.length > 0) {
       html += '<div class="jar-section-title">💭 最近心动（等待冷静期）</div>'
         + coolList.map(function(w){ return wishCardHtml(w, true); }).join('');
+    } else {
+      html += '<div class="empty-state">还没有心愿，点击上方「添加心愿」记录一件想买的东西</div>';
+    }
+    // 最近断舍离
+    var recentDecl = declutter.slice().sort(function(a,b){ return new Date(b.date) - new Date(a.date); }).slice(0, 5);
+    if (recentDecl.length > 0) {
+      html += '<div class="jar-section-title">🗑️ 最近断舍离</div>'
+        + recentDecl.map(function(d){ return declutterCardHtml(d); }).join('');
     }
     // 避雷聚合
     var trapMap = {};
@@ -10325,29 +10339,32 @@ function renderDeclutter() {
     });
     Object.keys(groups).forEach(function(cat){
       html += '<div class="jar-section-title">📦 '+escHtml(cat)+' <span style="font-size:12px;color:var(--muted);font-weight:400;">('+groups[cat].length+'件)</span></div>';
-      html += groups[cat].map(function(d){
-        return '<div class="card jar-card declutter-card" style="border-left:3px solid #ff8a65;">'
-          + '<div class="jar-card-top">'
-          +   '<div class="jar-card-title">'+escHtml(d.item)+'</div>'
-          +   '<div class="jar-card-price">'+(d.price?'¥'+d.price:'')+'</div>'
-          + '</div>'
-          + '<div class="jar-declutter-info">'
-          +   '<span>🗑️ '+escHtml(d.channel||'扔掉')+'</span>'
-          +   (d.ownedDays ? '<span>· 拥有 '+d.ownedDays+' 天</span>' : '')
-          +   (d.sellPrice ? '<span style="color:var(--accent);">· 回收 ¥'+d.sellPrice+'</span>' : '')
-          + '</div>'
-          + '<div class="jar-date-line">🗑️ '+d.date+'</div>'
-          + (d.reflection ? '<div class="jar-wish-reason">💡 '+escHtml(d.reflection)+'</div>' : '')
-          + (d.summary ? '<div class="jar-wish-feel" style="color:#d84315;">⚠️ '+escHtml(d.summary)+'</div>' : '')
-          + '<div class="jar-card-actions">'
-          +   '<button class="btn-sm" onclick="openEditDeclutter(\''+d.id+'\')">✏️</button>'
-          +   '<button class="btn-sm danger" onclick="deleteDeclutter(\''+d.id+'\')">🗑️</button>'
-          + '</div>'
-          + '</div>';
-      }).join('');
+      html += groups[cat].map(function(d){ return declutterCardHtml(d); }).join('');
     });
   }
   return html;
+}
+
+function declutterCardHtml(d) {
+  return '<div class="card jar-card declutter-card" style="border-left:3px solid #ff8a65;">'
+    + '<div class="jar-card-top">'
+    +   '<div class="jar-card-title">'+escHtml(d.item)+'</div>'
+    +   '<div class="jar-card-price">'+(d.price?'¥'+d.price:'')+'</div>'
+    + '</div>'
+    + '<div class="jar-declutter-info">'
+    +   '<span>'+escHtml(d.category||'未分类')+'</span>'
+    +   '<span>· '+escHtml(d.channel||'扔掉')+'</span>'
+    +   (d.ownedDays ? '<span>· 拥有 '+d.ownedDays+' 天</span>' : '')
+    +   (d.sellPrice ? '<span style="color:var(--accent);">· 回收 ¥'+d.sellPrice+'</span>' : '')
+    + '</div>'
+    + '<div class="jar-date-line">🗑️ '+d.date+'</div>'
+    + (d.reflection ? '<div class="jar-wish-reason">💡 '+escHtml(d.reflection)+'</div>' : '')
+    + (d.summary ? '<div class="jar-wish-feel" style="color:#d84315;">⚠️ '+escHtml(d.summary)+'</div>' : '')
+    + '<div class="jar-card-actions">'
+    +   '<button class="btn-sm" onclick="openEditDeclutter(\''+d.id+'\')">✏️</button>'
+    +   '<button class="btn-sm danger" onclick="deleteDeclutter(\''+d.id+'\')">🗑️</button>'
+    + '</div>'
+    + '</div>';
 }
 
 // ═══════════════════════════════════════
@@ -10409,8 +10426,6 @@ function addWish() {
   });
   saveData();
   document.getElementById('addWishModal').remove();
-  // 刷新流通罐 tab
-  finView = window.__prevFinTab || 'wish';
   renderPage('finance');
   toast('已加入心愿');
 }
