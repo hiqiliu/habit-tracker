@@ -1103,6 +1103,66 @@ textarea.input-field { resize:vertical; min-height:60px; }
   cursor:pointer; transition:all 0.15s; text-align:center;
 }
 .gym-sub-btn:hover { border-color:var(--accent); background:var(--accent-soft); color:var(--accent); }
+/* ─── 流通罐 ─── */
+.finance-sub-tabs {
+  display:flex; gap:8px; margin-bottom:12px;
+}
+.fin-sub-btn {
+  padding:8px 16px; border-radius:20px; border:1px solid var(--rule);
+  background:var(--bg); font-size:13px; font-weight:500; color:var(--ink);
+  cursor:pointer; transition:all 0.15s;
+}
+.fin-sub-btn.on { background:#f57f17; border-color:#f57f17; color:#fff; }
+.jar-stats-row {
+  display:grid; grid-template-columns:repeat(5,1fr); gap:8px; margin-bottom:14px;
+}
+@media (max-width:540px) { .jar-stats-row { grid-template-columns:repeat(2,1fr); } }
+.jar-stat {
+  text-align:center; padding:10px 4px; border-radius:10px;
+  background:var(--bg2); border:1px solid var(--rule);
+}
+.jar-stat-num { font-size:18px; font-weight:700; }
+.jar-stat-lbl { font-size:11px; color:var(--muted); margin-top:2px; }
+.jar-tab-bar {
+  display:flex; gap:6px; margin-bottom:12px; overflow-x:auto; flex-wrap:wrap;
+}
+.jar-tab {
+  padding:6px 14px; border-radius:14px; border:1px solid var(--rule);
+  background:var(--bg); font-size:12px; color:var(--ink); cursor:pointer; transition:all 0.15s;
+}
+.jar-tab.on { background:#f57f17; border-color:#f57f17; color:#fff; }
+.jar-section-title {
+  font-size:13px; font-weight:600; color:var(--muted); margin:14px 0 6px; padding-left:4px;
+}
+.jar-card { border-left:3px solid #f57f17; }
+.jar-card-top {
+  display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;
+}
+.jar-card-title { font-size:15px; font-weight:600; }
+.jar-card-price { font-size:13px; color:var(--accent); font-weight:500; }
+.jar-level-tag {
+  display:inline-block; font-size:11px; padding:1px 8px; border-radius:10px; margin-bottom:4px;
+}
+.wish-cool-badge {
+  display:inline-block; font-size:11px; padding:2px 8px; border-radius:10px; margin-bottom:6px;
+}
+.wish-cool-badge.cool-wait { background:#fff3e0; color:#e65100; }
+.wish-cool-badge.cool-go { background:#e8f5e9; color:#2e7d32; }
+.jar-date-line { font-size:11px; color:var(--muted); margin-top:6px; }
+.jar-wish-reason { font-size:12px; color:var(--muted); margin-top:4px; }
+.jar-wish-feel { font-size:12px; margin-top:4px; }
+.jar-card-actions { display:flex; gap:4px; margin-top:8px; }
+.jar-declutter-info { font-size:12px; color:var(--muted); margin:4px 0; }
+.jar-declutter-info span { margin-right:8px; }
+.jar-trap-card {
+  border-left:3px solid #ff8a65; margin-bottom:6px;
+}
+.jar-trap-header {
+  display:flex; justify-content:space-between; align-items:center;
+}
+.jar-trap-cat { font-weight:600; font-size:13px; }
+.jar-trap-count { font-size:11px; color:var(--muted); }
+.jar-trap-reflect { font-size:12px; color:var(--muted); margin-top:4px; }
 .plan-days-grid {
   display:grid; grid-template-columns:repeat(auto-fill,minmax(90px,1fr)); gap:6px;
 }
@@ -1687,7 +1747,7 @@ const DEFAULT_DATA = {
   tips: { items:[], tags:[] },  // items: { id, title, content, source, category, tags:[], createdAt }
   closet: { wardrobe:[], outfits:[], dailyOutfits:[] },
   bar: { drinks:[], meals:[], perfumes:[] },  // meals: { id, date, mealType, source, content, note }, perfumes: { id, name, brand, scent, topNotes, midNotes, baseNotes, channel, price, rating, notes, date }
-  finance: { records:[] }
+  finance: { records:[], wishList:[], declutter:[] }
 };
 
 function loadData() {
@@ -4275,6 +4335,7 @@ function renderFinancePlan(mod, tabs) {
 // 4. GYM (健身房)
 // ═══════════════════════════════════════
 let gymView = 'overview';  // overview | workout | schedule | body | condition | resource | assessment
+let finView = 'overview'; // overview | jar | wish | declutter
 function renderGym() {
   const mod = state.modules.find(m => m.id === 'gym');
   switch (gymView) {
@@ -9869,62 +9930,576 @@ function saveEditPerfume(id) {
 }
 
 // ═══════════════════════════════════════
-// 10. FINANCE (记账本)
+// 10. FINANCE (记账本 + 流通罐)
 // ═══════════════════════════════════════
-function renderFinance() {
-  const mod = state.modules.find(m => m.id === 'finance');
-  const records = (state.finance.records || []).slice(-30).reverse();
-  const income = records.filter(r => r.type === 'income').reduce((a,b) => a + (b.amount||0), 0);
-  const expense = records.filter(r => r.type === 'expense').reduce((a,b) => a + (b.amount||0), 0);
-  const todayRecords = records.filter(r => r.date === today());
-  const todayExpense = todayRecords.filter(r => r.type === 'expense').reduce((a,b) => a + (b.amount||0), 0);
 
-  return `
-    <div class="page active">
-      <div class="module-title">
-        ${mod.icon} <span class="editable-title" ondblclick="editModule('finance')">${mod.name}</span>
-        <button class="edit-icon-btn" onclick="editModule('finance')" title="编辑">✏️</button>
-      </div>
-      <div class="stats-row">
-        <div class="stat-card">
-          <div class="stat-val" style="color:var(--accent);">¥${income.toFixed(0)}</div>
-          <div class="stat-lbl">总收入</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-val" style="color:var(--danger);">¥${expense.toFixed(0)}</div>
-          <div class="stat-lbl">总支出</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-val">¥${todayExpense.toFixed(0)}</div>
-          <div class="stat-lbl">今日支出</div>
-        </div>
-      </div>
-      <div class="section-title">💳 记账</div>
-      <div class="form-row">
-        <select class="input-field" id="finType" style="flex:0.5;">
-          <option value="expense">支出</option><option value="income">收入</option>
-        </select>
-        <input class="input-field" id="finCategory" placeholder="分类" style="flex:0.6;">
-        <input class="input-field" id="finAmount" placeholder="金额" type="number" step="0.01" style="flex:0.5;">
-        <input class="input-field" id="finNote" placeholder="备注" style="flex:1;">
-        <button class="btn-sm primary" onclick="addFinanceRecord()">+</button>
-      </div>
-      ${records.length === 0 ? '<div class="empty-state">暂无财务记录</div>' :
-        records.slice(0, 20).map(r => `
-          <div class="card card-row">
-            <span>${r.type === 'income' ? '💰' : '💸'}</span>
-            <span class="card-content">
-              <span style="color:${r.type==='income'?'var(--accent)':'var(--danger)'};font-weight:600;">${r.type==='income'?'+':'-'}¥${(r.amount||0).toFixed(2)}</span>
-              ${r.category ? ' · '+escHtml(r.category) : ''}
-              ${r.note ? ' · '+escHtml(r.note) : ''}
-            </span>
-            <span style="font-size:11px;color:var(--muted);">${r.date}</span>
-            <button class="btn-sm" onclick="editFinanceRecord('${r.id}')">✏️</button>
-            <button class="btn-sm danger" onclick="deleteFinanceRecord('${r.id}')">删</button>
-          </div>`).join('')
-      }
-    </div>`;
+// 冷静期计算：根据价格返回天数
+function coolDays(price) {
+  var p = price || 0;
+  if (p <= 100) return 1;
+  if (p <= 300) return 2;
+  if (p <= 500) return 7;
+  if (p <= 800) return 10;
+  if (p <= 1000) return 15;
+  if (p <= 1500) return 30;
+  return Math.ceil(p / 50);
 }
+// 返回距离冷静期结束还有多少天（负数=已过冷静期）
+function coolRemaining(addedDate, price) {
+  var days = coolDays(price);
+  var added = new Date(addedDate);
+  var target = new Date(added);
+  target.setDate(target.getDate() + days);
+  var today = new Date();
+  // 忽略时间部分
+  target.setHours(0,0,0,0);
+  today.setHours(0,0,0,0);
+  return Math.ceil((target - today) / (1000*60*60*24));
+}
+// 想要程度常量
+var WISH_LEVELS = [
+  { id:'grass',  label:'种草', icon:'🌱' },
+  { id:'heart',  label:'心动', icon:'💗' },
+  { id:'destiny',label:'本命', icon:'✨' }
+];
+
+function setFinView(v) {
+  finView = v; renderPage('finance');
+}
+
+function renderFinance() {
+  var mod = state.modules.find(function(m){ return m.id === 'finance'; });
+  var html = '';
+  // Tab 切换
+  html += '<div class="finance-sub-tabs">'
+    + '<button class="fin-sub-btn'+(finView==='overview'?' on':'')+'" onclick="setFinView(\'overview\')">💳 记账</button>'
+    + '<button class="fin-sub-btn'+(finView==='jar'?' on':'')+'" onclick="setFinView(\'jar\')">🏷️ 流通罐</button>'
+    + '</div>';
+  if (finView === 'jar') {
+    html += renderJar();
+  } else if (finView === 'wish') {
+    html += renderWishList();
+  } else if (finView === 'declutter') {
+    html += renderDeclutter();
+  } else {
+    html += renderFinanceOverview(mod);
+  }
+  return '<div class="page active"><div class="module-title">'+mod.icon+' <span class="editable-title" ondblclick="editModule(\'finance\')">'+mod.name+'</span><button class="edit-icon-btn" onclick="editModule(\'finance\')" title="编辑">✏️</button></div>'+html+'</div>';
+}
+
+function renderFinanceOverview(mod) {
+  var records = (state.finance.records || []).slice(-30).reverse();
+  var income = records.filter(function(r){ return r.type === 'income'; }).reduce(function(a,b){ return a + (b.amount||0); }, 0);
+  var expense = records.filter(function(r){ return r.type === 'expense'; }).reduce(function(a,b){ return a + (b.amount||0); }, 0);
+  var todayRecords = records.filter(function(r){ return r.date === today(); });
+  var todayExpense = todayRecords.filter(function(r){ return r.type === 'expense'; }).reduce(function(a,b){ return a + (b.amount||0); }, 0);
+  var html = '';
+  html += '<div class="stats-row">'
+    + '<div class="stat-card"><div class="stat-val" style="color:var(--accent);">¥'+income.toFixed(0)+'</div><div class="stat-lbl">总收入</div></div>'
+    + '<div class="stat-card"><div class="stat-val" style="color:var(--danger);">¥'+expense.toFixed(0)+'</div><div class="stat-lbl">总支出</div></div>'
+    + '<div class="stat-card"><div class="stat-val">¥'+todayExpense.toFixed(0)+'</div><div class="stat-lbl">今日支出</div></div>'
+    + '</div>';
+  html += '<div class="section-title">💳 记账</div>'
+    + '<div class="form-row">'
+    +   '<select class="input-field" id="finType" style="flex:0.5;"><option value="expense">支出</option><option value="income">收入</option></select>'
+    +   '<input class="input-field" id="finCategory" placeholder="分类" style="flex:0.6;">'
+    +   '<input class="input-field" id="finAmount" placeholder="金额" type="number" step="0.01" style="flex:0.5;">'
+    +   '<input class="input-field" id="finNote" placeholder="备注" style="flex:1;">'
+    +   '<button class="btn-sm primary" onclick="addFinanceRecord()">+</button>'
+    + '</div>';
+  if (records.length === 0) {
+    html += '<div class="empty-state">暂无财务记录</div>';
+  } else {
+    html += records.slice(0, 20).map(function(r){
+      return '<div class="card card-row">'
+        + '<span>'+(r.type === 'income' ? '💰' : '💸')+'</span>'
+        + '<span class="card-content"><span style="color:'+(r.type==='income'?'var(--accent)':'var(--danger)')+';font-weight:600;">'+(r.type==='income'?'+':'-')+'¥'+(r.amount||0).toFixed(2)+'</span>'
+        +   (r.category ? ' · '+escHtml(r.category) : '')
+        +   (r.note ? ' · '+escHtml(r.note) : '')+'</span>'
+        + '<span style="font-size:11px;color:var(--muted);">'+r.date+'</span>'
+        + '<button class="btn-sm" onclick="editFinanceRecord(\''+r.id+'\')">✏️</button>'
+        + '<button class="btn-sm danger" onclick="deleteFinanceRecord(\''+r.id+'\')">删</button>'
+        + '</div>';
+    }).join('');
+  }
+  return html;
+}
+
+// ─── 流通罐总览 ───
+function renderJar() {
+  var wishList = state.finance.wishList || [];
+  var declutter = state.finance.declutter || [];
+  // 统计
+  var wishPending = wishList.filter(function(w){ return !w.status; }); // 未决定
+  var wishDone = wishList.filter(function(w){ return w.status === 'bought'; });
+  var wishAbandoned = wishList.filter(function(w){ return w.status === 'abandoned'; });
+  var savedMoney = wishAbandoned.reduce(function(a,w){ return a + (w.price||0); }, 0);
+  var html = '';
+  html += '<div class="jar-stats-row">'
+    + '<div class="jar-stat"><div class="jar-stat-num">'+wishPending.length+'</div><div class="jar-stat-lbl">💭 心愿中</div></div>'
+    + '<div class="jar-stat"><div class="jar-stat-num">'+wishDone.length+'</div><div class="jar-stat-lbl">✅ 已实现</div></div>'
+    + '<div class="jar-stat"><div class="jar-stat-num">'+wishAbandoned.length+'</div><div class="jar-stat-lbl">🚫 放弃</div></div>'
+    + '<div class="jar-stat"><div class="jar-stat-num" style="color:var(--accent);">¥'+savedMoney.toFixed(0)+'</div><div class="jar-stat-lbl">💰 省下的钱</div></div>'
+    + '<div class="jar-stat"><div class="jar-stat-num">'+declutter.length+'</div><div class="jar-stat-lbl">🗑️ 已断舍离</div></div>'
+    + '</div>';
+  // 子页 tab
+  html += '<div class="jar-tab-bar">'
+    + '<button class="jar-tab'+(finView==='jar'?' on':'')+'" onclick="setFinView(\'jar\')">📊 概览</button>'
+    + '<button class="jar-tab'+(finView==='wish'?' on':'')+'" onclick="setFinView(\'wish\')">💭 心愿清单 ('+wishPending.length+')</button>'
+    + '<button class="jar-tab'+(finView==='declutter'?' on':'')+'" onclick="setFinView(\'declutter\')">🗑️ 断舍离 ('+declutter.length+')</button>'
+    + '</div>';
+  // 概览内容：最近心愿 + 避雷清单
+  if (finView === 'jar') {
+    // 待冷静清单
+    var coolList = wishPending.slice().sort(function(a,b){
+      return new Date(a.addedDate) - new Date(b.addedDate);
+    }).slice(0, 5);
+    if (coolList.length > 0) {
+      html += '<div class="jar-section-title">💭 最近心动（等待冷静期）</div>'
+        + coolList.map(function(w){ return wishCardHtml(w, true); }).join('');
+    }
+    // 避雷聚合
+    var trapMap = {};
+    declutter.forEach(function(d){
+      var cat = d.category || '未分类';
+      if (!trapMap[cat]) trapMap[cat] = { count: 0, items: [] };
+      trapMap[cat].count++;
+      trapMap[cat].items.push(d);
+    });
+    var trapKeys = Object.keys(trapMap).sort(function(a,b){ return trapMap[b].count - trapMap[a].count; });
+    if (trapKeys.length > 0) {
+      html += '<div class="jar-section-title">🚨 消费陷阱（避雷聚合）</div>';
+      trapKeys.forEach(function(k){
+        var items = trapMap[k].items;
+        var reflectionMap = {};
+        items.forEach(function(i){
+          var r = (i.reflection||'').trim();
+          if (r) reflectionMap[r] = (reflectionMap[r]||0) + 1;
+        });
+        var reflectionStr = Object.keys(reflectionMap).slice(0, 2).join('；') || '—';
+        html += '<div class="card jar-trap-card">'
+          + '<div class="jar-trap-header"><span class="jar-trap-cat">'+escHtml(k)+'</span>'
+          +   '<span class="jar-trap-count">共 '+trapMap[k].count+' 件</span></div>'
+          + '<div class="jar-trap-reflect">💡 '+escHtml(reflectionStr)+'</div>'
+          + '</div>';
+      });
+    } else {
+      html += '<div class="empty-state">断舍离后，这里会汇总你踩过的消费陷阱</div>';
+    }
+  }
+  return html;
+}
+
+// ─── 心愿清单子页 ───
+function renderWishList() {
+  var wishList = state.finance.wishList || [];
+  var html = '';
+  // 子页 tab 复用上面的
+  html += '<div class="jar-tab-bar">'
+    + '<button class="jar-tab" onclick="setFinView(\'jar\')">📊 概览</button>'
+    + '<button class="jar-tab on" onclick="setFinView(\'wish\')">💭 心愿清单</button>'
+    + '<button class="jar-tab" onclick="setFinView(\'declutter\')">🗑️ 断舍离</button>'
+    + '</div>';
+  html += '<div style="display:flex;gap:8px;margin-bottom:10px;">'
+    + '<button class="btn-sm primary" onclick="openAddWishModal()">+ 添加心愿</button>'
+    + '</div>';
+  // 分组
+  var pending = wishList.filter(function(w){ return !w.status; }).sort(function(a,b){ return new Date(b.addedDate) - new Date(a.addedDate); });
+  var bought = wishList.filter(function(w){ return w.status === 'bought'; }).sort(function(a,b){ return new Date((b.boughtDate||b.addedDate)) - new Date((a.boughtDate||a.addedDate)); });
+  var abandoned = wishList.filter(function(w){ return w.status === 'abandoned'; }).sort(function(a,b){ return new Date((b.abandonedDate||b.addedDate)) - new Date((a.abandonedDate||a.addedDate)); });
+  if (pending.length === 0 && bought.length === 0 && abandoned.length === 0) {
+    html += '<div class="empty-state">还没有心愿<br><br><button class="btn-sm primary" onclick="openAddWishModal()">+ 添加心愿</button></div>';
+  } else {
+    if (pending.length > 0) {
+      html += '<div class="jar-section-title">💭 进行中</div>' + pending.map(function(w){ return wishCardHtml(w, true); }).join('');
+    }
+    if (bought.length > 0) {
+      html += '<div class="jar-section-title">✅ 已实现</div>' + bought.map(function(w){ return wishCardHtml(w, false); }).join('');
+    }
+    if (abandoned.length > 0) {
+      html += '<div class="jar-section-title">🚫 已放弃（共省 ¥'+abandoned.reduce(function(a,w){ return a+(w.price||0); },0).toFixed(0)+'）</div>' + abandoned.map(function(w){ return wishCardHtml(w, false); }).join('');
+    }
+  }
+  return html;
+}
+
+function wishCardHtml(w, showActions) {
+  var levelObj = WISH_LEVELS.find(function(l){ return l.id === w.level; }) || WISH_LEVELS[0];
+  var remaining = coolRemaining(w.addedDate, w.price);
+  var coolDaysTotal = coolDays(w.price);
+  var priceTxt = w.price ? '¥'+w.price : '';
+  // 冷静期状态
+  var coolBadge = '';
+  if (!w.status) {
+    if (remaining > 0) {
+      coolBadge = '<span class="wish-cool-badge cool-wait">⏳ 冷静期还剩 '+remaining+' 天</span>';
+    } else {
+      coolBadge = '<span class="wish-cool-badge cool-go">✅ 冷静期已过，可以决定了</span>';
+    }
+  }
+  // 时间线
+  var dateLine = '';
+  if (w.status === 'bought') {
+    dateLine = '<div class="jar-date-line">💭 '+w.addedDate+' → ✅ '+escHtml(w.boughtDate||'—')+' '+(w.actualPrice?'· 实付 ¥'+w.actualPrice:'')+'</div>';
+  } else if (w.status === 'abandoned') {
+    dateLine = '<div class="jar-date-line">💭 '+w.addedDate+' → 🚫 '+escHtml(w.abandonedDate||'—')+'</div>';
+  } else {
+    dateLine = '<div class="jar-date-line">💭 '+w.addedDate+' · 已心动 '+Math.max(0, Math.ceil((Date.now()-new Date(w.addedDate))/(1000*60*60*24)))+' 天</div>';
+  }
+  // 备注
+  var reason = w.reason ? '<div class="jar-wish-reason">💡 '+escHtml(w.reason)+'</div>' : '';
+  var boughtFeel = w.status === 'bought' && w.boughtFeel ? '<div class="jar-wish-feel">🎭 '+escHtml(w.boughtFeel)+'</div>' : '';
+  var abandonedReason = w.status === 'abandoned' && w.abandonedReason ? '<div class="jar-wish-feel" style="color:var(--danger);">🚫 '+escHtml(w.abandonedReason)+'</div>' : '';
+  // 操作按钮
+  var actions = '';
+  if (showActions && !w.status) {
+    actions = '<div class="jar-card-actions">'
+      + '<button class="btn-sm" onclick="openEditWish(\''+w.id+'\')">✏️</button>'
+      + '<button class="btn-sm" onclick="markWishBought(\''+w.id+'\')">✅ 实现</button>'
+      + '<button class="btn-sm danger" onclick="markWishAbandoned(\''+w.id+'\')">🚫 放弃</button>'
+      + '<button class="btn-sm danger" onclick="deleteWish(\''+w.id+'\')">🗑️</button>'
+      + '</div>';
+  } else if (w.status) {
+    actions = '<div class="jar-card-actions">'
+      + '<button class="btn-sm" onclick="openEditWish(\''+w.id+'\')">✏️</button>'
+      + '<button class="btn-sm danger" onclick="deleteWish(\''+w.id+'\')">🗑️</button>'
+      + '</div>';
+  }
+  return '<div class="card jar-card wish-card">'
+    + '<div class="jar-card-top">'
+    +   '<div class="jar-card-title">'+levelObj.icon+' '+escHtml(w.item)+'</div>'
+    +   '<div class="jar-card-price">'+priceTxt+'</div>'
+    + '</div>'
+    + '<div class="jar-level-tag" style="background:'+(w.level==='destiny'?'#fce4ec':w.level==='heart'?'#fff3e0':'#e8f5e9')+';color:'+(w.level==='destiny'?'#c2185b':w.level==='heart'?'#e65100':'#2e7d32')+';">'+levelObj.label+'</div>'
+    + coolBadge
+    + reason + boughtFeel + abandonedReason
+    + dateLine
+    + actions
+    + '</div>';
+}
+
+// ─── 断舍离子页 ───
+function renderDeclutter() {
+  var declutter = state.finance.declutter || [];
+  var html = '';
+  html += '<div class="jar-tab-bar">'
+    + '<button class="jar-tab" onclick="setFinView(\'jar\')">📊 概览</button>'
+    + '<button class="jar-tab" onclick="setFinView(\'wish\')">💭 心愿清单</button>'
+    + '<button class="jar-tab on" onclick="setFinView(\'declutter\')">🗑️ 断舍离</button>'
+    + '</div>';
+  html += '<div style="display:flex;gap:8px;margin-bottom:10px;">'
+    + '<button class="btn-sm primary" onclick="openAddDeclutterModal()">+ 添加断舍离</button>'
+    + '</div>';
+  if (declutter.length === 0) {
+    html += '<div class="empty-state">还没有断舍离记录<br><br><button class="btn-sm primary" onclick="openAddDeclutterModal()">+ 添加第一条</button></div>';
+  } else {
+    // 按类别分组
+    var groups = {};
+    declutter.slice().sort(function(a,b){ return new Date(b.date) - new Date(a.date); }).forEach(function(d){
+      var cat = d.category || '未分类';
+      if (!groups[cat]) groups[cat] = [];
+      groups[cat].push(d);
+    });
+    Object.keys(groups).forEach(function(cat){
+      html += '<div class="jar-section-title">📦 '+escHtml(cat)+' <span style="font-size:12px;color:var(--muted);font-weight:400;">('+groups[cat].length+'件)</span></div>';
+      html += groups[cat].map(function(d){
+        return '<div class="card jar-card declutter-card" style="border-left:3px solid #ff8a65;">'
+          + '<div class="jar-card-top">'
+          +   '<div class="jar-card-title">'+escHtml(d.item)+'</div>'
+          +   '<div class="jar-card-price">'+(d.price?'¥'+d.price:'')+'</div>'
+          + '</div>'
+          + '<div class="jar-declutter-info">'
+          +   '<span>🗑️ '+escHtml(d.channel||'扔掉')+'</span>'
+          +   (d.ownedDays ? '<span>· 拥有 '+d.ownedDays+' 天</span>' : '')
+          +   (d.sellPrice ? '<span style="color:var(--accent);">· 回收 ¥'+d.sellPrice+'</span>' : '')
+          + '</div>'
+          + '<div class="jar-date-line">🗑️ '+d.date+'</div>'
+          + (d.reflection ? '<div class="jar-wish-reason">💡 '+escHtml(d.reflection)+'</div>' : '')
+          + (d.summary ? '<div class="jar-wish-feel" style="color:#d84315;">⚠️ '+escHtml(d.summary)+'</div>' : '')
+          + '<div class="jar-card-actions">'
+          +   '<button class="btn-sm" onclick="openEditDeclutter(\''+d.id+'\')">✏️</button>'
+          +   '<button class="btn-sm danger" onclick="deleteDeclutter(\''+d.id+'\')">🗑️</button>'
+          + '</div>'
+          + '</div>';
+      }).join('');
+    });
+  }
+  return html;
+}
+
+// ═══════════════════════════════════════
+// 心愿清单 CRUD
+// ═══════════════════════════════════════
+function openAddWishModal() {
+  var todayStr = today();
+  var m = document.createElement('div');
+  m.className = 'modal-overlay show'; m.id = 'addWishModal';
+  m.innerHTML = '<div class="modal-box" style="max-width:480px;">'
+    + '<h3>💭 添加心愿</h3>'
+    + '<input class="input-field" id="awItem" placeholder="物品名称 *" style="width:100%;margin-bottom:8px;">'
+    + '<div class="form-row" style="margin-bottom:8px;">'
+    +   '<input class="input-field" id="awPrice" type="number" placeholder="价格 ¥" style="flex:0.8;">'
+    +   '<input class="input-field" id="awAddedDate" type="date" value="'+todayStr+'" style="flex:1;">'
+    + '</div>'
+    + '<div class="form-row" style="margin-bottom:8px;">'
+    +   '<span style="font-size:12px;color:var(--muted);flex:0.4;align-self:center;">想要程度</span>'
+    +   WISH_LEVELS.map(function(l, i){
+    +     return '<label class="pill-check'+(i===1?' on':'')+'" style="border-color:'+(l.id==='destiny'?'#c2185b':l.id==='heart'?'#e65100':'#2e7d32')+';color:'+(l.id==='destiny'?'#c2185b':l.id==='heart'?'#e65100':'#2e7d32')+';--pill-on-bg:'+(l.id==='destiny'?'rgba(194,24,91,0.15)':l.id==='heart'?'rgba(230,81,0,0.15)':'rgba(46,125,50,0.15)')+';">'
+    +       + '<input type="radio" name="awLevel" value="'+l.id+'"'+(i===1?' checked':'')+'><span>'+l.icon+' '+l.label+'</span></label>';
+    +   }).join('')
+    + '</div>'
+    + '<div id="awCoolHint" style="font-size:11px;color:var(--muted);margin-bottom:8px;">💡 输入价格后自动计算冷静期</div>'
+    + '<textarea class="input-field" id="awReason" placeholder="心动原因..." rows="3" style="width:100%;margin-bottom:10px;"></textarea>'
+    + '<div class="modal-actions">'
+    +   '<button class="btn-sm" onclick="document.getElementById(\'addWishModal\').remove()">取消</button>'
+    +   '<button class="btn-sm primary" onclick="addWish()">保存</button>'
+    + '</div></div>';
+  document.body.appendChild(m);
+  m.addEventListener('click', function(e) { if (e.target === m) m.remove(); });
+  // 实时计算冷静期提示
+  var priceInput = $('awPrice');
+  if (priceInput) {
+    priceInput.addEventListener('input', function() {
+      var p = parseFloat(priceInput.value) || 0;
+      var days = coolDays(p);
+      $('awCoolHint').innerHTML = p > 0 ? '💡 价格 ¥'+p+' → 冷静期 '+days+' 天，'
+        + (days>1?'从 '+todayStr+' 起算，到 ' : '') + '之后再决定' : '💡 输入价格后自动计算冷静期';
+    });
+  }
+}
+
+function addWish() {
+  var item = $('awItem').value.trim();
+  if (!item) { toast('请输入物品名称'); return; }
+  if (!state.finance.wishList) state.finance.wishList = [];
+  var levelRadio = document.querySelector('input[name="awLevel"]:checked');
+  state.finance.wishList.push({
+    id: 'w'+Date.now(),
+    item: item,
+    price: parseFloat($('awPrice').value) || 0,
+    addedDate: $('awAddedDate').value || today(),
+    level: levelRadio ? levelRadio.value : 'heart',
+    reason: $('awReason').value.trim(),
+    status: null,  // null | 'bought' | 'abandoned'
+    boughtDate: null, actualPrice: null, boughtFeel: null,
+    abandonedDate: null, abandonedReason: null
+  });
+  saveData();
+  document.getElementById('addWishModal').remove();
+  // 刷新流通罐 tab
+  finView = window.__prevFinTab || 'wish';
+  renderPage('finance');
+  toast('已加入心愿');
+}
+
+function openEditWish(id) {
+  var w = (state.finance.wishList||[]).find(function(x){ return x.id === id; });
+  if (!w) return;
+  var m = document.createElement('div');
+  m.className = 'modal-overlay show'; m.id = 'editWishModal';
+  var levelPills = WISH_LEVELS.map(function(l){
+    var checked = w.level === l.id ? ' checked' : '';
+    var on = w.level === l.id ? ' on' : '';
+    return '<label class="pill-check'+on+'" style="border-color:'+(l.id==='destiny'?'#c2185b':l.id==='heart'?'#e65100':'#2e7d32')+';color:'+(l.id==='destiny'?'#c2185b':l.id==='heart'?'#e65100':'#2e7d32')+';--pill-on-bg:'+(l.id==='destiny'?'rgba(194,24,91,0.15)':l.id==='heart'?'rgba(230,81,0,0.15)':'rgba(46,125,50,0.15)')+';">'
+      + '<input type="radio" name="ewLevel" value="'+l.id+'"'+checked+'><span>'+l.icon+' '+l.label+'</span></label>';
+  }).join('');
+  var statusHtml = '';
+  if (w.status === 'bought') {
+    statusHtml = '<div class="jar-edit-sub">'
+      + '<div style="font-size:11px;color:var(--accent);margin-bottom:4px;">✅ 已实现</div>'
+      + '<input class="input-field" id="ewBoughtDate" type="date" value="'+(w.boughtDate||today())+'" style="width:100%;margin-bottom:6px;">'
+      + '<div class="form-row" style="margin-bottom:6px;"><input class="input-field" id="ewActualPrice" type="number" placeholder="实付价格" value="'+(w.actualPrice||'')+'" style="flex:0.5;"><input class="input-field" id="ewBoughtFeel" placeholder="购买心情/值不值" value="'+escHtml(w.boughtFeel||'')+'" style="flex:1;"></div>'
+      + '</div>';
+  } else if (w.status === 'abandoned') {
+    statusHtml = '<div class="jar-edit-sub">'
+      + '<div style="font-size:11px;color:var(--danger);margin-bottom:4px;">🚫 已放弃</div>'
+      + '<input class="input-field" id="ewAbandonedDate" type="date" value="'+(w.abandonedDate||today())+'" style="width:100%;margin-bottom:6px;">'
+      + '<textarea class="input-field" id="ewAbandonedReason" rows="2" placeholder="放弃原因" style="width:100%;margin-bottom:6px;">'+escHtml(w.abandonedReason||'')+'</textarea>'
+      + '</div>';
+  }
+  m.innerHTML = '<div class="modal-box" style="max-width:480px;">'
+    + '<h3>✏️ 编辑心愿</h3>'
+    + '<input class="input-field" id="ewItem" value="'+escHtml(w.item||'')+'" style="width:100%;margin-bottom:8px;">'
+    + '<div class="form-row" style="margin-bottom:8px;">'
+    +   '<input class="input-field" id="ewPrice" type="number" placeholder="价格 ¥" value="'+(w.price||'')+'" style="flex:0.8;">'
+    +   '<input class="input-field" id="ewAddedDate" type="date" value="'+w.addedDate+'" style="flex:1;">'
+    + '</div>'
+    + '<div class="form-row" style="margin-bottom:8px;"><span style="font-size:12px;color:var(--muted);flex:0.4;align-self:center;">想要程度</span>'+levelPills+'</div>'
+    + '<textarea class="input-field" id="ewReason" placeholder="心动原因..." rows="2" style="width:100%;margin-bottom:8px;">'+escHtml(w.reason||'')+'</textarea>'
+    + statusHtml
+    + '<div class="modal-actions">'
+    +   '<button class="btn-sm" onclick="document.getElementById(\'editWishModal\').remove()">取消</button>'
+    +   '<button class="btn-sm primary" onclick="saveEditWish(\''+w.id+'\')">保存</button>'
+    + '</div></div>';
+  document.body.appendChild(m);
+  m.addEventListener('click', function(e) { if (e.target === m) m.remove(); });
+}
+
+function saveEditWish(id) {
+  var w = (state.finance.wishList||[]).find(function(x){ return x.id === id; });
+  if (!w) return;
+  w.item = $('ewItem').value.trim();
+  w.price = parseFloat($('ewPrice').value) || 0;
+  w.addedDate = $('ewAddedDate').value;
+  var lr = document.querySelector('input[name="ewLevel"]:checked');
+  if (lr) w.level = lr.value;
+  w.reason = $('ewReason').value.trim();
+  if (w.status === 'bought') {
+    w.boughtDate = $('ewBoughtDate').value;
+    w.actualPrice = parseFloat($('ewActualPrice').value) || 0;
+    w.boughtFeel = $('ewBoughtFeel').value.trim();
+  } else if (w.status === 'abandoned') {
+    w.abandonedDate = $('ewAbandonedDate').value;
+    w.abandonedReason = $('ewAbandonedReason').value.trim();
+  }
+  saveData();
+  document.getElementById('editWishModal').remove();
+  renderPage('finance');
+  toast('已更新');
+}
+
+function markWishBought(id) {
+  var w = (state.finance.wishList||[]).find(function(x){ return x.id === id; });
+  if (!w) return;
+  var todayStr = today();
+  w.status = 'bought';
+  w.boughtDate = todayStr;
+  w.actualPrice = w.price || 0;
+  w.boughtFeel = '';
+  saveData();
+  renderPage('finance');
+  toast('✅ 已记录为已实现');
+}
+
+function markWishAbandoned(id) {
+  var w = (state.finance.wishList||[]).find(function(x){ return x.id === id; });
+  if (!w) return;
+  var todayStr = today();
+  w.status = 'abandoned';
+  w.abandonedDate = todayStr;
+  w.abandonedReason = '';
+  saveData();
+  renderPage('finance');
+  toast('🚫 已放弃（省了 ¥'+(w.price||0).toFixed(0)+'）');
+}
+
+function deleteWish(id) {
+  if (!confirm('确定删除这条心愿？')) return;
+  state.finance.wishList = (state.finance.wishList||[]).filter(function(w){ return w.id !== id; });
+  saveData();
+  renderPage('finance');
+}
+
+// ═══════════════════════════════════════
+// 断舍离 CRUD
+// ═══════════════════════════════════════
+var DECLUTTER_CHANNELS = ['扔掉','送人','卖掉','回收'];
+function openAddDeclutterModal() {
+  var todayStr = today();
+  var m = document.createElement('div');
+  m.className = 'modal-overlay show'; m.id = 'addDeclutterModal';
+  m.innerHTML = '<div class="modal-box" style="max-width:480px;">'
+    + '<h3>🗑️ 添加断舍离</h3>'
+    + '<input class="input-field" id="adItem" placeholder="物品名称 *" style="width:100%;margin-bottom:8px;">'
+    + '<div class="form-row" style="margin-bottom:8px;">'
+    +   '<input class="input-field" id="adCategory" placeholder="类别（如：衣物/数码/美妆）" style="flex:1;">'
+    +   '<input class="input-field" id="adDate" type="date" value="'+todayStr+'" style="flex:0.8;">'
+    + '</div>'
+    + '<div class="form-row" style="margin-bottom:8px;">'
+    +   '<select class="input-field" id="adChannel" style="flex:0.6;">'
+    +     DECLUTTER_CHANNELS.map(function(c){ return '<option value="'+c+'">'+c+'</option>'; }).join('')
+    +   '</select>'
+    +   '<input class="input-field" id="adOwnedDays" type="number" placeholder="拥有天数" style="flex:0.5;">'
+    +   '<input class="input-field" id="adPrice" type="number" placeholder="购入价" style="flex:0.5;">'
+    +   '<input class="input-field" id="adSellPrice" type="number" placeholder="回收价" style="flex:0.5;">'
+    + '</div>'
+    + '<textarea class="input-field" id="adReflection" placeholder="反思：为什么扔掉？用了多久？..." rows="2" style="width:100%;margin-bottom:6px;"></textarea>'
+    + '<textarea class="input-field" id="adSummary" placeholder="⚠️ 同类避雷总结（这类东西以后都别买了）" rows="2" style="width:100%;margin-bottom:10px;"></textarea>'
+    + '<div class="modal-actions">'
+    +   '<button class="btn-sm" onclick="document.getElementById(\'addDeclutterModal\').remove()">取消</button>'
+    +   '<button class="btn-sm primary" onclick="addDeclutter()">保存</button>'
+    + '</div></div>';
+  document.body.appendChild(m);
+  m.addEventListener('click', function(e) { if (e.target === m) m.remove(); });
+}
+
+function addDeclutter() {
+  var item = $('adItem').value.trim();
+  if (!item) { toast('请输入物品名称'); return; }
+  if (!state.finance.declutter) state.finance.declutter = [];
+  state.finance.declutter.push({
+    id: 'd'+Date.now(),
+    item: item,
+    category: $('adCategory').value.trim() || '未分类',
+    date: $('adDate').value || today(),
+    channel: $('adChannel').value,
+    ownedDays: parseInt($('adOwnedDays').value) || 0,
+    price: parseFloat($('adPrice').value) || 0,
+    sellPrice: parseFloat($('adSellPrice').value) || 0,
+    reflection: $('adReflection').value.trim(),
+    summary: $('adSummary').value.trim()
+  });
+  saveData();
+  document.getElementById('addDeclutterModal').remove();
+  renderPage('finance');
+  toast('已记录断舍离');
+}
+
+function openEditDeclutter(id) {
+  var d = (state.finance.declutter||[]).find(function(x){ return x.id === id; });
+  if (!d) return;
+  var m = document.createElement('div');
+  m.className = 'modal-overlay show'; m.id = 'editDeclutterModal';
+  m.innerHTML = '<div class="modal-box" style="max-width:480px;">'
+    + '<h3>✏️ 编辑断舍离</h3>'
+    + '<input class="input-field" id="edItem" value="'+escHtml(d.item||'')+'" style="width:100%;margin-bottom:8px;">'
+    + '<div class="form-row" style="margin-bottom:8px;">'
+    +   '<input class="input-field" id="edCategory" placeholder="类别" value="'+escHtml(d.category||'')+'" style="flex:1;">'
+    +   '<input class="input-field" id="edDate" type="date" value="'+d.date+'" style="flex:0.8;">'
+    + '</div>'
+    + '<div class="form-row" style="margin-bottom:8px;">'
+    +   '<select class="input-field" id="edChannel" style="flex:0.6;">'
+    +     DECLUTTER_CHANNELS.map(function(c){ return '<option value="'+c+'"'+(d.channel===c?' selected':'')+'>'+c+'</option>'; }).join('')
+    +   '</select>'
+    +   '<input class="input-field" id="edOwnedDays" type="number" placeholder="拥有天数" value="'+(d.ownedDays||'')+'" style="flex:0.5;">'
+    +   '<input class="input-field" id="edPrice" type="number" placeholder="购入价" value="'+(d.price||'')+'" style="flex:0.5;">'
+    +   '<input class="input-field" id="edSellPrice" type="number" placeholder="回收价" value="'+(d.sellPrice||'')+'" style="flex:0.5;">'
+    + '</div>'
+    + '<textarea class="input-field" id="edReflection" placeholder="反思..." rows="2" style="width:100%;margin-bottom:6px;">'+escHtml(d.reflection||'')+'</textarea>'
+    + '<textarea class="input-field" id="edSummary" placeholder="⚠️ 同类避雷总结" rows="2" style="width:100%;margin-bottom:10px;">'+escHtml(d.summary||'')+'</textarea>'
+    + '<div class="modal-actions">'
+    +   '<button class="btn-sm" onclick="document.getElementById(\'editDeclutterModal\').remove()">取消</button>'
+    +   '<button class="btn-sm primary" onclick="saveEditDeclutter(\''+d.id+'\')">保存</button>'
+    + '</div></div>';
+  document.body.appendChild(m);
+  m.addEventListener('click', function(e) { if (e.target === m) m.remove(); });
+}
+
+function saveEditDeclutter(id) {
+  var d = (state.finance.declutter||[]).find(function(x){ return x.id === id; });
+  if (!d) return;
+  d.item = $('edItem').value.trim();
+  d.category = $('edCategory').value.trim() || '未分类';
+  d.date = $('edDate').value;
+  d.channel = $('edChannel').value;
+  d.ownedDays = parseInt($('edOwnedDays').value) || 0;
+  d.price = parseFloat($('edPrice').value) || 0;
+  d.sellPrice = parseFloat($('edSellPrice').value) || 0;
+  d.reflection = $('edReflection').value.trim();
+  d.summary = $('edSummary').value.trim();
+  saveData();
+  document.getElementById('editDeclutterModal').remove();
+  renderPage('finance');
+  toast('已更新');
+}
+
+function deleteDeclutter(id) {
+  if (!confirm('确定删除这条断舍离记录？')) return;
+  state.finance.declutter = (state.finance.declutter||[]).filter(function(d){ return d.id !== id; });
+  saveData();
+  renderPage('finance');
+}
+
 function addFinanceRecord() {
   const type = $('finType'), cat = $('finCategory'), amt = $('finAmount'), note = $('finNote');
   if (!amt.value) return;
