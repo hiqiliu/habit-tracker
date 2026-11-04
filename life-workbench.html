@@ -10367,9 +10367,9 @@ function openAddWishModal() {
     + '<div class="form-row" style="margin-bottom:8px;">'
     +   '<span style="font-size:12px;color:var(--muted);flex:0.4;align-self:center;">想要程度</span>'
     +   WISH_LEVELS.map(function(l, i){
-    +     return '<label class="pill-check'+(i===1?' on':'')+'" style="border-color:'+(l.id==='destiny'?'#c2185b':l.id==='heart'?'#e65100':'#2e7d32')+';color:'+(l.id==='destiny'?'#c2185b':l.id==='heart'?'#e65100':'#2e7d32')+';--pill-on-bg:'+(l.id==='destiny'?'rgba(194,24,91,0.15)':l.id==='heart'?'rgba(230,81,0,0.15)':'rgba(46,125,50,0.15)')+';">'
-    +       + '<input type="radio" name="awLevel" value="'+l.id+'"'+(i===1?' checked':'')+'><span>'+l.icon+' '+l.label+'</span></label>';
-    +   }).join('')
+      return '<label class="pill-check'+(i===1?' on':'')+'" style="border-color:'+(l.id==='destiny'?'#c2185b':l.id==='heart'?'#e65100':'#2e7d32')+';color:'+(l.id==='destiny'?'#c2185b':l.id==='heart'?'#e65100':'#2e7d32')+';--pill-on-bg:'+(l.id==='destiny'?'rgba(194,24,91,0.15)':l.id==='heart'?'rgba(230,81,0,0.15)':'rgba(46,125,50,0.15)')+';">'
+        + '<input type="radio" name="awLevel" value="'+l.id+'"'+(i===1?' checked':'')+'><span>'+l.icon+' '+l.label+'</span></label>';
+    }).join('')
     + '</div>'
     + '<div id="awCoolHint" style="font-size:11px;color:var(--muted);margin-bottom:8px;">💡 输入价格后自动计算冷静期</div>'
     + '<textarea class="input-field" id="awReason" placeholder="心动原因..." rows="3" style="width:100%;margin-bottom:10px;"></textarea>'
