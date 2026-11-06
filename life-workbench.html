@@ -1122,15 +1122,6 @@ textarea.input-field { resize:vertical; min-height:60px; }
   position:absolute; top:-5px; right:-3px; font-size:9px; font-weight:700;
   background:var(--accent); color:#fff; border-radius:8px; padding:1px 5px;
 }
-.flash-wkrow { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
-.flash-chip {
-  padding:5px 12px; border-radius:14px; border:1px solid var(--accent);
-  background:var(--bg); color:var(--accent); font-size:12px; cursor:pointer;
-}
-.flash-chip:active { background:var(--accent); color:#fff; }
-.flash-chip.on { background:var(--accent); color:#fff; }
-.flash-hint { font-size:11px; color:var(--muted); align-self:center; padding:0 2px; }
-.flash-empty { font-size:12px; color:var(--muted); }
 .flash-input { width:100%; margin-top:8px; font-size:13px; }
 /* ─── 纪念日 ─── */
 .ann-badge {
@@ -2325,7 +2316,6 @@ function renderDashboard() {
   // ─── 闪电记录面板（零摩擦打卡）───
   var flNight = (state.gym.sleepData || []).find(function(s){ return s.date === todayStr && s.type !== 'nap'; });
   var flRead = (state.library.readDays || []).indexOf(todayStr) >= 0;
-  var appPrefs = state.appPrefs || {};
   function flashBtn(action, icon, label, badge) {
     var has = badge !== '';
     return '<button class="flash-btn'+(has?' done':'')+'" onclick="'+action+'">'
@@ -2334,49 +2324,14 @@ function renderDashboard() {
       + (has ? '<span class="flash-n">'+badge+'</span>' : '')
       + '</button>';
   }
-  function flashRow(id, chips, emptyText) {
-    return '<div class="flash-wkrow flash-subrow" data-row="'+id+'" style="display:'+(flashOpen===id?'flex':'none')+';">'
-      + (chips || '<span class="flash-empty">'+(emptyText||'')+'</span>')
-      + '</div>';
-  }
-  var wkChips = (state.gym.workoutTypes || []).map(function(t){
-    return '<button class="flash-chip" onclick="flashWorkout(\''+escHtml(t)+'\')">'+escHtml(t)+'</button>';
-  }).join('');
-  var drinkChips = (state.bar.drinkTypes || []).map(function(t){
-    return '<button class="flash-chip" onclick="flashDrink(\''+escHtml(t)+'\')">'+escHtml(t)+'</button>';
-  }).join('');
-  var mealChips = (state.bar.mealTypes || []).map(function(t){
-    return '<button class="flash-chip" onclick="flashMeal(\''+t.id+'\')">'+t.icon+' '+escHtml(t.label)+'</button>';
-  }).join('')
-    + '<span class="flash-hint">来源</span>'
-    + (state.bar.mealSources || []).map(function(s){
-        var on = s === (appPrefs.lastMealSource || '家食');
-        return '<button class="flash-chip'+(on?' on':'')+'" onclick="flashSetMealSource(\''+escHtml(s)+'\')">'+sourceIcon(s)+' '+escHtml(s)+'</button>';
-      }).join('');
-  var sleepChips = '<button class="flash-chip" onclick="flashSleep()">🌙 现在入睡</button>'
-    + '<button class="flash-chip" onclick="flashSleep()">🌅 现在起床</button>'
-    + '<span class="flash-hint">小憩</span>'
-    + [20,30,60].map(function(m){
-        return '<button class="flash-chip" onclick="flashNap('+m+')">☀️ '+m+'分钟</button>';
-      }).join('');
-  var doingBooks = (state.library.items || []).filter(function(i){ return i.status === 'doing' && i.type === 'book'; });
-  var readChips = '<button class="flash-chip'+(flRead?' on':'')+'" onclick="flashRead()">📖 仅打卡</button>'
-    + doingBooks.map(function(i){
-        return '<button class="flash-chip" onclick="flashReadBook(this)" data-title="'+escHtml(i.title)+'">📖 '+escHtml(i.title)+'</button>';
-      }).join('');
   var flashHtml = '<div class="flash-panel">'
     + '<div class="flash-row">'
-    + flashBtn('flashToggleRow(\'drink\')', '☕', '咖啡', todayDrinks.length > 0 ? '×'+todayDrinks.length : '')
-    + flashBtn('flashToggleRow(\'meal\')', '🍽️', '餐食', todayMeals.length > 0 ? '×'+todayMeals.length : '')
-    + flashBtn('flashToggleRow(\'sleep\')', '😴', '睡眠', flNight ? (flNight.waketime ? flNight.hours+'h' : '🌙入睡') : '')
-    + flashBtn('flashToggleRow(\'wk\')', '🏃', '运动', todayWorkouts.length > 0 ? '×'+todayWorkouts.length : '')
-    + flashBtn('flashToggleRow(\'read\')', '📖', '读书', flRead ? '✓' : '')
+    + flashBtn('flashGo(\'drink\')', '☕', '咖啡', todayDrinks.length > 0 ? '×'+todayDrinks.length : '')
+    + flashBtn('flashGo(\'meal\')', '🍽️', '餐食', todayMeals.length > 0 ? '×'+todayMeals.length : '')
+    + flashBtn('flashGo(\'sleep\')', '😴', '睡眠', flNight ? (flNight.waketime ? flNight.hours+'h' : '🌙入睡') : '')
+    + flashBtn('flashGo(\'workout\')', '🏃', '运动', todayWorkouts.length > 0 ? '×'+todayWorkouts.length : '')
+    + flashBtn('flashGo(\'read\')', '📖', '读书', flRead ? '✓' : '')
     + '</div>'
-    + flashRow('drink', drinkChips, '请先在能量站添加饮品类型')
-    + flashRow('meal', mealChips, '请先在能量站添加餐食类型')
-    + flashRow('sleep', sleepChips)
-    + flashRow('wk', wkChips, '请先在健身房添加运动类型')
-    + flashRow('read', readChips)
     + '<input class="input-field flash-input" id="flashNoteInp" placeholder="💬 随手记一句，回车存入今日日记时间轴…" onkeydown="if(event.key===\'Enter\')flashNote(this)">'
     + '</div>';
 
@@ -2455,89 +2410,21 @@ function renderDashboard() {
     </div>`;
 }
 
-// ─── 闪电记录（P0 零摩擦打卡）───
-var flashOpen = '';
+// ─── 闪电记录：一键进入对应记录页 ───
 function nowHM() { var d = new Date(); return ('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2); }
-function flashToggleRow(id) {
-  flashOpen = (flashOpen === id) ? '' : id;
-  var rows = document.querySelectorAll('.flash-subrow');
-  for (var i = 0; i < rows.length; i++) {
-    rows[i].style.display = rows[i].getAttribute('data-row') === flashOpen ? 'flex' : 'none';
+function flashGo(kind) {
+  var focusId = '';
+  if (kind === 'drink') { barSubView = 'drink'; focusId = 'drinkName'; navigate('bar'); }
+  else if (kind === 'meal') { barSubView = 'meal'; focusId = 'mealContent'; navigate('bar'); }
+  else if (kind === 'sleep') { barSubView = 'sleep'; sleepSubView = 'record'; navigate('bar'); }
+  else if (kind === 'workout') { gymView = 'workout'; wkView = 'list'; focusId = 'quickDur'; navigate('gym'); }
+  else if (kind === 'read') { libView = 'list'; libDetailId = null; navigate('library'); }
+  if (focusId) {
+    setTimeout(function() {
+      var el = document.getElementById(focusId);
+      if (el) el.focus();
+    }, 150);
   }
-}
-function flashDrink(type) {
-  if (!state.bar.drinks) state.bar.drinks = [];
-  var prefs = state.appPrefs || (state.appPrefs = {});
-  var t = type || prefs.lastDrinkType || '胶囊咖啡';
-  state.bar.drinks.push({ id:'dk'+Date.now(), date:today(), type:t, name:t, milk:'', topping:'', taste:'', rating:null });
-  prefs.lastDrinkType = t;
-  saveData(); renderPage('dashboard'); toast('☕ 已记一杯 ' + t);
-}
-function flashSetMealSource(s) {
-  var prefs = state.appPrefs || (state.appPrefs = {});
-  prefs.lastMealSource = s;
-  saveData(); renderPage('dashboard'); toast('默认来源：' + s);
-}
-function flashMeal(mt) {
-  if (!state.bar.meals) state.bar.meals = [];
-  var prefs = state.appPrefs || (state.appPrefs = {});
-  if (!mt) {
-    var h = new Date().getHours();
-    mt = h < 10 ? 'breakfast' : (h < 14 ? 'lunch' : (h < 17 ? 'snack' : 'dinner'));
-  }
-  var src = prefs.lastMealSource || '家食';
-  state.bar.meals.push({ id:'ml'+Date.now(), date:today(), mealType:mt, source:src, content:'', note:'' });
-  saveData(); renderPage('dashboard'); toast('🍽️ 已记' + mealTypeLabel(mt) + ' · ' + src);
-}
-function flashSleep() {
-  if (!state.gym.sleepData) state.gym.sleepData = [];
-  var t = today();
-  var rec = state.gym.sleepData.find(function(s){ return s.date === t && s.type !== 'nap'; });
-  if (!rec) {
-    state.gym.sleepData.push({ id:'sl'+Date.now(), date:t, type:'night', bedtime:nowHM(), waketime:'', hours:null, quality:3, note:'' });
-    saveData(); renderPage('dashboard'); toast('😴 已记录入睡 ' + nowHM() + '，起床后再点一次');
-  } else if (!rec.waketime) {
-    rec.waketime = nowHM();
-    rec.hours = calcSleepHours(rec.bedtime, rec.waketime);
-    saveData(); renderPage('dashboard'); toast('🌅 起床啦，睡了 ' + rec.hours + 'h');
-  } else {
-    toast('今天的睡眠已记录完整 ✅');
-  }
-}
-function flashNap(mins) {
-  if (!state.gym.sleepData) state.gym.sleepData = [];
-  var end = new Date();
-  var start = new Date(end.getTime() - mins * 60000);
-  function pad(n) { return ('0' + n).slice(-2); }
-  state.gym.sleepData.push({
-    id:'sl'+Date.now(), date:today(), type:'nap',
-    bedtime: pad(start.getHours()) + ':' + pad(start.getMinutes()),
-    waketime: pad(end.getHours()) + ':' + pad(end.getMinutes()),
-    hours: Math.round(mins / 6) / 10, quality:3, note:''
-  });
-  saveData(); renderPage('dashboard'); toast('☀️ 小憩 ' + mins + ' 分钟已记录');
-}
-function flashWorkout(type) {
-  if (!state.gym.workouts) state.gym.workouts = [];
-  state.gym.workouts.push({ id:'w'+Date.now(), date:today(), type:type, duration:0, note:'' });
-  var prefs = state.appPrefs || (state.appPrefs = {}); prefs.lastWorkoutType = type;
-  saveData(); renderPage('dashboard'); toast('🏃 已记 ' + type + '，时长可到运动记录补');
-}
-function flashRead() {
-  if (!state.library.readDays) state.library.readDays = [];
-  var t = today();
-  var i = state.library.readDays.indexOf(t);
-  if (i >= 0) { state.library.readDays.splice(i, 1); toast('已取消今日读书记录'); }
-  else { state.library.readDays.push(t); toast('📖 已记录今日读书'); }
-  saveData(); renderPage('dashboard');
-}
-function flashReadBook(el) {
-  var title = el ? el.getAttribute('data-title') : '';
-  if (!state.library.readDays) state.library.readDays = [];
-  var t = today();
-  if (state.library.readDays.indexOf(t) < 0) state.library.readDays.push(t);
-  if (title) flashPushTimeline('📖 读《' + title + '》');
-  saveData(); renderPage('dashboard'); toast('📖 已记录：' + (title || '今日读书'));
 }
 function flashPushTimeline(content) {
   if (!state.gratitude.entries) state.gratitude.entries = [];
