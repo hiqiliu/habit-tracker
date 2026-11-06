@@ -1748,9 +1748,8 @@ textarea.input-field { resize:vertical; min-height:60px; }
 // ═══════════════════════════════════════
 const STORAGE_KEY = 'life_workbench_data';
 const DEFAULT_MODULES = [
-  { id:'plan', icon:'📋', name:'每日计划' },
   { id:'review', icon:'📔', name:'手账本' },
-  { id:'soul', icon:'📖', name:'日记本' },
+  { id:'habit', icon:'✅', name:'习惯' },
   { id:'study', icon:'📚', name:'学习桌' },
   { id:'gym', icon:'💪', name:'健身房' },
   { id:'library', icon:'📖', name:'图书馆' },
@@ -1845,16 +1844,19 @@ function updateThemeButtons() {
 
 // Data migration function (called on load and after import)
 function runMigrations() {
-  // Migrate modules: merge old separate modules into soul
-  if (state.modules && !state.modules.find(m => m.id === 'soul')) {
-    state.modules = state.modules.filter(m => !['habit','gratitude','meditate','stars'].includes(m.id));
-    var planIdx = state.modules.findIndex(m => m.id === 'plan');
-    if (planIdx >= 0) state.modules.splice(planIdx + 1, 0, { id:'soul', icon:'📖', name:'日记本' });
-    else state.modules.unshift({ id:'soul', icon:'📖', name:'日记本' });
-  }
-  // Always remove 'habit' module from sidebar (merged into plan)
+  // 三合一：每日计划 + 日记本 → 手账本；习惯独立为一级入口
   if (state.modules) {
-    state.modules = state.modules.filter(m => m.id !== 'habit');
+    state.modules = state.modules.filter(function(m) {
+      return ['plan','soul','gratitude','meditate','stars'].indexOf(m.id) < 0;
+    });
+    var reviewIdx = state.modules.findIndex(function(m) { return m.id === 'review'; });
+    if (reviewIdx < 0) {
+      state.modules.unshift({ id:'review', icon:'📔', name:'手账本' });
+      reviewIdx = 0;
+    }
+    if (!state.modules.find(function(m) { return m.id === 'habit'; })) {
+      state.modules.splice(reviewIdx + 1, 0, { id:'habit', icon:'✅', name:'习惯' });
+    }
   }
   // Migrate old gym plans: convert from day-based to session-based
   if (state.gym && state.gym.plans) {
@@ -2175,6 +2177,8 @@ function navigate(pageId) {
   if (currentPage === 'tips' && tipsView === 'detail') autoSaveTipDetail();
   if (currentPage === 'gym' && resView === 'detail') autoSaveResDetail();
   if (currentPage === 'gym' && wkView === 'detail') autoSaveWorkoutDetail();
+  if (pageId === 'plan') { journalView = 'today'; diaryView = 'list'; pageId = 'review'; }
+  if (pageId === 'soul') { journalView = 'today'; diaryView = 'detail'; diaryDetailDate = today(); pageId = 'review'; }
   currentPage = pageId;
   const app = $('app');
   const sidebar = $('sidebar');
@@ -2201,9 +2205,10 @@ function renderPage(pageId) {
   const main = $('mainContent');
   switch(pageId) {
     case 'dashboard': main.innerHTML = renderDashboard(); break;
-    case 'plan': main.innerHTML = renderPlan(); break;
     case 'review': main.innerHTML = renderReview(); break;
-    case 'soul': main.innerHTML = renderSoul(); break;
+    case 'habit': main.innerHTML = renderHabitPage(); break;
+    case 'plan': journalView = 'today'; main.innerHTML = renderReview(); break;
+    case 'soul': main.innerHTML = renderReview(); break;
     case 'study': main.innerHTML = renderStudy(); break;
     case 'gym': main.innerHTML = renderGym(); break;
     case 'library': main.innerHTML = renderLibrary(); break;
@@ -2305,7 +2310,7 @@ function renderDashboard() {
   var overviewHtml = '<div class="dash-section-title">📊 今日概览</div>'
     + '<div class="dash-overview">'
     + ovCard('📋', donePlans+'/'+todayPlans.length, '待办', 'plan', todayPlans.length === 0)
-    + ovCard('✅', checkedHabits+'/'+totalHabits, '习惯', 'plan', totalHabits === 0)
+    + ovCard('✅', checkedHabits+'/'+totalHabits, '习惯', 'habit', totalHabits === 0)
     + ovCard('🏃', todayWorkouts.length, '运动', 'gym', todayWorkouts.length === 0)
     + ovCard('😴', todaySleep.length > 0 ? (todaySleep[0].hours != null ? todaySleep[0].hours+'h' : '🌙') : '—', '睡眠', 'bar', todaySleep.length === 0)
     + ovCard('📝', todayGratitude ? MOOD_EMOJIS[todayGratitude.level||3] : '—', '日记', 'soul', !todayGratitude)
@@ -2446,7 +2451,7 @@ function renderTodayTodos(todayStr, todayPlans, donePlans, checkedHabits, totalH
   var html = '<div class="smart-tips-section">';
   html += '<div class="smart-tips-title">📌 今日待办'
     + '<span class="tt-count">' + donePlans + '/' + todayPlans.length + '</span>'
-    + '<span class="tt-more" onclick="navigate(\'plan\')">每日计划 →</span>'
+    + '<span class="tt-more" onclick="openJournalToday()">手账本 →</span>'
     + '</div>';
   html += '<div class="form-row" style="margin-bottom:8px;">'
     + '<input class="input-field" id="dashTodoInp" placeholder="+ 记一件今天要做的事，回车添加…" onkeydown="if(event.key===\'Enter\')dashAddTodo(this)">'
@@ -2482,6 +2487,12 @@ function renderTodayTodos(todayStr, todayPlans, donePlans, checkedHabits, totalH
   return html;
 }
 
+function openJournalToday() {
+  journalView = 'today';
+  diaryView = 'list';
+  navigate('review');
+}
+
 function dashAddTodo(inp) {
   if (!inp) return;
   var v = inp.value.trim();
@@ -2501,28 +2512,18 @@ function updateClock() {
 setInterval(updateClock, 1000);
 
 // ═══════════════════════════════════════
-// 1. DAILY PLAN (每日计划) - 待办+习惯
+// 1. HABIT (习惯) - 独立一级入口
 // ═══════════════════════════════════════
-let planSubView = 'todo'; // 'todo' | 'habit'
-function renderPlan() {
-  var mod = state.modules.find(function(m) { return m.id === 'plan'; });
-  var toggleHtml = '<div class="journal-view-toggle" style="margin-bottom:14px;">'
-    + '<button class="jvt-btn'+(planSubView==='todo'?' active':'')+'" onclick="setPlanSubView(\'todo\')">📋 待办</button>'
-    + '<button class="jvt-btn'+(planSubView==='habit'?' active':'')+'" onclick="setPlanSubView(\'habit\')">✅ 习惯</button>'
-    + '</div>';
-  var contentHtml;
-  if (planSubView === 'habit') contentHtml = renderHabit();
-  else contentHtml = renderTodo();
+function renderHabitPage() {
+  var mod = state.modules.find(function(m) { return m.id === 'habit'; }) || { icon:'✅', name:'习惯' };
   return '<div class="page active">'
     + '<div class="module-title">'
-    +   mod.icon + ' <span class="editable-title" ondblclick="editModule(\'plan\')">'+mod.name+'</span>'
-    +   '<button class="edit-icon-btn" onclick="editModule(\'plan\')" title="编辑">✏️</button>'
+    +   mod.icon + ' <span class="editable-title" ondblclick="editModule(\'habit\')">'+mod.name+'</span>'
+    +   '<button class="edit-icon-btn" onclick="editModule(\'habit\')" title="编辑">✏️</button>'
     + '</div>'
-    + toggleHtml
-    + contentHtml
+    + renderHabit()
     + '</div>';
 }
-function setPlanSubView(v) { planSubView = v; renderPage('plan'); }
 
 function renderTodo() {
   const allTodos = (state.plan.todos || []);
@@ -2604,7 +2605,7 @@ function addTodo() {
     done: false,
     repeat: repeatInp ? repeatInp.value : 'none'
   });
-  saveData(); renderPage('plan'); toast('待办已添加');
+  saveData(); renderPage(currentPage); toast('待办已添加');
 }
 function toggleTodo(id) {
   const t = state.plan.todos.find(t => t.id === id);
@@ -2636,7 +2637,7 @@ function toggleTodo(id) {
 }
 function deleteTodo(id) {
   state.plan.todos = state.plan.todos.filter(t => t.id !== id);
-  saveData(); renderPage('plan');
+  saveData(); renderPage(currentPage);
 }
 function editTodo(id) {
   const t = (state.plan.todos||[]).find(x => x.id === id);
@@ -2675,7 +2676,7 @@ function saveEditTodo(id) {
   if (dateInp && dateInp.value) t.date = dateInp.value;
   saveData();
   document.getElementById('editTodoModal').remove();
-  renderPage('plan'); toast('待办已更新');
+  renderPage(currentPage); toast('待办已更新');
 }
 function addAnniversary() {
   const name = $('newAnnName'), date = $('newAnnDate');
@@ -2730,7 +2731,7 @@ function saveEditAnniversary(id) {
 // 2. JOURNAL (手账本) - weeks周历视图
 // ═══════════════════════════════════════
 let journalWeekOffset = 0;
-let journalView = 'week'; // 'week' | 'month' | 'year' | 'report'
+let journalView = 'today'; // 'today' | 'week' | 'month' | 'year' | 'report'
 let journalMonthOffset = 0;
 let journalYearOffset = 0;
 let journalFilters = null; // lazy init
@@ -2897,7 +2898,8 @@ function getDayActivities(dateStr) {
 }
 
 function renderReview() {
-  var mod = state.modules.find(function(m) { return m.id === 'review'; });
+  var mod = state.modules.find(function(m) { return m.id === 'review'; }) || { icon:'📔', name:'手账本' };
+  if (diaryView === 'detail') return renderDiaryShell(mod);
   // Init filters
   if (!journalFilters) {
     journalFilters = {};
@@ -2911,15 +2913,19 @@ function renderReview() {
 
   // View toggle
   var viewToggleHtml = '<div class="journal-view-toggle">'
-    + '<button class="jvt-btn'+(journalView==='week'?' active':'')+'" onclick="setJournalView(\'week\')">📅 周历</button>'
-    + '<button class="jvt-btn'+(journalView==='month'?' active':'')+'" onclick="setJournalView(\'month\')">🗓️ 月历</button>'
-    + '<button class="jvt-btn'+(journalView==='year'?' active':'')+'" onclick="setJournalView(\'year\')">📊 年历</button>'
-    + '<button class="jvt-btn'+(journalView==='report'?' active':'')+'" onclick="setJournalView(\'report\')">📄 报告</button>'
+    + '<button class="jvt-btn'+(journalView==='today'?' active':'')+'" onclick="setJournalView(\'today\')">今天</button>'
+    + '<button class="jvt-btn'+(journalView==='week'?' active':'')+'" onclick="setJournalView(\'week\')">周</button>'
+    + '<button class="jvt-btn'+(journalView==='month'?' active':'')+'" onclick="setJournalView(\'month\')">月</button>'
+    + '<button class="jvt-btn'+(journalView==='year'?' active':'')+'" onclick="setJournalView(\'year\')">年</button>'
+    + '<button class="jvt-btn'+(journalView==='report'?' active':'')+'" onclick="setJournalView(\'report\')">报告</button>'
     + '</div>';
 
   var navHtml, contentHtml;
 
-  if (journalView === 'week') {
+  if (journalView === 'today') {
+    navHtml = '';
+    contentHtml = renderTodo() + renderTodayDiary(todayStr);
+  } else if (journalView === 'week') {
     var weekDates = getWeekDates(journalWeekOffset);
     var wkStart = weekDates[0], wkEnd = weekDates[6];
     navHtml = '<div class="journal-nav">'
@@ -3009,9 +3015,44 @@ function renderReview() {
     + '</div>'
     + viewToggleHtml
     + navHtml
-    + (journalView !== 'report' ? '<div class="journal-filters">'+filtersHtml+'</div>' : '')
+    + (journalView !== 'report' && journalView !== 'today' ? '<div class="journal-filters">'+filtersHtml+'</div>' : '')
     + legendHtml
     + contentHtml
+    + '</div>';
+}
+
+function renderTodayDiary(todayStr) {
+  var entry = (state.gratitude.entries || []).find(function(e) { return e.date === todayStr; });
+  var timeline = entry && entry.timeline ? entry.timeline.slice().sort(function(a, b) { return a.time.localeCompare(b.time); }) : [];
+  var hasContent = entry && (entry.joys || entry.improve || timeline.length > 0);
+  var html = '<div class="section-title">📝 今日日记</div>';
+  if (hasContent) {
+    html += '<div class="card" style="padding:12px 14px;cursor:pointer;" onclick="openDiaryDetail(\'' + todayStr + '\')">';
+    if (entry.joys) {
+      html += '<div style="font-size:13px;color:var(--ink);margin-bottom:6px;">✨ ' + escHtml(entry.joys.length > 80 ? entry.joys.slice(0, 80) + '…' : entry.joys) + '</div>';
+    }
+    if (entry.improve) {
+      html += '<div style="font-size:13px;color:var(--muted);margin-bottom:6px;">🌱 ' + escHtml(entry.improve.length > 80 ? entry.improve.slice(0, 80) + '…' : entry.improve) + '</div>';
+    }
+    if (timeline.length > 0) {
+      html += '<div style="font-size:12px;color:var(--muted);">⏰ 时间轴 ' + timeline.length + ' 条</div>';
+    }
+    html += '<div style="font-size:12px;color:var(--accent);margin-top:6px;">点击编辑 →</div>';
+    html += '</div>';
+  } else {
+    html += '<div class="empty-state" style="padding:14px;">今天还没有写日记</div>';
+    html += '<div style="text-align:center;margin-bottom:8px;"><button class="btn-sm primary" onclick="openDiaryDetail(\'' + todayStr + '\')">✍️ 写今日日记</button></div>';
+  }
+  return html;
+}
+
+function renderDiaryShell(mod) {
+  return '<div class="page active">'
+    + '<div class="module-title">'
+    +   mod.icon + ' <span class="editable-title" ondblclick="editModule(\'review\')">' + mod.name + '</span>'
+    +   '<button class="edit-icon-btn" onclick="editModule(\'review\')" title="编辑">✏️</button>'
+    + '</div>'
+    + renderDiaryDetail()
     + '</div>';
 }
 
@@ -3273,6 +3314,7 @@ function journalMonthDayClick(dateStr) {
 
 function setJournalView(view) {
   journalView = view;
+  diaryView = 'list';
   renderPage('review');
 }
 
@@ -3656,7 +3698,7 @@ function addHabit() {
     category: catSel ? catSel.value : '其他',
     createdAt: today()
   });
-  saveData(); renderPage('plan'); toast('习惯已添加');
+  saveData(); renderPage(currentPage); toast('习惯已添加');
 }
 
 function addHabitFromDash() {
@@ -3688,7 +3730,7 @@ function toggleHabitCheckin(habitId) {
 function deleteHabit(id) {
   state.habit.habits = state.habit.habits.filter(function(h) { return h.id !== id; });
   if (state.habit.checkins) delete state.habit.checkins[id];
-  saveData(); renderPage('plan');
+  saveData(); renderPage(currentPage);
 }
 
 function editHabit(id) {
@@ -3721,7 +3763,7 @@ function saveEditHabit(id) {
   h.category = $('editHabitCat').value;
   saveData();
   document.getElementById('editHabitModal').remove();
-  renderPage('plan'); toast('习惯已更新');
+  renderPage(currentPage); toast('习惯已更新');
 }
 
 function toggleHabitCatFilter(cat) {
@@ -3742,32 +3784,11 @@ function toggleHabitCatFilter(cat) {
 // ═══════════════════════════════════════
 let diaryView = 'list'; // 'list' | 'detail'
 let diaryDetailDate = '';
-function renderSoul() {
-  var mod = state.modules.find(function(m) { return m.id === 'soul'; });
-  var contentHtml;
-  if (diaryView === 'detail') contentHtml = renderDiaryDetail();
-  else contentHtml = renderDiary();
-  return '<div class="page active">'
-    + '<div class="module-title">'
-    +   mod.icon + ' <span class="editable-title" ondblclick="editModule(\'soul\')">'+mod.name+'</span>'
-    +   '<button class="edit-icon-btn" onclick="editModule(\'soul\')" title="编辑">✏️</button>'
-    +   (diaryView === 'list' ? '<button class="btn-sm primary" style="margin-left:auto;font-size:13px;" onclick="openTodayDiary()">✍️ 记录</button>' : '')
-    + '</div>'
-    + contentHtml
-    + '</div>';
-}
-function openTodayDiary() {
-  diaryDetailDate = today();
-  diaryView = 'detail';
-  renderPage('soul');
-}
 function closeDiaryDetail() {
   diaryView = 'list';
   diaryDetailDate = '';
-  renderPage('soul');
+  renderPage('review');
 }
-
-var diaryMonthOffset = 0;
 
 // ─── 日记数据迁移（感恩mood→level + 合并情绪数据）───
 function migrateToDiary() {
@@ -3813,71 +3834,10 @@ function migrateToDiary() {
   console.log('[日记] 数据迁移完成：' + state.gratitude.entries.length + ' 条日记');
 }
 
-function renderDiary() {
-  var entries = state.gratitude.entries || [];
-  var todayStr = today();
-
-  // Get month info
-  var now = new Date();
-  var target = new Date(now.getFullYear(), now.getMonth() + diaryMonthOffset, 1);
-  var cy = target.getFullYear(), cm = target.getMonth();
-  var firstDay = new Date(cy, cm, 1);
-  var daysInMonth = new Date(cy, cm + 1, 0).getDate();
-  var startDow = firstDay.getDay();
-  var monthTitle = cy + '年' + (cm + 1) + '月';
-
-  // Build entry map
-  var entryMap = {};
-  entries.forEach(function(e) { entryMap[e.date] = e; });
-
-  // Day list — one row per day
-  var weekdayNames = ['日','一','二','三','四','五','六'];
-  var dayListHtml = '';
-  for (var d = 1; d <= daysInMonth; d++) {
-    var ds = cy + '-' + String(cm + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
-    var entry = entryMap[ds];
-    var isToday = ds === todayStr;
-    var dow = new Date(cy, cm, d).getDay();
-    var hasContent = entry && (entry.joys || entry.improve || (entry.timeline && entry.timeline.length > 0) || entry.content);
-    var previewIcon = hasContent ? '📝' : '';
-    var previewText = '';
-    if (entry) {
-      if (entry.joys) previewText = '小确幸：' + entry.joys.substring(0, 30);
-      else if (entry.content) previewText = entry.content.substring(0, 40);
-    }
-
-    dayListHtml += '<div class="diary-row'+(isToday?' diary-row-today':'')+'" onclick="openDiaryDetail(\''+ds+'\')">'
-      + '<div class="diary-row-date">'
-      +   '<span class="diary-day-num'+(isToday?' today':'')+'">'+d+'</span>'
-      +   '<span class="diary-weekday">'+weekdayNames[dow]+'</span>'
-      + '</div>'
-      + '<div class="diary-row-mood">'+previewIcon+'</div>'
-      + '<div class="diary-row-content">'
-      +   (hasContent
-          ? '<span style="word-break:break-word;white-space:normal;line-height:1.6;">'+escHtml(previewText)+'</span>'
-          : '<span style="color:var(--muted);font-size:12px;">— 点击记录 —</span>')
-      + '</div>'
-      + '</div>';
-  }
-
-  return '<div class="cal-nav">'
-    +   '<button class="btn-sm" onclick="changeDiaryMonth(-1)">◀</button>'
-    +   '<span style="font-weight:600;font-size:15px;">'+monthTitle+'</span>'
-    +   '<button class="btn-sm" onclick="changeDiaryMonth(1)">▶</button>'
-    + '</div>'
-    + '<div class="diary-day-list">' + dayListHtml + '</div>'
-    + '<div style="text-align:center;font-size:12px;color:var(--muted);padding:8px 0;">点击日期查看 / 记录日记</div>';
-}
-
 function openDiaryDetail(dateStr) {
   diaryDetailDate = dateStr;
   diaryView = 'detail';
-  renderPage('soul');
-}
-
-function changeDiaryMonth(delta) {
-  diaryMonthOffset += delta;
-  renderPage('soul');
+  renderPage('review');
 }
 
 // ─── 日记详情页（两栏布局）───
@@ -3993,7 +3953,7 @@ function addTimelineItem() {
   });
   contentInp.value = '';
   saveData();
-  renderPage('soul');
+  renderPage('review');
   toast('已添加时间点');
 }
 
@@ -4003,7 +3963,7 @@ function deleteTimelineItem(itemId) {
   if (!entry || !entry.timeline) return;
   entry.timeline = entry.timeline.filter(function(t) { return t.id !== itemId; });
   saveData();
-  renderPage('soul');
+  renderPage('review');
 }
 
 function deleteDiaryEntry() {
@@ -7922,7 +7882,7 @@ function renderWisdomCards() {
     + footer;
 }
 
-function setWisdomViewMode(m) { wisdomViewMode = m; renderPage('soul'); }
+function setWisdomViewMode(m) { wisdomViewMode = m; renderPage('review'); }
 function toggleWisdomCat(catId) {
   var body = document.getElementById(catId);
   if (body) body.classList.toggle('open');
@@ -7935,19 +7895,19 @@ function addWisdomCard() {
   if (!method || !method.value.trim()) { toast('请输入方法名称'); return; }
   if (!state.soul.wisdomCards) state.soul.wisdomCards = [];
   state.soul.wisdomCards.push({ id:'wc'+Date.now(), cat:cat.value, scene:scene.value.trim(), method:method.value.trim(), desc:desc.value.trim(), archived:false });
-  saveData(); renderPage('soul'); toast('心法卡片已添加');
+  saveData(); renderPage('review'); toast('心法卡片已添加');
 }
 function archiveWisdomCard(id) {
   var c = (state.soul.wisdomCards||[]).find(function(x) { return x.id === id; });
-  if (c) { c.archived = true; saveData(); renderPage('soul'); toast('已存档'); }
+  if (c) { c.archived = true; saveData(); renderPage('review'); toast('已存档'); }
 }
 function restoreWisdomCard(id) {
   var c = (state.soul.wisdomCards||[]).find(function(x) { return x.id === id; });
-  if (c) { c.archived = false; saveData(); renderPage('soul'); toast('已恢复'); }
+  if (c) { c.archived = false; saveData(); renderPage('review'); toast('已恢复'); }
 }
 function deleteWisdomCard(id) {
   state.soul.wisdomCards = (state.soul.wisdomCards||[]).filter(function(c) { return c.id !== id; });
-  saveData(); renderPage('soul');
+  saveData(); renderPage('review');
 }
 function editWisdomCard(id) {
   var c = (state.soul.wisdomCards||[]).find(function(x) { return x.id === id; });
@@ -7981,7 +7941,7 @@ function saveEditWisdomCard(id) {
   c.desc = document.getElementById('editWisdomDesc').value.trim();
   saveData();
   document.getElementById('editWisdomModal').remove();
-  renderPage('soul'); toast('卡片已更新');
+  renderPage('review'); toast('卡片已更新');
 }
 
 let moodView = 'list';
@@ -8127,8 +8087,8 @@ function addMoodFromModal(level) {
   toast('情绪已记录');
 }
 
-function openMoodDetail(id) { moodDetailId = id; moodView = 'detail'; renderPage('soul'); }
-function closeMoodDetail() { autoSaveMoodDetail(); moodDetailId = null; moodView = 'list'; renderPage('soul'); }
+function openMoodDetail(id) { moodDetailId = id; moodView = 'detail'; renderPage('review'); }
+function closeMoodDetail() { autoSaveMoodDetail(); moodDetailId = null; moodView = 'list'; renderPage('review'); }
 function autoSaveMoodDetail() {
   if (moodView !== 'detail' || !moodDetailId) return;
   var m = (state.meditate.moods||[]).find(function(x) { return x.id === moodDetailId; });
@@ -8152,7 +8112,7 @@ function autoSaveMoodDetail() {
 
 function deleteMood(id) {
   state.meditate.moods = (state.meditate.moods || []).filter(function(m) { return m.id !== id; });
-  saveData(); soulSubView = 'mood'; moodView = 'list'; renderPage('soul'); toast('已删除');
+  saveData(); soulSubView = 'mood'; moodView = 'list'; renderPage('review'); toast('已删除');
 }
 
 function setMedPreset(min) {
@@ -8160,14 +8120,14 @@ function setMedPreset(min) {
   medTimerRemain = medTimerDuration;
   medTimerRunning = false;
   if (medTimerInterval) { clearInterval(medTimerInterval); medTimerInterval = null; }
-  renderPage('soul');
+  renderPage('review');
 }
 function medTimerToggle() {
   if (medTimerDuration === 0) { toast('请先选择时长'); return; }
   if (medTimerRunning) {
     medTimerRunning = false;
     if (medTimerInterval) { clearInterval(medTimerInterval); medTimerInterval = null; }
-    renderPage('soul');
+    renderPage('review');
   } else {
     medTimerRunning = true;
     medTimerInterval = setInterval(function() {
@@ -8183,7 +8143,7 @@ function medTimerToggle() {
         saveData();
         toast('冥想完成！已记录 '+Math.round(medTimerDuration/60)+' 分钟');
         medTimerRemain = medTimerDuration; // reset for next time
-        soulSubView='meditate'; renderPage('soul');
+        soulSubView='meditate'; renderPage('review');
       } else {
         // Update display without full re-render
         var disp = document.querySelector('.med-timer-display');
@@ -8198,19 +8158,19 @@ function medTimerToggle() {
         }
       }
     }, 1000);
-    renderPage('soul');
+    renderPage('review');
   }
 }
 function medTimerReset() {
   medTimerRunning = false;
   if (medTimerInterval) { clearInterval(medTimerInterval); medTimerInterval = null; }
   medTimerRemain = medTimerDuration;
-  renderPage('soul');
+  renderPage('review');
 }
 function deleteMedSession(id) {
   if (!state.meditate.sessions) return;
   state.meditate.sessions = state.meditate.sessions.filter(function(s) { return s.id !== id; });
-  saveData(); soulSubView='meditate'; renderPage('soul'); toast('已删除');
+  saveData(); soulSubView='meditate'; renderPage('review'); toast('已删除');
 }
 
 // ═══════════════════════════════════════
