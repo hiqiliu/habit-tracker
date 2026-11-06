@@ -1151,6 +1151,16 @@ textarea.input-field { resize:vertical; min-height:60px; }
 .tt-tag { font-size:10px; color:var(--muted); border:1px solid var(--rule); border-radius:8px; padding:1px 6px; }
 .tt-sub-title { font-size:12px; font-weight:600; color:var(--muted); margin:10px 0 6px; }
 .tt-empty { font-size:12px; color:var(--muted); padding:6px 2px 2px; }
+/* ─── 手账本 6 页签 ─── */
+.jvt-6 .jvt-btn { padding:5px 10px; }
+/* ─── 学习计划切换 ─── */
+.study-plan-bar { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:10px; }
+.study-plan-chip {
+  padding:6px 12px; border-radius:14px; border:1px solid var(--rule);
+  background:var(--bg); color:var(--ink); font-size:12px; cursor:pointer;
+  max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.study-plan-chip.active { background:var(--accent); border-color:var(--accent); color:#fff; }
 /* ─── 流通罐 ─── */
 .finance-sub-tabs {
   display:flex; gap:8px; margin-bottom:12px;
@@ -1749,14 +1759,13 @@ textarea.input-field { resize:vertical; min-height:60px; }
 const STORAGE_KEY = 'life_workbench_data';
 const DEFAULT_MODULES = [
   { id:'review', icon:'📔', name:'手账本' },
-  { id:'habit', icon:'✅', name:'习惯' },
-  { id:'study', icon:'📚', name:'学习桌' },
-  { id:'gym', icon:'💪', name:'健身房' },
-  { id:'library', icon:'📖', name:'图书馆' },
-  { id:'closet', icon:'👗', name:'衣帽间' },
-  { id:'tips', icon:'💡', name:'灵感库' },
   { id:'bar', icon:'⚡', name:'能量站' },
-  { id:'finance', icon:'💰', name:'记账本' }
+  { id:'library', icon:'📖', name:'图书馆' },
+  { id:'gym', icon:'💪', name:'健身房' },
+  { id:'study', icon:'📚', name:'学习桌' },
+  { id:'finance', icon:'💰', name:'记账本' },
+  { id:'closet', icon:'👗', name:'衣帽间' },
+  { id:'tips', icon:'💡', name:'灵感库' }
 ];
 
 const DEFAULT_DATA = {
@@ -1844,19 +1853,25 @@ function updateThemeButtons() {
 
 // Data migration function (called on load and after import)
 function runMigrations() {
-  // 三合一：每日计划 + 日记本 → 手账本；习惯独立为一级入口
+  // 三合一：每日计划 + 日记本 → 手账本；习惯并入手账本子页
   if (state.modules) {
     state.modules = state.modules.filter(function(m) {
-      return ['plan','soul','gratitude','meditate','stars'].indexOf(m.id) < 0;
+      return ['plan','soul','gratitude','meditate','stars','habit'].indexOf(m.id) < 0;
     });
-    var reviewIdx = state.modules.findIndex(function(m) { return m.id === 'review'; });
-    if (reviewIdx < 0) {
+    if (!state.modules.find(function(m) { return m.id === 'review'; })) {
       state.modules.unshift({ id:'review', icon:'📔', name:'手账本' });
-      reviewIdx = 0;
     }
-    if (!state.modules.find(function(m) { return m.id === 'habit'; })) {
-      state.modules.splice(reviewIdx + 1, 0, { id:'habit', icon:'✅', name:'习惯' });
-    }
+  }
+  // 菜单顺序（一次性）：主页-手账本-能量站-图书馆-健身房-学习桌-记账本
+  if (state.modules && !state._navOrderV3) {
+    var navOrder = ['review','bar','library','gym','study','finance'];
+    state.modules.sort(function(a, b) {
+      var ia = navOrder.indexOf(a.id); if (ia < 0) ia = 99;
+      var ib = navOrder.indexOf(b.id); if (ib < 0) ib = 99;
+      return ia - ib;
+    });
+    state._navOrderV3 = true;
+    saveData();
   }
   // Migrate old gym plans: convert from day-based to session-based
   if (state.gym && state.gym.plans) {
@@ -2178,6 +2193,7 @@ function navigate(pageId) {
   if (currentPage === 'gym' && resView === 'detail') autoSaveResDetail();
   if (currentPage === 'gym' && wkView === 'detail') autoSaveWorkoutDetail();
   if (pageId === 'plan') { journalView = 'today'; diaryView = 'list'; pageId = 'review'; }
+  if (pageId === 'habit') { journalView = 'habit'; diaryView = 'list'; pageId = 'review'; }
   if (pageId === 'soul') { journalView = 'today'; diaryView = 'detail'; diaryDetailDate = today(); pageId = 'review'; }
   currentPage = pageId;
   const app = $('app');
@@ -2206,8 +2222,8 @@ function renderPage(pageId) {
   switch(pageId) {
     case 'dashboard': main.innerHTML = renderDashboard(); break;
     case 'review': main.innerHTML = renderReview(); break;
-    case 'habit': main.innerHTML = renderHabitPage(); break;
     case 'plan': journalView = 'today'; main.innerHTML = renderReview(); break;
+    case 'habit': journalView = 'habit'; diaryView = 'list'; main.innerHTML = renderReview(); break;
     case 'soul': main.innerHTML = renderReview(); break;
     case 'study': main.innerHTML = renderStudy(); break;
     case 'gym': main.innerHTML = renderGym(); break;
@@ -2512,19 +2528,8 @@ function updateClock() {
 setInterval(updateClock, 1000);
 
 // ═══════════════════════════════════════
-// 1. HABIT (习惯) - 独立一级入口
+// 1. TODO (待办) - 手账本「今天」页
 // ═══════════════════════════════════════
-function renderHabitPage() {
-  var mod = state.modules.find(function(m) { return m.id === 'habit'; }) || { icon:'✅', name:'习惯' };
-  return '<div class="page active">'
-    + '<div class="module-title">'
-    +   mod.icon + ' <span class="editable-title" ondblclick="editModule(\'habit\')">'+mod.name+'</span>'
-    +   '<button class="edit-icon-btn" onclick="editModule(\'habit\')" title="编辑">✏️</button>'
-    + '</div>'
-    + renderHabit()
-    + '</div>';
-}
-
 function renderTodo() {
   const allTodos = (state.plan.todos || []);
   const todayStr = today();
@@ -2731,7 +2736,7 @@ function saveEditAnniversary(id) {
 // 2. JOURNAL (手账本) - weeks周历视图
 // ═══════════════════════════════════════
 let journalWeekOffset = 0;
-let journalView = 'today'; // 'today' | 'week' | 'month' | 'year' | 'report'
+let journalView = 'today'; // 'today' | 'week' | 'month' | 'year' | 'habit' | 'report'
 let journalMonthOffset = 0;
 let journalYearOffset = 0;
 let journalFilters = null; // lazy init
@@ -2912,11 +2917,12 @@ function renderReview() {
   }).join('');
 
   // View toggle
-  var viewToggleHtml = '<div class="journal-view-toggle">'
+  var viewToggleHtml = '<div class="journal-view-toggle jvt-6">'
     + '<button class="jvt-btn'+(journalView==='today'?' active':'')+'" onclick="setJournalView(\'today\')">今天</button>'
     + '<button class="jvt-btn'+(journalView==='week'?' active':'')+'" onclick="setJournalView(\'week\')">周</button>'
     + '<button class="jvt-btn'+(journalView==='month'?' active':'')+'" onclick="setJournalView(\'month\')">月</button>'
     + '<button class="jvt-btn'+(journalView==='year'?' active':'')+'" onclick="setJournalView(\'year\')">年</button>'
+    + '<button class="jvt-btn'+(journalView==='habit'?' active':'')+'" onclick="setJournalView(\'habit\')">习惯</button>'
     + '<button class="jvt-btn'+(journalView==='report'?' active':'')+'" onclick="setJournalView(\'report\')">报告</button>'
     + '</div>';
 
@@ -2925,6 +2931,9 @@ function renderReview() {
   if (journalView === 'today') {
     navHtml = '';
     contentHtml = renderTodo() + renderTodayDiary(todayStr);
+  } else if (journalView === 'habit') {
+    navHtml = '';
+    contentHtml = renderHabit();
   } else if (journalView === 'week') {
     var weekDates = getWeekDates(journalWeekOffset);
     var wkStart = weekDates[0], wkEnd = weekDates[6];
@@ -3015,7 +3024,7 @@ function renderReview() {
     + '</div>'
     + viewToggleHtml
     + navHtml
-    + (journalView !== 'report' && journalView !== 'today' ? '<div class="journal-filters">'+filtersHtml+'</div>' : '')
+    + (journalView !== 'report' && journalView !== 'today' && journalView !== 'habit' ? '<div class="journal-filters">'+filtersHtml+'</div>' : '')
     + legendHtml
     + contentHtml
     + '</div>';
@@ -3977,9 +3986,59 @@ function deleteDiaryEntry() {
 // ═══════════════════════════════════════
 // 3. STUDY DESK (学习桌)
 // ═══════════════════════════════════════
+let studyPlanId = 'finance';
 function renderStudy() {
   const mod = state.modules.find(m => m.id === 'study');
-  return renderFinancePlan(mod, '');
+  const plans = state.study.plans || [];
+  const switcher = '<div class="study-plan-bar">'
+    + '<button class="study-plan-chip' + (studyPlanId === 'finance' ? ' active' : '') + '" onclick="setStudyPlan(\'finance\')">🎯 理财学习计划</button>'
+    + plans.map(function(p) {
+        return '<button class="study-plan-chip' + (studyPlanId === p.id ? ' active' : '') + '" onclick="setStudyPlan(\'' + p.id + '\')">📘 ' + escHtml(p.name) + '</button>';
+      }).join('')
+    + '</div>'
+    + '<div class="form-row" style="margin-bottom:14px;">'
+    +   '<input class="input-field" id="planName" placeholder="+ 新建学习计划，如「英语口语」…" onkeydown="if(event.key===\'Enter\')addStudyPlan()" style="flex:1;">'
+    +   '<button class="btn-sm primary" onclick="addStudyPlan()">添加</button>'
+    + '</div>';
+  if (studyPlanId !== 'finance') {
+    const p = plans.find(function(x) { return x.id === studyPlanId; });
+    if (p) return renderStudyPlanPage(mod, p, switcher);
+    studyPlanId = 'finance';
+  }
+  return renderFinancePlan(mod, switcher);
+}
+
+function setStudyPlan(id) { studyPlanId = id; renderPage('study'); }
+
+function renderStudyPlanPage(mod, p, switcher) {
+  const done = p.tasks.filter(function(t) { return t.done; }).length;
+  let html = '<div class="page active">'
+    + '<div class="module-title">' + mod.icon + ' <span class="editable-title" ondblclick="editModule(\'study\')">' + mod.name + '</span>'
+    + '<button class="edit-icon-btn" onclick="editModule(\'study\')" title="编辑">✏️</button></div>'
+    + switcher
+    + '<div class="card" style="margin-bottom:12px;">'
+    + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">'
+    +   '<strong style="flex:1;font-size:16px;">📘 ' + escHtml(p.name) + '</strong>'
+    +   '<span style="font-size:12px;color:var(--muted);">' + done + '/' + p.tasks.length + '</span>'
+    +   '<button class="btn-sm" onclick="editStudyPlan(\'' + p.id + '\')">✏️</button>'
+    +   '<button class="btn-sm danger" onclick="deleteStudyPlan(\'' + p.id + '\')">🗑️</button>'
+    + '</div>';
+  p.tasks.forEach(function(t) {
+    html += '<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);">'
+      + '<span style="cursor:pointer;font-size:16px;" onclick="togglePlanTask(\'' + p.id + '\',\'' + t.id + '\')">' + (t.done ? '✅' : '⬜') + '</span>'
+      + '<span style="flex:1;font-size:13px;' + (t.done ? 'text-decoration:line-through;color:var(--muted);' : '') + '">' + escHtml(t.text) + '</span>'
+      + '<button class="btn-sm" onclick="editPlanTask(\'' + p.id + '\',\'' + t.id + '\')">✏️</button>'
+      + '<button class="btn-sm danger" onclick="deletePlanTask(\'' + p.id + '\',\'' + t.id + '\')">×</button>'
+      + '</div>';
+  });
+  if (p.tasks.length === 0) {
+    html += '<div class="empty-state" style="padding:12px;">还没有子任务，先在下面加一条吧</div>';
+  }
+  html += '<div class="form-row" style="margin-top:10px;">'
+    + '<input class="input-field" id="planTask_' + p.id + '" placeholder="+ 添加子任务…" onkeydown="if(event.key===\'Enter\')addPlanTask(\'' + p.id + '\')">'
+    + '<button class="btn-sm primary" onclick="addPlanTask(\'' + p.id + '\')">+</button>'
+    + '</div></div></div>';
+  return html;
 }
 function addCourse() {
   const name = $('courseName'), day = $('courseDay'), time = $('courseTime');
@@ -3991,12 +4050,19 @@ function addCourse() {
 function deleteCourse(id) { state.study.courses = state.study.courses.filter(c => c.id !== id); saveData(); renderPage('study'); }
 function addStudyPlan() {
   const name = $('planName');
-  if (!name.value.trim()) return;
+  if (!name || !name.value.trim()) return;
   if (!state.study.plans) state.study.plans = [];
-  state.study.plans.push({ id:'sp'+Date.now(), name:name.value.trim(), tasks:[] });
+  const np = { id:'sp'+Date.now(), name:name.value.trim(), tasks:[] };
+  state.study.plans.push(np);
+  studyPlanId = np.id;
   saveData(); renderPage('study'); toast('学习计划已创建');
 }
-function deleteStudyPlan(id) { state.study.plans = state.study.plans.filter(p => p.id !== id); saveData(); renderPage('study'); }
+function deleteStudyPlan(id) {
+  if (!confirm('删除这个学习计划？')) return;
+  state.study.plans = state.study.plans.filter(p => p.id !== id);
+  if (studyPlanId === id) studyPlanId = 'finance';
+  saveData(); renderPage('study'); toast('学习计划已删除');
+}
 function addPlanTask(planId) {
   const inp = $('planTask_'+planId);
   if (!inp || !inp.value.trim()) return;
@@ -4259,9 +4325,9 @@ function toggleFinancePhase(idx) {
   renderPage('study');
 }
 
-function renderFinancePlan(mod, tabs) {
+function renderFinancePlan(mod, switcher) {
   var fp = state.study.financePlan;
-  if (!fp) return '<div class="page active"><div class="module-title">' + mod.icon + ' ' + mod.name + '</div>' + tabs + '<div class="empty-state">暂无理财学习计划数据</div></div>';
+  if (!fp) return '<div class="page active"><div class="module-title">' + mod.icon + ' ' + mod.name + '</div>' + switcher + '<div class="empty-state">暂无理财学习计划数据</div></div>';
   var totalDone = 0, totalDays = 0;
   fp.phases.forEach(function(ph) {
     totalDays += ph.items.length;
@@ -4273,7 +4339,7 @@ function renderFinancePlan(mod, tabs) {
   var html = '<div class="page active">'
     + '<div class="module-title">' + mod.icon + ' <span class="editable-title" ondblclick="editModule(\'study\')">' + mod.name + '</span>'
     + '<button class="edit-icon-btn" onclick="editModule(\'study\')" title="编辑">✏️</button></div>'
-    + tabs;
+    + switcher;
 
   // Dashboard
   html += '<div class="card" style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;margin-bottom:16px;">'
