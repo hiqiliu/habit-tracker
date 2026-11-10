@@ -1210,6 +1210,20 @@ textarea.input-field { resize:vertical; min-height:60px; }
 .meal-line.empty { cursor:pointer; }
 .meal-line.empty:hover .meal-line-plus { color:var(--accent); opacity:1; }
 .meal-note { color:var(--muted); }
+/* 饮水：当天多次叠加 */
+.meal-water-body { flex:1; min-width:0; }
+.meal-water-total { font-size:12px; font-weight:700; color:var(--ink); margin-right:6px; }
+.meal-water-chips { display:inline-flex; flex-wrap:wrap; gap:4px; vertical-align:middle; }
+.meal-water-chip {
+  font-size:11px; color:var(--accent); background:var(--accent-soft);
+  border-radius:8px; padding:0 6px; line-height:16px; cursor:pointer;
+}
+.meal-water-chip:hover { background:var(--accent); color:#fff; }
+.meal-water-add {
+  border:1px dashed var(--rule); background:none; color:var(--muted);
+  border-radius:8px; font-size:11px; line-height:16px; padding:0 5px; cursor:pointer;
+}
+.meal-water-add:hover { color:var(--accent); border-color:var(--accent); }
 /* ─── 流通罐 ─── */
 .finance-sub-tabs {
   display:flex; gap:8px; margin-bottom:12px;
@@ -2355,7 +2369,6 @@ function renderDashboard() {
   const todaySleep = (state.gym.sleepData || []).filter(s => s.date === todayStr);
   const todayMoods = (state.meditate.moods || []).filter(m => m.date === todayStr);
   const todayGratitude = (state.gratitude.entries || []).find(e => e.date === todayStr); // diary entry for today
-  const todayDrinks = (state.bar.drinks || []).filter(dr => dr.date === todayStr);
   const todayMeals = (state.bar.meals || []).filter(me => me.date === todayStr);
   const todayFin = (state.finance.records || []).filter(f => f.date === todayStr);
   const todayOutfits = (state.closet.outfits || []).filter(o => o.date === todayStr);
@@ -2363,15 +2376,16 @@ function renderDashboard() {
   const checkedHabits = (state.habit.habits || []).filter(h => state.habit.checkins && state.habit.checkins[h.id] && state.habit.checkins[h.id][todayStr]).length;
 
   // Overview cards
-  function ovCard(icon, val, lbl, target, isEmpty) {
+  function ovCard(icon, val, lbl, target, isEmpty, id) {
     var cls = 'dash-ov-card' + (isEmpty ? ' empty' : '');
-    return '<div class="'+cls+'" onclick="navigate(\''+target+'\')">'
+    return '<div class="'+cls+'"'+(id?' id="'+id+'"':'')+' onclick="navigate(\''+target+'\')">'
       + '<div class="dash-ov-icon">'+icon+'</div>'
       + '<div class="dash-ov-val">'+val+'</div>'
       + '<div class="dash-ov-lbl">'+lbl+'</div>'
       + '</div>';
   }
 
+  var todayMealCount = todayMeals.filter(function(m) { return m.mealType !== 'water'; }).length;
   var overviewHtml = '<div class="dash-section-title">📊 今日概览</div>'
     + '<div class="dash-overview">'
     + ovCard('📋', donePlans+'/'+todayPlans.length, '待办', 'plan', todayPlans.length === 0)
@@ -2379,28 +2393,34 @@ function renderDashboard() {
     + ovCard('🏃', todayWorkouts.length, '运动', 'gym', todayWorkouts.length === 0)
     + ovCard('😴', todaySleep.length > 0 ? (todaySleep[0].hours != null ? todaySleep[0].hours+'h' : '🌙') : '—', '睡眠', 'bar', todaySleep.length === 0)
     + ovCard('📝', todayGratitude ? MOOD_EMOJIS[todayGratitude.level||3] : '—', '日记', 'soul', !todayGratitude)
-    + ovCard('☕', todayDrinks.length, '饮品', 'bar', todayDrinks.length === 0)
-    + ovCard('🍽️', todayMeals.length, '餐食', 'bar', todayMeals.length === 0)
+    + ovCard('🍽️', todayMealCount, '餐食', 'bar', todayMealCount === 0, 'ovMealVal')
     + '</div>';
 
   // ─── 闪电记录面板（零摩擦打卡）───
   var flNight = (state.gym.sleepData || []).find(function(s){ return s.date === todayStr && s.type !== 'nap'; });
   var flRead = (state.library.readDays || []).indexOf(todayStr) >= 0;
-  function flashBtn(action, icon, label, badge) {
+  function flashBtn(action, icon, label, badge, id) {
     var has = badge !== '';
-    return '<button class="flash-btn'+(has?' done':'')+'" onclick="'+action+'">'
+    return '<button class="flash-btn'+(has?' done':'')+'"'+(id?' id="'+id+'"':'')+' onclick="'+action+'">'
       + '<span class="flash-ic">'+icon+'</span>'
       + '<span class="flash-lb">'+label+'</span>'
-      + (has ? '<span class="flash-n">'+badge+'</span>' : '')
+      + (has ? '<span class="flash-n" id="'+(id||'')+'Badge">'+badge+'</span>' : '')
       + '</button>';
   }
+  var mealQuickOpts = mealSlotDefs().map(function(t) {
+    var isLast = (state.appPrefs || {}).lastMealType === t.id;
+    return '<option value="'+t.id+'"'+(isLast?' selected':'')+'>'+t.icon+' '+t.label+'</option>';
+  }).join('');
   var flashHtml = '<div class="flash-panel">'
     + '<div class="flash-row">'
-    + flashBtn('flashGo(\'drink\')', '☕', '咖啡', todayDrinks.length > 0 ? '×'+todayDrinks.length : '')
-    + flashBtn('flashGo(\'meal\')', '🍽️', '餐食', todayMeals.length > 0 ? '×'+todayMeals.length : '')
+    + flashBtn('flashGo(\'meal\')', '🍽️', '餐食', todayMealCount > 0 ? '×'+todayMealCount : '', 'flashMealBtn')
     + flashBtn('flashGo(\'sleep\')', '😴', '睡眠', flNight ? (flNight.waketime ? flNight.hours+'h' : '🌙入睡') : '')
     + flashBtn('flashGo(\'workout\')', '🏃', '运动', todayWorkouts.length > 0 ? '×'+todayWorkouts.length : '')
     + flashBtn('flashGo(\'read\')', '📖', '读书', flRead ? '✓' : '')
+    + '</div>'
+    + '<div class="flash-note-row">'
+    +   '<select class="input-field flash-sum-sel" id="flashMealSel">'+mealQuickOpts+'</select>'
+    +   '<input class="input-field flash-input" id="flashMealInp" placeholder="吃了什么，回车存入餐食…" onkeydown="if(event.key===\'Enter\')flashMeal()">'
     + '</div>'
     + '<div class="flash-note-row">'
     +   '<input class="input-field flash-input" id="flashNoteInp" placeholder="💬 随手记一句，回车存入时间轴…" onkeydown="if(event.key===\'Enter\')flashNote(this)">'
@@ -2494,8 +2514,7 @@ function renderDashboard() {
 function nowHM() { var d = new Date(); return ('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2); }
 function flashGo(kind) {
   var focusId = '';
-  if (kind === 'drink') { barSubView = 'drink'; focusId = 'drinkName'; navigate('bar'); }
-  else if (kind === 'meal') { barSubView = 'meal'; focusId = 'mealContent'; navigate('bar'); }
+  if (kind === 'meal') { barSubView = 'meal'; navigate('bar'); }
   else if (kind === 'sleep') { barSubView = 'sleep'; sleepSubView = 'record'; navigate('bar'); }
   else if (kind === 'workout') { gymView = 'workout'; wkView = 'list'; focusId = 'quickDur'; navigate('gym'); }
   else if (kind === 'read') { libView = 'list'; libDetailId = null; navigate('library'); }
@@ -2504,6 +2523,49 @@ function flashGo(kind) {
       var el = document.getElementById(focusId);
       if (el) el.focus();
     }, 150);
+  }
+}
+
+// ─── 首页餐食快捷输入：选择餐类 + 回车直接写入餐食页 ───
+function flashMeal() {
+  var sel = document.getElementById('flashMealSel');
+  var inp = document.getElementById('flashMealInp');
+  if (!sel || !inp) return;
+  var raw = inp.value.trim();
+  if (!raw) return;
+  var type = sel.value;
+  var content = type === 'water' ? normWaterContent(raw) : raw;
+  if (!state.bar.meals) state.bar.meals = [];
+  var rec = { id:'ml'+Date.now(), date:today(), mealType:type, content:content, note:'' };
+  if (type === 'water') rec.time = nowHM();
+  state.bar.meals.push(rec);
+  if (!state.appPrefs) state.appPrefs = {};
+  state.appPrefs.lastMealType = type;
+  saveData();
+  inp.value = '';
+  refreshMealQuickUI();
+  toast(type === 'water' ? '💧 饮水 +' + content : '🍽️ ' + mealTypeLabel(type) + '已记录');
+}
+
+// 不整页重绘，仅更新首页的餐食计数，避免输入焦点与滚动位置丢失
+function refreshMealQuickUI() {
+  var n = (state.bar.meals || []).filter(function(m) { return m.date === today() && m.mealType !== 'water'; }).length;
+  var ov = document.getElementById('ovMealVal');
+  if (ov) ov.textContent = n;
+  if (ov && ov.parentElement) ov.parentElement.classList.toggle('empty', n === 0);
+  var btn = document.getElementById('flashMealBtn');
+  if (!btn) return;
+  btn.classList.toggle('done', n > 0);
+  var badge = document.getElementById('flashMealBtnBadge');
+  if (n > 0) {
+    if (!badge) {
+      badge = document.createElement('span');
+      badge.className = 'flash-n'; badge.id = 'flashMealBtnBadge';
+      btn.appendChild(badge);
+    }
+    badge.textContent = '×' + n;
+  } else if (badge) {
+    badge.remove();
   }
 }
 function flashPushTimeline(content) {
@@ -9355,7 +9417,7 @@ function saveEditDailyOutfit(id) {
 // ═══════════════════════════════════════
 // 9. BAR (能量站)
 // ═══════════════════════════════════════
-let barSubView = 'meal'; // 'meal' | 'drink' | 'sleep' | 'perfume'
+let barSubView = 'meal'; // 'meal' | 'sleep' | 'perfume'
 var MEAL_TYPES = state.bar.mealTypes || [
   { id:'breakfast', icon:'🌅', label:'早餐', isDefault:true },
   { id:'lunch', icon:'☀️', label:'午餐', isDefault:true },
@@ -9363,8 +9425,11 @@ var MEAL_TYPES = state.bar.mealTypes || [
   { id:'snack', icon:'🍪', label:'加餐', isDefault:true }
 ];
 if (!state.bar.mealTypes) { state.bar.mealTypes = MEAL_TYPES; }
-var DRINK_TYPES = state.bar.drinkTypes || ['胶囊咖啡','手冲咖啡','拿铁','美式','茶','果汁','其他'];
-if (!state.bar.drinkTypes) { state.bar.drinkTypes = DRINK_TYPES; }
+// 固定追加的两个槽位（不参与「管理餐类」）
+var EXTRA_MEAL_SLOTS = [
+  { id:'drink', icon:'🥤', label:'饮料' },
+  { id:'water', icon:'💧', label:'饮水' }
+];
 if (!state.bar.perfumes) { state.bar.perfumes = []; }
 // 兼容迁移：旧数据 scent 单值 → scents 数组
 state.bar.perfumes.forEach(function(p) {
@@ -9383,21 +9448,38 @@ function closetCatIcon(cat) {
   var m = {'上装':'👕','下装':'👖','连衣裙':'👗','外套':'🧥','鞋子':'👠','配饰':'💍'};
   return m[cat] || '💍';
 }
-function mealTypeLabel(t) { var m = MEAL_TYPES.find(function(x){return x.id===t;}); return m ? m.label : '餐'; }
-function mealTypeIcon(t) { var m = MEAL_TYPES.find(function(x){return x.id===t;}); return m ? m.icon : '🍽️'; }
+function mealSlotDefs() {
+  var base = (state.bar.mealTypes || MEAL_TYPES).map(function(t) {
+    return { id:t.id, icon:t.icon, label:t.label };
+  });
+  return base.concat(EXTRA_MEAL_SLOTS);
+}
+function mealSlotDef(t) { return mealSlotDefs().find(function(x) { return x.id === t; }); }
+function mealTypeLabel(t) { var m = mealSlotDef(t); return m ? m.label : '餐'; }
+function mealTypeIcon(t) { var m = mealSlotDef(t); return m ? m.icon : '🍽️'; }
+function parseWaterMl(content) {
+  if (!content) return 0;
+  var m = String(content).match(/([\d.]+)/);
+  return m ? parseFloat(m[1]) : 0;
+}
+function normWaterContent(content) {
+  var t = String(content || '').trim();
+  if (!t) return '';
+  if (/ml|毫升/i.test(t)) return t;
+  var num = parseFloat(t.replace(/[^\d.]/g, ''));
+  return isNaN(num) ? t : num + 'ml';
+}
 
 function renderBar() {
   var mod = state.modules.find(function(m) { return m.id === 'bar'; });
   var toggleHtml = '<div class="journal-view-toggle" style="margin-bottom:14px;">'
     + '<button class="jvt-btn'+(barSubView==='meal'?' active':'')+'" onclick="setBarSubView(\'meal\')">🍽️ 餐食</button>'
-    + '<button class="jvt-btn'+(barSubView==='drink'?' active':'')+'" onclick="setBarSubView(\'drink\')">☕ 饮品</button>'
     + '<button class="jvt-btn'+(barSubView==='sleep'?' active':'')+'" onclick="setBarSubView(\'sleep\')">😴 睡眠</button>'
     + '<button class="jvt-btn'+(barSubView==='perfume'?' active':'')+'" onclick="setBarSubView(\'perfume\')">🌸 香水</button>'
     + '</div>';
 
   var contentHtml;
   if (barSubView === 'meal') contentHtml = renderBarMeals();
-  else if (barSubView === 'drink') contentHtml = renderBarDrinks();
   else if (barSubView === 'perfume') contentHtml = renderBarPerfumes();
   else contentHtml = renderBarSleep();
 
@@ -9424,10 +9506,14 @@ function renderBarMeals() {
     if (!mealsByDate[m.date]) mealsByDate[m.date] = [];
     mealsByDate[m.date].push(m);
   });
-  var typeOrder = MEAL_TYPES.map(function(t) { return t.id; });
-  var weekMeals = meals.filter(function(m) { return wDates.indexOf(m.date) >= 0; });
+  var slots = mealSlotDefs();
+  var typeOrder = slots.map(function(t) { return t.id; });
+  var mealsOnly = meals.filter(function(m) { return m.mealType !== 'water'; });
+  var weekMeals = mealsOnly.filter(function(m) { return wDates.indexOf(m.date) >= 0; });
   var daysWithRecord = wDates.filter(function(ds) { return (mealsByDate[ds] || []).length > 0; }).length;
   var mainSlots = weekMeals.filter(function(m) { return ['breakfast','lunch','dinner'].indexOf(m.mealType) >= 0; }).length;
+  var weekWater = meals.filter(function(m) { return m.mealType === 'water' && wDates.indexOf(m.date) >= 0; })
+    .reduce(function(s, m) { return s + parseWaterMl(m.content); }, 0);
   var wkLabel = mealWeekOffset === 0 ? '本周' : (mealWeekOffset === -1 ? '上周' : (mealWeekOffset === 1 ? '下周' : (mealWeekOffset < 0 ? Math.abs(mealWeekOffset)+'周前' : mealWeekOffset+'周后')));
 
   var listHtml = wDates.map(function(ds, wIdx) {
@@ -9443,8 +9529,9 @@ function renderBarMeals() {
       + (isToday ? '<span class="meal-day-badge">今天</span>' : '')
       + '<button class="meal-day-add" onclick="openMealModal(null,\''+ds+'\')" title="添加一条">＋</button>'
       + '</div>';
-    var rows = MEAL_TYPES.map(function(t) {
+    var rows = slots.map(function(t) {
       var recs = dayMeals.filter(function(x) { return x.mealType === t.id; });
+      if (t.id === 'water') return renderWaterRow(ds, recs);
       if (recs.length === 0) {
         return '<div class="meal-line empty" onclick="openMealModal(null,\''+ds+'\',\''+t.id+'\')">'
           + '<span class="meal-line-ic">'+t.icon+'</span>'
@@ -9496,10 +9583,37 @@ function renderBarMeals() {
     +   '<span>🍽️ 记录 <b>'+weekMeals.length+'</b> 条</span>'
     +   '<span>📅 有记录 <b>'+daysWithRecord+'</b>/7 天</span>'
     +   '<span>🥣 三餐 <b>'+mainSlots+'</b>/21</span>'
+    +   (weekWater > 0 ? '<span>💧 饮水 <b>'+weekWater+'</b> ml</span>' : '')
     + '</div>'
     + listHtml
     + '<div style="display:flex;gap:6px;margin-top:10px;">'
     +   '<button class="btn-sm" onclick="openCatManager({title:\'管理餐食类型\',statePath:\'bar.mealTypes\',format:\'object\',reRender:\'bar\',refs:[{dataPath:\'bar.meals\',field:\'mealType\'}]})" style="font-size:12px;">⚙️ 管理餐类</button>'
+    + '</div>';
+}
+
+// ─── 饮水行：当天多次叠加显示合计 ───
+function renderWaterRow(ds, recs) {
+  if (!recs || recs.length === 0) {
+    return '<div class="meal-line empty" onclick="openMealModal(null,\''+ds+'\',\'water\')">'
+      + '<span class="meal-line-ic">💧</span>'
+      + '<span class="meal-line-lb">饮水</span>'
+      + '<span class="meal-line-plus">+ 添加</span>'
+      + '</div>';
+  }
+  var total = recs.reduce(function(s, m) { return s + parseWaterMl(m.content); }, 0);
+  var chips = recs.map(function(m) {
+    var txt = (m.time ? m.time + ' ' : '') + (m.content || '0ml');
+    return '<span class="meal-water-chip" onclick="openMealModal(\''+m.id+'\')" title="点击编辑">'+escHtml(txt)+'</span>';
+  }).join('');
+  return '<div class="meal-line">'
+    + '<span class="meal-line-ic">💧</span>'
+    + '<span class="meal-line-lb">饮水</span>'
+    + '<div class="meal-water-body">'
+    +   '<span class="meal-water-total">'+total+' ml</span>'
+    +   '<span class="meal-water-chips">'+chips
+    +     '<button class="meal-water-add" onclick="openMealModal(null,\''+ds+'\',\'water\')" title="再记一次">＋</button>'
+    +   '</span>'
+    + '</div>'
     + '</div>';
 }
 
@@ -9530,7 +9644,7 @@ function openMealModal(id, dateStr, defType) {
   mealEditingId = id || null;
   var date = m ? m.date : (dateStr || today());
   var type = m ? m.mealType : (defType || 'breakfast');
-  var typeOpts = MEAL_TYPES.map(function(t) {
+  var typeOpts = mealSlotDefs().map(function(t) {
     return '<option value="'+t.id+'"'+(t.id===type?' selected':'')+'>'+t.icon+' '+t.label+'</option>';
   }).join('');
   var old = document.getElementById('mealEditModal');
@@ -9540,10 +9654,10 @@ function openMealModal(id, dateStr, defType) {
   modal.innerHTML = '<div class="modal-box" style="max-width:420px;">'
     + '<h3>'+(m ? '✏️ 编辑餐食' : '🍽️ 记录餐食')+'</h3>'
     + '<div class="form-row" style="margin-bottom:8px;">'
-    +   '<select class="input-field" id="emType" style="flex:0.6;">'+typeOpts+'</select>'
+    +   '<select class="input-field" id="emType" style="flex:0.6;" onchange="updateMealPlaceholder()">'+typeOpts+'</select>'
     +   '<input class="input-field" type="date" id="emDate" value="'+date+'" style="flex:0.5;">'
     + '</div>'
-    + '<input class="input-field" id="emContent" placeholder="吃了什么（如：番茄炒蛋、米饭）" value="'+escHtml(m ? (m.content||'') : '')+'" style="display:block;width:100%;margin-bottom:8px;" onkeydown="if(event.key===\'Enter\')saveMealModal()">'
+    + '<input class="input-field" id="emContent" placeholder="'+(type==='water'?'毫升数，如 200（可多次记录，当天自动相加）':'吃了什么（如：番茄炒蛋、米饭）')+'" value="'+escHtml(m ? (m.content||'') : '')+'" style="display:block;width:100%;margin-bottom:8px;" onkeydown="if(event.key===\'Enter\')saveMealModal()">'
     + '<input class="input-field" id="emNote" placeholder="备注（可选）" value="'+escHtml(m ? (m.note||'') : '')+'" style="display:block;width:100%;margin-bottom:8px;">'
     + '<div class="modal-actions">'
     +   (m ? '<button class="btn-sm danger" onclick="deleteMeal(\''+m.id+'\');document.getElementById(\'mealEditModal\').remove()">删除</button>' : '')
@@ -9555,19 +9669,33 @@ function openMealModal(id, dateStr, defType) {
   setTimeout(function() { var inp = $('emContent'); if (inp) inp.focus(); }, 50);
 }
 
+function updateMealPlaceholder() {
+  var sel = $('emType'), inp = $('emContent');
+  if (!sel || !inp) return;
+  inp.placeholder = sel.value === 'water'
+    ? '毫升数，如 200（可多次记录，当天自动相加）'
+    : '吃了什么（如：番茄炒蛋、米饭）';
+}
+
 function saveMealModal() {
   var type = $('emType').value;
   var date = $('emDate').value || today();
   var content = $('emContent').value.trim();
   var note = $('emNote').value.trim();
+  if (type === 'water') content = normWaterContent(content);
   if (!state.bar.meals) state.bar.meals = [];
   if (mealEditingId) {
     var m = state.bar.meals.find(function(x) { return x.id === mealEditingId; });
-    if (m) { m.mealType = type; m.date = date; m.content = content; m.note = note; }
+    if (m) {
+      m.mealType = type; m.date = date; m.content = content; m.note = note;
+      if (type === 'water' && !m.time) m.time = nowHM();
+    }
     toast('餐食已更新');
   } else {
-    state.bar.meals.push({ id:'ml'+Date.now(), date:date, mealType:type, content:content, note:note });
-    toast('餐食已记录 🍽️');
+    var rec = { id:'ml'+Date.now(), date:date, mealType:type, content:content, note:note };
+    if (type === 'water') rec.time = nowHM();
+    state.bar.meals.push(rec);
+    toast(type === 'water' ? '饮水已记录 💧' : '餐食已记录 🍽️');
   }
   saveData();
   document.getElementById('mealEditModal').remove();
@@ -9580,120 +9708,6 @@ function deleteMeal(id) {
 }
 
 function editMeal(id) { openMealModal(id); }
-
-function renderBarDrinks() {
-  const drinks = (state.bar.drinks || []).slice(-20).reverse();
-  var html = '<div class="section-title">☕ 饮品记录</div>'
-    + '<div class="form-row">'
-    +   '<select class="input-field" id="drinkType" style="flex:0.6;">'
-    +     DRINK_TYPES.map(function(t){ var lp=(state.appPrefs||{}).lastDrinkType; return '<option'+(t===lp?' selected':'')+'>'+t+'</option>'; }).join('')
-    +   '</select>'
-    +   '<input class="input-field" id="drinkName" placeholder="名称（如：Nespresso 紫色）">'
-    +   '<button class="btn-sm primary" onclick="addDrink()">+</button>'
-    + '</div>'
-    + '<div class="form-row">'
-    +   '<input class="input-field" id="drinkMilk" placeholder="牛奶" style="flex:0.6;">'
-    +   '<input class="input-field" id="drinkTopping" placeholder="小料" style="flex:0.6;">'
-    +   '<input class="input-field" id="drinkTaste" placeholder="口感描述..." style="flex:1.5;">'
-    +   '<span style="font-size:12px;color:var(--muted);white-space:nowrap;">评分:</span>'
-    +   '<select class="input-field" id="drinkRating" style="flex:0.3;">'
-    +     '<option value="5">5⭐</option><option value="4">4⭐</option><option value="3" selected>3⭐</option><option value="2">2⭐</option><option value="1">1⭐</option>'
-    +   '</select>'
-    + '</div>'
-    + '<button class="btn-sm" onclick="openCatManager({title:\'管理饮品类型\',statePath:\'bar.drinkTypes\',format:\'string\',reRender:\'bar\',refs:[{dataPath:\'bar.drinks\',field:\'type\'}]})" style="margin-bottom:8px;font-size:12px;">⚙️ 管理饮品类型</button>'
-    + (drinks.length === 0 ? '<div class="empty-state">今天喝什么？开始记录吧~</div>' :
-        drinks.map(function(d) {
-          return '<div class="card drink-card">'
-            + '<div class="card-row" style="margin-bottom:4px;">'
-            +   '<span style="font-size:18px;">☕</span>'
-            +   '<span class="card-content">'
-            +     '<strong>'+escHtml(d.name || d.type)+'</strong>'
-            +     (d.milk ? ' + <span style="color:var(--accent2);">'+escHtml(d.milk)+'</span>' : '')
-            +     (d.topping ? ' + <span style="color:var(--accent);">'+escHtml(d.topping)+'</span>' : '')
-            + '</span>'
-            +   '<span>'+('⭐'.repeat(d.rating||3))+'</span>'
-            +   '<button class="btn-sm" onclick="editDrink(\''+d.id+'\')">✏️</button>'
-            +   '<button class="btn-sm danger" onclick="deleteDrink(\''+d.id+'\')">删</button>'
-            + '</div>'
-            + '<div style="font-size:12px;color:var(--muted);display:flex;justify-content:space-between;">'
-            +   '<span>'+d.date+' · '+d.type+'</span>'
-            + '</div>'
-            + (d.taste ? '<div style="font-size:13px;color:var(--ink);margin-top:4px;">💬 '+escHtml(d.taste)+'</div>' : '')
-            + '</div>';
-        }).join('')
-      )
-    + '<div class="section-title">📊 饮品统计</div>'
-    + '<div class="stats-row">'
-    +   '<div class="stat-card"><div class="stat-val">'+drinks.length+'</div><div class="stat-lbl">总记录</div></div>'
-    +   '<div class="stat-card"><div class="stat-val">'+drinks.filter(function(d){return d.type === DRINK_TYPES[0];}).length+'</div><div class="stat-lbl">'+DRINK_TYPES[0]+'</div></div>'
-    +   '<div class="stat-card"><div class="stat-val">'+drinks.filter(function(d){return d.milk || d.topping;}).length+'</div><div class="stat-lbl">加料款</div></div>'
-    + '</div>';
-  return html;
-}
-function addDrink() {
-  const type = $('drinkType'), name = $('drinkName'), milk = $('drinkMilk'), topping = $('drinkTopping'), taste = $('drinkTaste'), rating = $('drinkRating');
-  if (!state.bar.drinks) state.bar.drinks = [];
-  var prefs = state.appPrefs || (state.appPrefs = {}); prefs.lastDrinkType = type.value;
-  state.bar.drinks.push({
-    id:'dk'+Date.now(), date:today(), type:type.value,
-    name:name.value.trim() || type.value,
-    milk:milk.value.trim(), topping:topping.value.trim(), taste:taste.value.trim(),
-    rating:parseInt(rating.value)
-  });
-  saveData(); renderPage('bar'); toast('饮品已记录 ☕');
-}
-function deleteDrink(id) { state.bar.drinks = state.bar.drinks.filter(d => d.id !== id); saveData(); renderPage('bar'); }
-function editDrink(id) {
-  const d = (state.bar.drinks||[]).find(x => x.id === id);
-  if (!d) return;
-  var types = DRINK_TYPES;
-  var typeOpts = types.map(function(t) {
-    return '<option'+(d.type===t?' selected':'')+'>'+t+'</option>';
-  }).join('');
-  var modal = document.createElement('div');
-  modal.className = 'modal-overlay show'; modal.id = 'editDrinkModal';
-  modal.innerHTML = `
-    <div class="modal-box" style="max-width:460px;">
-      <h3>✏️ 编辑饮品</h3>
-      <div class="form-row" style="margin-bottom:8px;">
-        <select class="input-field" id="editDrinkType" style="flex:0.6;">${typeOpts}</select>
-        <input class="input-field" id="editDrinkName" placeholder="名称" value="${escHtml(d.name||'')}" style="flex:1;">
-      </div>
-      <div class="form-row" style="margin-bottom:8px;">
-        <input class="input-field" id="editDrinkMilk" placeholder="牛奶" value="${escHtml(d.milk||'')}" style="flex:0.6;">
-        <input class="input-field" id="editDrinkTopping" placeholder="小料" value="${escHtml(d.topping||'')}" style="flex:0.6;">
-        <select class="input-field" id="editDrinkRating" style="flex:0.3;">
-          <option value="5"${d.rating===5?' selected':''}>5⭐</option>
-          <option value="4"${d.rating===4?' selected':''}>4⭐</option>
-          <option value="3"${(!d.rating||d.rating===3)?' selected':''}>3⭐</option>
-          <option value="2"${d.rating===2?' selected':''}>2⭐</option>
-          <option value="1"${d.rating===1?' selected':''}>1⭐</option>
-        </select>
-      </div>
-      <input class="input-field" id="editDrinkDate" type="date" value="${d.date}" style="display:block;width:100%;margin-bottom:8px;">
-      <textarea class="input-field" id="editDrinkTaste" placeholder="口感描述" rows="2" style="display:block;width:100%;margin-bottom:8px;">${escHtml(d.taste||'')}</textarea>
-      <div class="modal-actions">
-        <button class="btn-sm" onclick="document.getElementById('editDrinkModal').remove()">取消</button>
-        <button class="btn-sm primary" onclick="saveEditDrink('${id}')">保存</button>
-      </div>
-    </div>`;
-  document.body.appendChild(modal);
-  modal.addEventListener('click', function(e) { if (e.target === modal) modal.remove(); });
-}
-function saveEditDrink(id) {
-  const d = (state.bar.drinks||[]).find(x => x.id === id);
-  if (!d) return;
-  d.type = $('editDrinkType').value;
-  d.name = $('editDrinkName').value.trim() || d.type;
-  d.milk = $('editDrinkMilk').value.trim();
-  d.topping = $('editDrinkTopping').value.trim();
-  d.rating = parseInt($('editDrinkRating').value);
-  d.date = $('editDrinkDate').value || today();
-  d.taste = $('editDrinkTaste').value.trim();
-  saveData();
-  document.getElementById('editDrinkModal').remove();
-  renderPage('bar'); toast('饮品已更新');
-}
 
 // ─── PERFUME (香水记录) ───
 // PERFUME_SCENTS defined in init section above
