@@ -870,6 +870,37 @@ textarea.input-field { resize:vertical; min-height:60px; }
 /* ─── Library: Item Card ─── */
 .lib-item-card { cursor:pointer; transition: transform 0.12s, box-shadow 0.12s; }
 .lib-item-card:hover { transform:translateY(-1px); box-shadow:0 2px 8px rgba(61,57,41,0.1); }
+.lib-item-sub { font-size:12px; color:var(--muted); }
+.lib-item-bar { height:3px; border-radius:2px; background:var(--rule); margin-top:5px; overflow:hidden; }
+.lib-item-bar-fill { height:100%; border-radius:2px; background:var(--accent); }
+.lib-item-pct { font-size:11px; color:var(--muted); flex-shrink:0; }
+/* 图书馆筛选 */
+.lib-filter-row { display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin-bottom:8px; }
+/* 详情折叠块 */
+.lib-fold-head {
+  display:flex; align-items:center; gap:6px; cursor:pointer;
+  padding:10px 0 6px; margin-top:6px; border-top:1px solid var(--rule);
+  font-size:13px; font-weight:600;
+}
+.lib-fold-head .lib-fold-count {
+  font-size:11px; font-weight:600; color:var(--muted);
+  background:var(--bg2); border-radius:8px; padding:0 6px;
+}
+.lib-fold-head .arrow { margin-left:auto; color:var(--muted); font-size:12px; transition:transform .2s; }
+.lib-fold-head.open .arrow { transform:rotate(180deg); }
+.lib-fold { display:none; }
+.lib-fold.open { display:block; }
+/* 详情进度：已读 / 总数 */
+.lib-progress-row { display:flex; align-items:center; gap:6px; margin-top:4px; }
+.lib-progress-row .input-field { margin:0; min-width:0; flex:1; }
+.lib-pct-badge { font-size:12px; font-weight:700; color:var(--accent); white-space:nowrap; }
+/* 进度日志 */
+.lib-log-list { border:1px solid var(--rule); border-radius:var(--radius-sm); padding:4px 10px; background:var(--bg); }
+.lib-log-row { display:flex; gap:8px; align-items:flex-start; font-size:12px; padding:5px 0; border-bottom:1px dotted var(--rule); }
+.lib-log-row:last-child { border-bottom:none; }
+.lib-log-date { color:var(--muted); flex-shrink:0; font-size:11px; }
+.lib-log-pct { color:var(--accent); font-weight:700; flex-shrink:0; font-size:11px; }
+.lib-log-text { flex:1; word-break:break-word; }
 
 /* ─── Library: Detail Header ─── */
 .detail-header { display:flex; align-items:center; gap:10px; margin-bottom:16px; padding-bottom:10px; border-bottom:1px solid var(--rule); }
@@ -2669,18 +2700,22 @@ function flashLib() {
     if (item.status === 'wish') item.status = 'doing';
     if (!item.startDate) item.startDate = stamp;
     if (prog === 100) { item.status = 'done'; if (!item.endDate) item.endDate = stamp; }
-    if (feeling) item.note = (item.note ? item.note + '\n' : '') + '【' + stamp + '】' + feeling;
+    if (!item.logs) item.logs = [];
+    if (feeling || prog !== null) {
+      item.logs.push({ id: 'lg' + Date.now(), date: stamp, progress: prog, feeling: feeling });
+    }
     toast('已更新「' + item.title + '」' + (prog !== null ? ' · 进度 ' + item.progress + '%' : ''));
   } else {
     var unit = typeEl.value === 'book' ? 'page' : (typeEl.value === 'tv' ? 'episode' : 'minute');
     state.library.items.push({
       id: 'lib' + Date.now(), title: title, type: typeEl.value,
       status: prog === 100 ? 'done' : 'doing', tags: [], rating: null,
-      note: feeling ? '【' + stamp + '】' + feeling : '',
+      note: '',
       subtitle: '', year: '', link: '',
       startDate: stamp, endDate: prog === 100 ? stamp : '',
-      progress: prog || 0, totalUnits: 0, progressUnit: unit,
-      excerpts: [], createdAt: stamp
+      progress: prog || 0, totalUnits: 0, progressUnit: unit, readUnits: 0,
+      excerpts: [], createdAt: stamp,
+      logs: (feeling || prog !== null) ? [{ id: 'lg' + Date.now(), date: stamp, progress: prog, feeling: feeling }] : []
     });
     toast('已加入在读 📚');
   }
@@ -7441,6 +7476,7 @@ let libFilterType = 'all';
 let libFilterTag = 'all';
 let libFilterStatus = 'all';
 let libCalendarMonth = null;
+let libTagsOpen = false;
 
 function renderLibrary() {
   const mod = state.modules.find(m => m.id === 'library');
@@ -7467,8 +7503,8 @@ function renderLibList(mod) {
         ${mod.icon} <span class="editable-title" ondblclick="editModule('library')">${mod.name}</span>
         <button class="edit-icon-btn" onclick="editModule('library')" title="编辑">✏️</button>
         <span style="margin-left:auto;display:flex;gap:6px;">
-          <button class="btn-sm" onclick="libView='stats';renderPage('library');">📊 统计</button>
-          <button class="btn-sm" onclick="libView='calendar';libCalendarMonth=null;renderPage('library');">📅 月历</button>
+          <button class="btn-sm" onclick="libView='stats';renderPage('library');">📊</button>
+          <button class="btn-sm" onclick="libView='calendar';libCalendarMonth=null;renderPage('library');">📅</button>
           <button class="btn-sm primary" onclick="showAddLibItem()">+ 添加</button>
         </span>
       </div>
@@ -7477,33 +7513,31 @@ function renderLibList(mod) {
         ${LIB_TYPES.map(t => `<button class="tab-btn${libFilterType===t.id?' active':''}" onclick="setLibF('type','${t.id}')">${t.label} <span class="tab-count">${items.filter(i=>i.type===t.id).length}</span></button>`).join('')}
         <button class="tab-btn" onclick="openCatManager({title:'管理图书馆类型',statePath:'library.types',format:'object',reRender:'library',refs:[{dataPath:'library.items',field:'type'}]})" style="font-size:14px;">⚙️</button>
       </div>
-      <div class="tabs lib-tabs" style="margin-bottom:6px;">
-        ${[['all','全部'],['wish','想看'],['doing','在看'],['done','已看']].map(([k,v]) => `<button class="tab-btn${libFilterStatus===k?' active':''}" onclick="setLibF('status','${k}')">${v}</button>`).join('')}
+      <div class="lib-filter-row">
+        ${[['all','全部'],['doing','在看'],['wish','想看'],['done','已看']].map(([k,v]) => `<span class="tag-chip${libFilterStatus===k?' active':''}" onclick="setLibF('status','${k}')">${v}</span>`).join('')}
+        <span class="tag-chip${libTagsOpen?' active':''}" onclick="toggleLibTags()" style="margin-left:auto;">🏷 标签${libFilterTag!=='all'?' · '+escHtml(libFilterTag):''}</span>
       </div>
-      ${tags.length > 0 ? `
-      <div class="tag-bar" style="margin-bottom:10px;">
+      ${libTagsOpen ? `<div class="tag-bar" style="margin-bottom:10px;">
         <span class="tag-chip${libFilterTag==='all'?' active':''}" onclick="setLibF('tag','all')">全部</span>
         ${tags.map(t => `<span class="tag-chip${libFilterTag===t?' active':''}" onclick="setLibF('tag','${escHtml(t)}');">${escHtml(t)}</span>`).join('')}
         <span class="tag-chip tag-add" onclick="addTag()">+ 标签</span>
-      </div>` : `<div class="tag-bar" style="margin-bottom:10px;"><span class="tag-chip tag-add" onclick="addTag()">+ 新建标签</span></div>`}
+      </div>` : ''}
       <div id="libList">
         ${filtered.length === 0 ? '<div class="empty-state">暂无记录</div>' :
           filtered.map(item => {
             const ti = LIB_TYPES.find(t => t.id === item.type) || {icon:'📌',label:item.type};
-            const stars = item.rating ? '⭐'.repeat(item.rating) : '';
             const sl = {wish:'想看',doing:'在看',done:'已看'};
             return `
               <div class="card lib-item-card" onclick="openLibDetail('${item.id}')">
                 <div class="card-row">
                   <span style="font-size:20px;">${ti.icon}</span>
-                  <span class="card-content" style="flex:1;">
+                  <span class="card-content" style="flex:1;min-width:0;">
                     <strong>${escHtml(item.title)}</strong>
-                    ${item.subtitle ? `<div style="font-size:12px;color:var(--muted);">${escHtml(item.subtitle)}</div>` : ''}
-                    ${(item.tags||[]).length>0 ? `<div style="margin-top:3px;">${item.tags.map(t => `<span class="tag-chip small">${escHtml(t)}</span>`).join('')}</div>` : ''}
+                    ${item.subtitle ? `<div class="lib-item-sub">${escHtml(item.subtitle)}</div>` : ''}
+                    ${item.progress>0 ? `<div class="lib-item-bar"><div class="lib-item-bar-fill" style="width:${item.progress}%"></div></div>` : ''}
                   </span>
+                  ${item.progress>0 ? `<span class="lib-item-pct">${item.progress}%</span>` : ''}
                   <span class="card-tag ${item.status==='done'?'done':item.status==='doing'?'wip':''}">${sl[item.status]||item.status}</span>
-                  ${stars ? `<span style="font-size:12px;">${stars}</span>` : ''}
-                  ${item.progress>0 ? `<span style="font-size:11px;color:var(--muted);">${item.progress}%</span>` : ''}
                 </div>
               </div>`;
           }).join('')
@@ -7511,6 +7545,7 @@ function renderLibList(mod) {
       </div>
     </div>`;
 }
+function toggleLibTags() { libTagsOpen = !libTagsOpen; renderPage('library'); }
 function setLibF(type, val) {
   if (type === 'type') libFilterType = val;
   if (type === 'tag') libFilterTag = val;
@@ -7583,8 +7618,11 @@ function autoSaveLibDetail() {
   item.rating = r>0 ? r : null;
   item.startDate = gv('detStartDate');
   item.endDate = gv('detEndDate');
-  item.progress = parseInt(gv('detProgress')) || 0;
   item.totalUnits = parseInt(gv('detTotalUnits')) || 0;
+  item.readUnits = parseInt(gv('detReadUnits')) || 0;
+  item.progress = item.totalUnits > 0
+    ? Math.max(0, Math.min(100, Math.round(item.readUnits / item.totalUnits * 100)))
+    : Math.max(0, Math.min(100, item.readUnits));
   item.progressUnit = gv('detProgressUnit') || 'page';
   var newTags = [];
   var cs = document.querySelectorAll('#detTags .tag-chip.active');
@@ -7599,11 +7637,23 @@ function renderLibDetail(mod) {
   var item = (state.library.items||[]).find(i => i.id === libDetailId);
   if (!item) { closeLibDetail(); return ''; }
   var ti = LIB_TYPES.find(t => t.id === item.type) || {icon:'📌',label:item.type};
-  var sl = {wish:'想看',doing:'在看',done:'已看完'};
   if (!item.excerpts) item.excerpts = [];
   if (!item.tags) item.tags = [];
+  if (!item.logs) item.logs = [];
   var pu = item.progressUnit||'page';
   var puLabel = {page:'页',episode:'集',minute:'分钟',chapter:'章'};
+  var unitName = puLabel[pu] || '页';
+  var readUnits = item.readUnits != null ? item.readUnits
+    : (item.totalUnits > 0 ? Math.round((item.progress||0) / 100 * item.totalUnits) : (item.progress||0));
+  var pct = item.totalUnits > 0 ? Math.round(readUnits / item.totalUnits * 100) : Math.round(item.progress||0);
+  pct = Math.max(0, Math.min(100, pct));
+  var logsHtml = item.logs.slice().reverse().map(function(g) {
+    return '<div class="lib-log-row">'
+      + '<span class="lib-log-date">'+(g.date||'')+'</span>'
+      + (g.progress != null ? '<span class="lib-log-pct">'+g.progress+'%</span>' : '')
+      + (g.feeling ? '<span class="lib-log-text">'+escHtml(g.feeling)+'</span>' : '')
+      + '</div>';
+  }).join('');
   return `
     <div class="page active">
       <div class="detail-header">
@@ -7611,7 +7661,7 @@ function renderLibDetail(mod) {
         <span style="flex:1;text-align:center;font-weight:600;">${ti.icon} 详情</span>
         <button class="btn-sm danger" onclick="if(confirm('确定删除？')){state.library.items=state.library.items.filter(i=>i.id!=='${item.id}');saveData();closeLibDetail();toast('已删除');}">🗑</button>
       </div>
-      <div class="section-title">📋 基本信息</div>
+      <div class="section-title">📋 概览</div>
       <div class="form-row">
         <input class="input-field" id="detTitle" value="${escHtml(item.title)}" placeholder="标题">
         <select class="input-field" id="detType" style="flex:0.5;">
@@ -7634,64 +7684,93 @@ function renderLibDetail(mod) {
           ${[1,2,3,4,5].map(r => `<option value="${r}" ${item.rating===r?'selected':''}>${'⭐'.repeat(r)}</option>`).join('')}
         </select>
       </div>
-      <div class="section-title">🏷️ 标签</div>
-      <div class="tag-bar" id="detTags">
-        ${(state.library.tags||[]).map(t => `<span class="tag-chip${(item.tags||[]).includes(t)?' active':''}" onclick="this.classList.toggle('active')">${escHtml(t)}</span>`).join('')}
-        <span class="tag-chip tag-add" onclick="addTag()">+ 新标签</span>
-      </div>
-      <div class="section-title">⏱️ 时间与进度</div>
-      <div class="form-row">
-        <span style="font-size:12px;color:var(--muted);white-space:nowrap;">开始:</span>
-        <input class="input-field" id="detStartDate" type="date" value="${item.startDate||''}">
-        <span style="font-size:12px;color:var(--muted);white-space:nowrap;">结束:</span>
-        <input class="input-field" id="detEndDate" type="date" value="${item.endDate||''}">
-      </div>
-      <div class="form-row">
-        <span style="font-size:12px;color:var(--muted);">进度:</span>
-        <input class="input-field" id="detProgress" type="number" value="${item.progress||0}" min="0" max="100" style="flex:0.3;">
-        <span style="font-size:12px;">%</span>
-        <input class="input-field" id="detTotalUnits" type="number" value="${item.totalUnits||''}" placeholder="总${puLabel[pu]||'页'}数" style="flex:0.5;">
-        <select class="input-field" id="detProgressUnit" style="flex:0.35;">
+      <div class="lib-progress-row">
+        <input class="input-field" id="detReadUnits" type="number" min="0" value="${readUnits||''}" placeholder="已看" oninput="updateLibPct()">
+        <span style="color:var(--muted);">/</span>
+        <input class="input-field" id="detTotalUnits" type="number" min="0" value="${item.totalUnits||''}" placeholder="共多少${unitName}" oninput="updateLibPct()">
+        <select class="input-field" id="detProgressUnit" style="flex:0 0 62px;" onchange="updateLibPct()">
           <option value="page" ${pu==='page'?'selected':''}>页</option>
           <option value="episode" ${pu==='episode'?'selected':''}>集</option>
           <option value="minute" ${pu==='minute'?'selected':''}>分钟</option>
           <option value="chapter" ${pu==='chapter'?'selected':''}>章</option>
         </select>
+        <span class="lib-pct-badge" id="detPctLabel">${pct}%</span>
       </div>
-      ${item.totalUnits>0 ? `<div class="progress-bar" style="margin:6px 0;"><div class="progress-fill" style="width:${item.progress||0}%"></div></div>` : ''}
-      <div class="section-title">📝 摘录</div>
-      <div class="excerpt-input-box">
-        <textarea class="input-field excerpt-textarea" id="detExcerpt" placeholder="摘录内容（支持多行输入）..." rows="4"></textarea>
-        <div class="excerpt-input-meta">
-          <input class="input-field" id="detExcerptPage" placeholder="${puLabel[pu]||'页'}码" style="flex:0.3;">
-          <input class="input-field" id="detExcerptDate" type="date" value="${today()}" style="flex:0.4;">
-          <button class="btn-sm primary" onclick="addExcerpt('${item.id}')">+ 添加摘录</button>
+      <div class="progress-bar" style="margin:6px 0 2px;"><div class="progress-fill" id="detProgressBar" style="width:${pct}%"></div></div>
+      <div class="form-row" style="margin-top:6px;">
+        <span style="font-size:12px;color:var(--muted);white-space:nowrap;">开始:</span>
+        <input class="input-field" id="detStartDate" type="date" value="${item.startDate||''}">
+        <span style="font-size:12px;color:var(--muted);white-space:nowrap;">结束:</span>
+        <input class="input-field" id="detEndDate" type="date" value="${item.endDate||''}">
+      </div>
+      <div class="section-title">🏷️ 标签</div>
+      <div class="tag-bar" id="detTags">
+        ${(state.library.tags||[]).map(t => `<span class="tag-chip${(item.tags||[]).includes(t)?' active':''}" onclick="this.classList.toggle('active')">${escHtml(t)}</span>`).join('')}
+        <span class="tag-chip tag-add" onclick="addTag()">+ 新标签</span>
+      </div>
+
+      <div class="lib-fold-head" id="libFoldExcHead" onclick="toggleLibFold('libFoldExc')">
+        📝 摘录 <span class="lib-fold-count">${item.excerpts.length}</span>
+        <span class="arrow">▾</span>
+      </div>
+      <div class="lib-fold" id="libFoldExc">
+        <div class="excerpt-input-box">
+          <textarea class="input-field excerpt-textarea" id="detExcerpt" placeholder="摘录内容（支持多行输入）..." rows="3"></textarea>
+          <div class="excerpt-input-meta">
+            <input class="input-field" id="detExcerptPage" placeholder="${unitName}码" style="flex:0.3;">
+            <input class="input-field" id="detExcerptDate" type="date" value="${today()}" style="flex:0.4;">
+            <button class="btn-sm primary" onclick="addExcerpt('${item.id}')">+ 添加摘录</button>
+          </div>
+        </div>
+        ${item.excerpts.length===0 ? '<div class="empty-state">暂无摘录</div>' :
+          item.excerpts.map(e => `
+            <div class="card excerpt-card">
+              <div class="excerpt-card-text">${escHtml(e.text).replace(/\n/g,'<br>')}</div>
+              <div class="excerpt-card-meta">
+                <span class="ecm-left">
+                  ${e.page ? '📍 '+escHtml(e.page)+' '+unitName : ''}
+                  ${e.date ? ' 📅 '+e.date : ''}
+                </span>
+                <span style="display:flex;gap:4px;">
+                  <button class="btn-sm" style="font-size:11px;padding:1px 8px;" onclick="editExcerpt('${item.id}','${e.id}')">✏️</button>
+                  <button class="btn-sm danger" style="font-size:11px;padding:1px 8px;" onclick="var it=state.library.items.find(i=>i.id==='${item.id}');if(it){it.excerpts=(it.excerpts||[]).filter(x=>x.id!=='${e.id}');saveData();renderPage('library');}">删除</button>
+                </span>
+              </div>
+            </div>`).join('')
+        }
+      </div>
+
+      <div class="lib-fold-head" id="libFoldNoteHead" onclick="toggleLibFold('libFoldNote')">
+        💭 感想与进度日志
+        <span class="arrow">▾</span>
+      </div>
+      <div class="lib-fold" id="libFoldNote">
+        ${logsHtml ? `<div class="lib-log-list">${logsHtml}</div>` : '<div class="empty-state">还没有进度记录，可在首页「📚 在看记录」随手记一条</div>'}
+        <textarea class="input-field note-textarea" id="detNote" placeholder="整体读后感 / 笔记（支持多行）..." rows="4" style="margin-top:8px;">${escHtml(item.note||'')}</textarea>
+        <div class="auto-save-hint">✨ 输入完成后失焦即自动保存</div>
+        <div class="form-row" style="margin-top:8px;">
+          <button class="btn-sm" onclick="saveLibNote('${item.id}')">💾 立即保存笔记</button>
+          <button class="btn-sm" onclick="closeLibDetail()" style="margin-left:auto;">← 返回列表</button>
         </div>
       </div>
-      ${item.excerpts.length===0 ? '<div class="empty-state">暂无摘录</div>' :
-        item.excerpts.map(e => `
-          <div class="card excerpt-card">
-            <div class="excerpt-card-text">${escHtml(e.text).replace(/\n/g,'<br>')}</div>
-            <div class="excerpt-card-meta">
-              <span class="ecm-left">
-                ${e.page ? '📍 '+escHtml(e.page)+(puLabel[pu]?' '+puLabel[pu]||'':'') : ''}
-                ${e.date ? ' 📅 '+e.date : ''}
-              </span>
-              <span style="display:flex;gap:4px;">
-                <button class="btn-sm" style="font-size:11px;padding:1px 8px;" onclick="editExcerpt('${item.id}','${e.id}')">✏️</button>
-                <button class="btn-sm danger" style="font-size:11px;padding:1px 8px;" onclick="var it=state.library.items.find(i=>i.id==='${item.id}');if(it){it.excerpts=(it.excerpts||[]).filter(x=>x.id!=='${e.id}');saveData();renderPage('library');}">删除</button>
-              </span>
-            </div>
-          </div>`).join('')
-      }
-      <div class="section-title">💭 读后感 / 笔记</div>
-      <textarea class="input-field note-textarea" id="detNote" placeholder="写下你的整体感受、思考或笔记（支持多行）..." rows="5">${escHtml(item.note||'')}</textarea>
-      <div class="auto-save-hint">✨ 已开启自动保存：输入完成后失焦即自动保存，返回或切换页面也会自动保存</div>
-      <div class="form-row" style="margin-top:10px;">
-        <button class="btn-sm" onclick="saveLibNote('${item.id}')">💾 立即保存笔记</button>
-        <button class="btn-sm" onclick="closeLibDetail()" style="margin-left:auto;">← 返回列表</button>
-      </div>
     </div>`;
+}
+function toggleLibFold(id) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  el.classList.toggle('open');
+  var h = document.getElementById(id + 'Head');
+  if (h) h.classList.toggle('open', el.classList.contains('open'));
+}
+function updateLibPct() {
+  var rEl = document.getElementById('detReadUnits'), tEl = document.getElementById('detTotalUnits');
+  var uEl = document.getElementById('detProgressUnit');
+  var r = parseInt(rEl && rEl.value) || 0, t = parseInt(tEl && tEl.value) || 0;
+  var pct = t > 0 ? Math.round(r / t * 100) : Math.min(100, r);
+  pct = Math.max(0, Math.min(100, pct));
+  var lb = document.getElementById('detPctLabel'); if (lb) lb.textContent = pct + '%';
+  var bar = document.getElementById('detProgressBar'); if (bar) bar.style.width = pct + '%';
+  if (tEl) tEl.placeholder = '共多少' + ({page:'页',episode:'集',minute:'分钟',chapter:'章'}[(uEl&&uEl.value)||'page'] || '页');
 }
 function saveLibDetail(id) {
   var item = (state.library.items||[]).find(i => i.id === id);
@@ -7706,8 +7785,11 @@ function saveLibDetail(id) {
   item.rating = r>0 ? r : null;
   item.startDate = gv('detStartDate');
   item.endDate = gv('detEndDate');
-  item.progress = parseInt(gv('detProgress')) || 0;
   item.totalUnits = parseInt(gv('detTotalUnits')) || 0;
+  item.readUnits = parseInt(gv('detReadUnits')) || 0;
+  item.progress = item.totalUnits > 0
+    ? Math.max(0, Math.min(100, Math.round(item.readUnits / item.totalUnits * 100)))
+    : Math.max(0, Math.min(100, item.readUnits));
   item.progressUnit = gv('detProgressUnit') || 'page';
   item.tags = [];
   var cs = document.querySelectorAll('#detTags .tag-chip.active');
