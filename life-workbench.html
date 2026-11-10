@@ -1214,10 +1214,20 @@ textarea.input-field { resize:vertical; min-height:60px; }
 .meal-line.empty { cursor:pointer; }
 .meal-line.empty:hover .meal-line-plus { color:var(--accent); opacity:1; }
 .meal-note { color:var(--muted); }
-/* 饮水：当天多次叠加 */
+/* 饮水：当天多次叠加 + 每日目标进度 */
 .meal-water-body { flex:1; min-width:0; }
-.meal-water-total { font-size:12px; font-weight:700; color:var(--ink); margin-right:6px; }
-.meal-water-chips { display:inline-flex; flex-wrap:wrap; gap:4px; vertical-align:middle; }
+.meal-water-head { display:flex; align-items:baseline; gap:4px; }
+.meal-water-total { font-size:13px; font-weight:700; color:var(--ink); }
+.meal-water-goal { font-size:11px; color:var(--muted); }
+.meal-water-pct { margin-left:auto; font-size:11px; color:var(--muted); }
+.meal-water-done-tag { margin-left:auto; font-size:10px; color:#fff; background:var(--accent); border-radius:8px; padding:0 6px; }
+.meal-water-bar {
+  height:4px; border-radius:2px; background:var(--rule);
+  margin:4px 0 5px; overflow:hidden;
+}
+.meal-water-fill { height:100%; border-radius:2px; background:var(--accent); transition:width .3s; }
+.meal-line.water-done .meal-water-fill { background:var(--accent); }
+.meal-water-chips { display:flex; flex-wrap:wrap; gap:4px; align-items:center; }
 .meal-water-chip {
   font-size:11px; color:var(--accent); background:var(--accent-soft);
   border-radius:8px; padding:0 6px; line-height:16px; cursor:pointer;
@@ -9586,7 +9596,8 @@ function renderBarMeals() {
     + '</div>';
 }
 
-// ─── 饮水行：当天多次叠加显示合计 ───
+// ─── 饮水行：当天多次叠加显示合计 + 每日目标进度 ───
+var WATER_GOAL = 1500; // 每日饮水目标（ml）
 function renderWaterRow(ds, recs) {
   if (!recs || recs.length === 0) {
     return '<div class="meal-line empty" onclick="openMealModal(null,\''+ds+'\',\'water\')">'
@@ -9596,18 +9607,25 @@ function renderWaterRow(ds, recs) {
       + '</div>';
   }
   var total = recs.reduce(function(s, m) { return s + parseWaterMl(m.content); }, 0);
+  var pct = Math.min(100, Math.round(total / WATER_GOAL * 100));
+  var done = total >= WATER_GOAL;
   var chips = recs.map(function(m) {
     var txt = (m.time ? m.time + ' ' : '') + (m.content || '0ml');
     return '<span class="meal-water-chip" onclick="openMealModal(\''+m.id+'\')" title="点击编辑">'+escHtml(txt)+'</span>';
   }).join('');
-  return '<div class="meal-line">'
+  return '<div class="meal-line'+(done?' water-done':'')+'">'
     + '<span class="meal-line-ic">💧</span>'
     + '<span class="meal-line-lb">饮水</span>'
     + '<div class="meal-water-body">'
-    +   '<span class="meal-water-total">'+total+' ml</span>'
-    +   '<span class="meal-water-chips">'+chips
+    +   '<div class="meal-water-head">'
+    +     '<span class="meal-water-total">'+total+'</span>'
+    +     '<span class="meal-water-goal">/ '+WATER_GOAL+' ml</span>'
+    +     (done ? '<span class="meal-water-done-tag">达标 ✓</span>' : '<span class="meal-water-pct">'+pct+'%</span>')
+    +   '</div>'
+    +   '<div class="meal-water-bar"><div class="meal-water-fill" style="width:'+pct+'%"></div></div>'
+    +   '<div class="meal-water-chips">'+chips
     +     '<button class="meal-water-add" onclick="openMealModal(null,\''+ds+'\',\'water\')" title="再记一次">＋</button>'
-    +   '</span>'
+    +   '</div>'
     + '</div>'
     + '</div>';
 }
