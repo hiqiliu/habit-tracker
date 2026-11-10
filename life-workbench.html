@@ -1122,7 +1122,15 @@ textarea.input-field { resize:vertical; min-height:60px; }
   position:absolute; top:-5px; right:-3px; font-size:9px; font-weight:700;
   background:var(--accent); color:#fff; border-radius:8px; padding:1px 5px;
 }
-.flash-input { width:100%; margin-top:8px; font-size:13px; }
+.flash-input { flex:1; font-size:13px; }
+.flash-note-row { display:flex; gap:6px; margin-top:8px; }
+.flash-summary-btn {
+  flex-shrink:0; width:38px; border-radius:10px; border:1px solid var(--rule);
+  background:var(--bg); font-size:16px; cursor:pointer; transition:all .15s;
+}
+.flash-summary-btn:active { transform:scale(0.94); background:var(--accent-soft); }
+.dsm-field { margin-bottom:10px; }
+.dsm-label { display:block; font-size:12px; font-weight:600; color:var(--muted); margin-bottom:4px; }
 /* ─── 纪念日 ─── */
 .ann-badge {
   margin-left:8px; font-size:11px; font-weight:600; color:#fff;
@@ -2353,7 +2361,10 @@ function renderDashboard() {
     + flashBtn('flashGo(\'workout\')', '🏃', '运动', todayWorkouts.length > 0 ? '×'+todayWorkouts.length : '')
     + flashBtn('flashGo(\'read\')', '📖', '读书', flRead ? '✓' : '')
     + '</div>'
-    + '<input class="input-field flash-input" id="flashNoteInp" placeholder="💬 随手记一句，回车存入今日日记时间轴…" onkeydown="if(event.key===\'Enter\')flashNote(this)">'
+    + '<div class="flash-note-row">'
+    +   '<input class="input-field flash-input" id="flashNoteInp" placeholder="💬 随手记一句，回车存入时间轴…" onkeydown="if(event.key===\'Enter\')flashNote(this)">'
+    +   '<button class="flash-summary-btn" onclick="openDaySummary()" title="写全天总结">📝</button>'
+    + '</div>'
     + '</div>';
 
   // Quick navigation
@@ -2422,10 +2433,10 @@ function renderDashboard() {
         <div class="quote-text">"${q.cn}"</div>
         <div class="quote-en">"${q.en}"</div>
       </div>
-      ${annHtml}
       ${flashHtml}
       ${renderPostureTip()}
       ${renderTodayTodos(todayStr, todayPlans, donePlans, checkedHabits, totalHabits)}
+      ${annHtml}
       ${overviewHtml}
       ${navHtml}
     </div>`;
@@ -2460,6 +2471,47 @@ function flashNote(inp) {
   flashPushTimeline(v);
   inp.value = '';
   saveData(); toast('💬 已存入今日日记时间轴');
+}
+
+// ─── 弹出式「全天总结」快速输入 ───
+function openDaySummary() {
+  var t = today();
+  var entry = (state.gratitude.entries || []).find(function(e){ return e.date === t; }) || {};
+  var old = document.getElementById('daySummaryModal');
+  if (old) old.remove();
+  var m = document.createElement('div');
+  m.className = 'modal-overlay show'; m.id = 'daySummaryModal';
+  m.innerHTML = '<div class="modal-box" style="max-width:420px;">'
+    + '<h3>📝 全天总结</h3>'
+    + '<div class="dsm-field"><label class="dsm-label">😊 心情</label>'
+    +   '<input class="input-field" id="dsmMood" style="width:100%;" placeholder="今天心情如何…" value="'+escHtml(entry.mood||'')+'"></div>'
+    + '<div class="dsm-field"><label class="dsm-label">💪 身体</label>'
+    +   '<input class="input-field" id="dsmBody" style="width:100%;" placeholder="身体状态、精力如何…" value="'+escHtml(entry.body||'')+'"></div>'
+    + '<div class="dsm-field"><label class="dsm-label">✨ 小确幸</label>'
+    +   '<textarea class="input-field" id="dsmJoys" rows="3" style="width:100%;resize:vertical;" placeholder="今天值得开心/感恩的小事…">'+escHtml(entry.joys||'')+'</textarea></div>'
+    + '<div class="dsm-field"><label class="dsm-label">🌱 做更好</label>'
+    +   '<textarea class="input-field" id="dsmImprove" rows="3" style="width:100%;resize:vertical;" placeholder="可以改进的地方/明天想做的事…">'+escHtml(entry.improve||'')+'</textarea></div>'
+    + '<div class="modal-actions">'
+    +   '<button class="btn-sm" onclick="document.getElementById(\'daySummaryModal\').remove()">取消</button>'
+    +   '<button class="btn-sm primary" onclick="saveDaySummary()">保存</button>'
+    + '</div></div>';
+  document.body.appendChild(m);
+  m.addEventListener('click', function(e) { if (e.target === m) m.remove(); });
+  setTimeout(function() { var el = $('dsmMood'); if (el) el.focus(); }, 50);
+}
+function saveDaySummary() {
+  var t = today();
+  if (!state.gratitude.entries) state.gratitude.entries = [];
+  var entry = state.gratitude.entries.find(function(e){ return e.date === t; });
+  if (!entry) { entry = { id:'d'+Date.now(), date:t, joys:'', improve:'', timeline:[] }; state.gratitude.entries.push(entry); }
+  entry.mood = $('dsmMood').value.trim();
+  entry.body = $('dsmBody').value.trim();
+  entry.joys = $('dsmJoys').value.trim();
+  entry.improve = $('dsmImprove').value.trim();
+  saveData();
+  document.getElementById('daySummaryModal').remove();
+  renderPage(currentPage);
+  toast('📝 全天总结已保存');
 }
 
 function renderTodayTodos(todayStr, todayPlans, donePlans, checkedHabits, totalHabits) {
@@ -3033,10 +3085,16 @@ function renderReview() {
 function renderTodayDiary(todayStr) {
   var entry = (state.gratitude.entries || []).find(function(e) { return e.date === todayStr; });
   var timeline = entry && entry.timeline ? entry.timeline.slice().sort(function(a, b) { return a.time.localeCompare(b.time); }) : [];
-  var hasContent = entry && (entry.joys || entry.improve || timeline.length > 0);
+  var hasContent = entry && (entry.mood || entry.body || entry.joys || entry.improve || timeline.length > 0);
   var html = '<div class="section-title">📝 今日日记</div>';
   if (hasContent) {
     html += '<div class="card" style="padding:12px 14px;cursor:pointer;" onclick="openDiaryDetail(\'' + todayStr + '\')">';
+    if (entry.mood) {
+      html += '<div style="font-size:13px;color:var(--ink);margin-bottom:4px;">😊 ' + escHtml(entry.mood) + '</div>';
+    }
+    if (entry.body) {
+      html += '<div style="font-size:13px;color:var(--ink);margin-bottom:4px;">💪 ' + escHtml(entry.body) + '</div>';
+    }
     if (entry.joys) {
       html += '<div style="font-size:13px;color:var(--ink);margin-bottom:6px;">✨ ' + escHtml(entry.joys.length > 80 ? entry.joys.slice(0, 80) + '…' : entry.joys) + '</div>';
     }
@@ -3889,12 +3947,20 @@ function renderDiaryDetail() {
     + '<div class="diary-detail-left">'
     +   '<div class="section-title" style="margin-top:0;">📋 全天总结</div>'
     +   '<div style="margin-bottom:14px;">'
+    +     '<label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;color:var(--text);">😊 心情</label>'
+    +     '<input class="input-field" id="detailMood" placeholder="今天心情如何..." style="width:100%;" value="'+escHtml(entry ? (entry.mood||'') : '')+'">'
+    +   '</div>'
+    +   '<div style="margin-bottom:14px;">'
+    +     '<label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;color:var(--text);">💪 身体</label>'
+    +     '<input class="input-field" id="detailBody" placeholder="身体状态、精力如何..." style="width:100%;" value="'+escHtml(entry ? (entry.body||'') : '')+'">'
+    +   '</div>'
+    +   '<div style="margin-bottom:14px;">'
     +     '<label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;color:var(--text);">✨ 小确幸</label>'
-    +     '<textarea class="input-field" id="detailJoys" placeholder="今天值得开心/感恩的小事..." rows="8" style="width:100%;resize:vertical;line-height:1.8;">'+escHtml(joys)+'</textarea>'
+    +     '<textarea class="input-field" id="detailJoys" placeholder="今天值得开心/感恩的小事..." rows="6" style="width:100%;resize:vertical;line-height:1.8;">'+escHtml(joys)+'</textarea>'
     +   '</div>'
     +   '<div>'
     +     '<label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;color:var(--text);">🌱 做更好</label>'
-    +     '<textarea class="input-field" id="detailImprove" placeholder="可以改进的地方/明天想做的事..." rows="8" style="width:100%;resize:vertical;line-height:1.8;">'+escHtml(improve)+'</textarea>'
+    +     '<textarea class="input-field" id="detailImprove" placeholder="可以改进的地方/明天想做的事..." rows="6" style="width:100%;resize:vertical;line-height:1.8;">'+escHtml(improve)+'</textarea>'
     +   '</div>'
     + '</div>'
     // 右栏：时间轴
@@ -3921,19 +3987,27 @@ function getCurrentTime() {
 
 function saveDiaryDetail() {
   var dateStr = diaryDetailDate;
+  var moodInp = $('detailMood');
+  var bodyInp = $('detailBody');
   var joysInp = $('detailJoys');
   var improveInp = $('detailImprove');
+  var mood = moodInp ? moodInp.value.trim() : '';
+  var body = bodyInp ? bodyInp.value.trim() : '';
   var joys = joysInp ? joysInp.value.trim() : '';
   var improve = improveInp ? improveInp.value.trim() : '';
   if (!state.gratitude.entries) state.gratitude.entries = [];
   var existing = state.gratitude.entries.find(function(e) { return e.date === dateStr; });
   if (existing) {
+    existing.mood = mood;
+    existing.body = body;
     existing.joys = joys;
     existing.improve = improve;
   } else {
     state.gratitude.entries.push({
       id: 'd'+Date.now(),
       date: dateStr,
+      mood: mood,
+      body: body,
       joys: joys,
       improve: improve,
       timeline: []
