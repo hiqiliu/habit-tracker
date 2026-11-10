@@ -9217,7 +9217,68 @@ function openAddItemModal() {
   m.addEventListener('click', function(e) { if (e.target === m) m.remove(); });
   setTimeout(function() { var inp = document.getElementById('addItemName'); if (inp) inp.focus(); }, 50);
 }
-function deleteWardrobeItem(id) { state.closet.wardrobe = state.closet.wardrobe.filter(w => w.id !== id); saveData(); renderPage('closet'); }
+// 移出衣帽间：可直接勾选记入记账本「流通罐 · 断舍离」，避免二次录入
+function deleteWardrobeItem(id) {
+  var item = (state.closet.wardrobe || []).find(function(w) { return w.id === id; });
+  if (!item) return;
+  var m = document.createElement('div');
+  m.className = 'modal-overlay show'; m.id = 'wardrobeDisposeModal';
+  m.innerHTML = '<div class="modal-box" style="max-width:420px;">'
+    + '<h3>🗑️ 移出衣帽间</h3>'
+    + '<div style="font-size:13px;color:var(--muted);margin-bottom:8px;">「'+escHtml(item.name)+'」'+(item.cat?' · '+escHtml(item.cat):'')+'</div>'
+    + '<div class="form-row" style="margin-bottom:8px;">'
+    +   '<select class="input-field" id="wdChannel" style="flex:1;">'
+    +     DECLUTTER_CHANNELS.map(function(c){ return '<option value="'+c+'"'+(c==='卖掉'?' selected':'')+'>'+c+'</option>'; }).join('')
+    +   '</select>'
+    +   '<input class="input-field" id="wdSellPrice" type="number" placeholder="回收价" style="flex:0.6;">'
+    +   '<input class="input-field" id="wdPrice" type="number" placeholder="购入价" style="flex:0.6;">'
+    + '</div>'
+    + '<textarea class="input-field" id="wdReflection" rows="2" placeholder="反思：为什么不要了？" style="width:100%;margin-bottom:8px;">'
+    +   escHtml(item.cons ? '缺点：'+item.cons : '') + '</textarea>'
+    + '<label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);margin-bottom:10px;">'
+    +   '<input type="checkbox" id="wdToJar" checked> 同时记入「记账本 · 流通罐 · 断舍离」'
+    + '</label>'
+    + '<div class="modal-actions">'
+    +   '<button class="btn-sm" onclick="confirmRemoveWardrobe(\''+id+'\')">仅删除</button>'
+    +   '<button class="btn-sm primary" onclick="disposeWardrobeItem(\''+id+'\')">移出并记录</button>'
+    + '</div></div>';
+  document.body.appendChild(m);
+  m.addEventListener('click', function(e) { if (e.target === m) m.remove(); });
+}
+function confirmRemoveWardrobe(id) {
+  state.closet.wardrobe = state.closet.wardrobe.filter(function(w) { return w.id !== id; });
+  saveData();
+  var m = document.getElementById('wardrobeDisposeModal'); if (m) m.remove();
+  renderPage('closet');
+  toast('已删除');
+}
+function disposeWardrobeItem(id) {
+  var item = (state.closet.wardrobe || []).find(function(w) { return w.id === id; });
+  if (!item) return;
+  var toJar = document.getElementById('wdToJar');
+  if (!toJar || toJar.checked) {
+    if (!state.finance) state.finance = {};
+    if (!state.finance.declutter) state.finance.declutter = [];
+    state.finance.declutter.push({
+      id: 'd' + Date.now(),
+      item: item.name,
+      category: item.cat || '衣物',
+      date: today(),
+      channel: document.getElementById('wdChannel').value,
+      ownedDays: 0,
+      price: parseFloat(document.getElementById('wdPrice').value) || 0,
+      sellPrice: parseFloat(document.getElementById('wdSellPrice').value) || 0,
+      reflection: document.getElementById('wdReflection').value.trim(),
+      summary: '',
+      fromCloset: item.id
+    });
+  }
+  state.closet.wardrobe = state.closet.wardrobe.filter(function(w) { return w.id !== id; });
+  saveData();
+  var m = document.getElementById('wardrobeDisposeModal'); if (m) m.remove();
+  renderPage('closet');
+  toast(toJar && !toJar.checked ? '已删除' : '已移出，并记入流通罐 🗑️');
+}
 function editWardrobeItem(id) {
   const item = (state.closet.wardrobe||[]).find(w => w.id === id);
   if (!item) return;
