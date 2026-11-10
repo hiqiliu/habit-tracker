@@ -2424,14 +2424,15 @@ function renderDashboard() {
   var workQuickOpts = (state.gym.workoutTypes || []).map(function(t) {
     return '<option'+(t===(state.appPrefs||{}).lastWorkoutType?' selected':'')+'>'+escHtml(t)+'</option>';
   }).join('');
-  var libTitleOpts = (state.library.items || []).filter(function(i) {
+  var libTitleOpts = ((state.library || {}).items || []).filter(function(i) {
     return i.status !== 'done';
   }).map(function(i) {
     return '<option value="'+escHtml(i.title)+'"></option>';
   }).join('');
-  var libTypeOpts = (state.library.types || LIB_TYPES).slice(0, 3).map(function(t) {
+  var libTypeOpts = ((state.library || {}).types || LIB_TYPES).slice(0, 3).map(function(t) {
     return '<option value="'+t.id+'">'+t.icon+' '+t.label+'</option>';
   }).join('');
+  var gymTrackers = Object.keys(state.gym.weeklyTracker || {});
   var syncOpts = gymTrackers.map(function(k) {
     var t = state.gym.weeklyTracker[k];
     return '<option value="'+k+'">'+(t.icon||'📌')+' '+escHtml(t.name||k)+'</option>';
@@ -2651,7 +2652,9 @@ function flashLib() {
   if (!titleEl) return;
   var title = titleEl.value.trim();
   if (!title) { toast('请填写书名 / 片名'); titleEl.focus(); return; }
+  if (!state.library) state.library = {};
   if (!state.library.items) state.library.items = [];
+  if (!state.library.types) state.library.types = LIB_TYPES;
   var item = state.library.items.find(function(i) { return (i.title || '').trim() === title; });
   var prog = parseLibProgress(progEl.value, item);
   if (progEl.value.trim() && prog === null) {
