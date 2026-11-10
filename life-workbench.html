@@ -1105,8 +1105,9 @@ textarea.input-field { resize:vertical; min-height:60px; }
 .gym-sub-btn:hover { border-color:var(--accent); background:var(--accent-soft); color:var(--accent); }
 /* ─── 闪电记录面板 ─── */
 .flash-panel {
+  display:flex; flex-direction:column; gap:8px;
   background:var(--bg2); border:1px solid var(--rule); border-radius:14px;
-  padding:10px 12px; margin-bottom:12px;
+  padding:10px; margin-bottom:12px;
 }
 .flash-row { display:flex; gap:6px; justify-content:space-between; }
 .flash-btn {
@@ -1123,16 +1124,17 @@ textarea.input-field { resize:vertical; min-height:60px; }
   background:var(--accent); color:#fff; border-radius:8px; padding:1px 5px;
 }
 .flash-input { flex:1; font-size:13px; }
-.flash-note-row { display:flex; gap:6px; margin-top:8px; }
+.flash-note-row { display:flex; gap:6px; }
 .flash-sum-sel { flex:0 0 96px; font-size:12px; padding:6px 4px; }
-/* 运动记录：一张卡片内的连贯表单项，每项一行 */
-.flash-record-card {
-  border:1px solid var(--rule); border-radius:var(--radius-sm);
-  background:var(--bg); padding:10px 12px; margin-bottom:8px;
+/* 每一类快捷输入是一张独立小卡片 */
+.flash-block {
+  background:var(--bg); border:1px solid var(--rule);
+  border-radius:var(--radius-sm); padding:9px 10px;
 }
-.flash-record-title { font-size:12px; font-weight:600; color:var(--muted); margin-bottom:6px; }
-.flash-record-card .input-field { display:block; width:100%; margin-bottom:6px; }
-.flash-record-btn { display:block; width:100%; padding:7px 0; font-size:13px; }
+.flash-block-title { font-size:11px; font-weight:600; color:var(--muted); margin-bottom:6px; letter-spacing:.3px; }
+.flash-block .input-field { display:block; width:100%; margin-bottom:6px; }
+.flash-block .flash-note-row .input-field { display:block; width:auto; margin-bottom:0; }
+.flash-record-btn { display:block; width:100%; padding:7px 0; font-size:13px; margin-top:2px; }
 .dsm-field { margin-bottom:10px; }
 .dsm-label { display:block; font-size:12px; font-weight:600; color:var(--muted); margin-bottom:4px; }
 /* ─── 纪念日 ─── */
@@ -2428,29 +2430,47 @@ function renderDashboard() {
     return '<option value="'+k+'">'+(t.icon||'📌')+' '+escHtml(t.name||k)+'</option>';
   }).join('');
   var flashHtml = '<div class="flash-panel">'
-    + '<div class="flash-note-row">'
-    +   '<select class="input-field flash-sum-sel" id="flashMealSel">'+mealQuickOpts+'</select>'
-    +   '<input class="input-field flash-input" id="flashMealInp" placeholder="吃了什么，回车存入餐食…" onkeydown="if(event.key===\'Enter\')flashMeal()">'
+    + '<div class="flash-block">'
+    +   '<div class="flash-block-title">🍽️ 餐食记录</div>'
+    +   '<div class="flash-note-row">'
+    +     '<select class="input-field flash-sum-sel" id="flashMealSel">'+mealQuickOpts+'</select>'
+    +     '<input class="input-field flash-input" id="flashMealInp" placeholder="吃了什么，回车存入餐食…" onkeydown="if(event.key===\'Enter\')flashMeal()">'
+    +   '</div>'
     + '</div>'
-    + '<div class="flash-record-card">'
-    +   '<div class="flash-record-title">🏃 运动记录</div>'
+    + '<div class="flash-block">'
+    +   '<div class="flash-block-title">🏃 运动记录</div>'
     +   '<select class="input-field" id="quickType">'+workQuickOpts+'</select>'
     +   '<input class="input-field" id="quickDur" placeholder="时长（分钟）" type="number" onkeydown="if(event.key===\'Enter\')quickAddWorkout()">'
     +   '<input class="input-field" id="quickNote" placeholder="备注（可选）" onkeydown="if(event.key===\'Enter\')quickAddWorkout()">'
     +   (syncOpts ? '<select class="input-field" id="quickSync"><option value="">📅 不同步 / 选择本周追踪</option>'+syncOpts+'</select>' : '')
     +   '<button class="btn-sm primary flash-record-btn" onclick="quickAddWorkout()">+ 记录这次运动</button>'
     + '</div>'
-    + '<div class="flash-note-row">'
-    +   '<input class="input-field flash-input" id="flashNoteInp" placeholder="💬 随手记一句，回车存入时间轴…" onkeydown="if(event.key===\'Enter\')flashNote(this)">'
+    + '<div class="flash-block">'
+    +   '<div class="flash-block-title">🌸 试香记录</div>'
+    +   '<input class="input-field" id="flashPerfumeName" placeholder="香水名称（如：夏日青柠）" onkeydown="if(event.key===\'Enter\')flashPerfume()">'
+    +   '<input class="input-field" id="flashPerfumeDate" type="date" value="'+todayStr+'">'
+    +   '<select class="input-field" id="flashPerfumeRating">'
+    +     '<option value="我超爱">🌸 我超爱</option>'
+    +     '<option value="我可以" selected>🙂 我可以</option>'
+    +     '<option value="我不行">🚫 我不行</option>'
+    +   '</select>'
+    +   '<button class="btn-sm primary flash-record-btn" onclick="flashPerfume()">+ 记录试香</button>'
     + '</div>'
-    + '<div class="flash-note-row">'
-    +   '<select class="input-field flash-sum-sel" id="flashSumSel">'
+    + '<div class="flash-block">'
+    +   '<div class="flash-block-title">💬 随手记</div>'
+    +   '<input class="input-field" id="flashNoteInp" placeholder="记一句，回车存入时间轴…" onkeydown="if(event.key===\'Enter\')flashNote(this)">'
+    + '</div>'
+    + '<div class="flash-block">'
+    +   '<div class="flash-block-title">📝 今日小结</div>'
+    +   '<div class="flash-note-row">'
+    +     '<select class="input-field flash-sum-sel" id="flashSumSel">'
     +     '<option value="mood">😊 心情</option>'
     +     '<option value="body">💪 身体</option>'
     +     '<option value="joys">✨ 小确幸</option>'
     +     '<option value="improve">🌱 做更好</option>'
     +   '</select>'
     +   '<input class="input-field flash-input" id="flashSumInp" placeholder="写一句，回车存入选中的部分…" onkeydown="if(event.key===\'Enter\')flashSummary(this)">'
+    + '</div>'
     + '</div>'
     + '</div>';
 
@@ -2563,6 +2583,33 @@ function flashMeal() {
   inp.value = '';
   refreshMealQuickUI();
   toast(type === 'water' ? '💧 饮水 +' + content : '🍽️ ' + mealTypeLabel(type) + '已记录');
+}
+
+// ─── 首页试香快捷输入：名称 + 日期 + 喜爱，先建记录，细节去香水页补 ───
+function flashPerfume() {
+  var nameEl = $('flashPerfumeName'), dateEl = $('flashPerfumeDate'), rateEl = $('flashPerfumeRating');
+  if (!nameEl || !dateEl || !rateEl) return;
+  var name = nameEl.value.trim();
+  if (!name) { toast('请填写香水名称'); nameEl.focus(); return; }
+  if (!state.bar.perfumes) state.bar.perfumes = [];
+  var rl = rateEl.value;
+  state.bar.perfumes.push({
+    id: 'p' + Date.now(),
+    name: name,
+    brand: '',
+    scents: [],
+    scent: '',
+    topNotes: '', midNotes: '', baseNotes: '',
+    channel: '', price: 0,
+    ratingLabel: rl,
+    rating: (rl === '我超爱' ? 5 : rl === '我可以' ? 3 : 1),
+    review: '', notes: '',
+    date: dateEl.value || today()
+  });
+  saveData();
+  nameEl.value = '';
+  dateEl.value = today();
+  toast('试香已记录 🌸 可去香水页补充调性/价格');
 }
 
 // 不整页重绘，仅更新首页的餐食计数，避免输入焦点与滚动位置丢失
