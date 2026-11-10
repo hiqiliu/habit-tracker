@@ -1124,11 +1124,7 @@ textarea.input-field { resize:vertical; min-height:60px; }
 }
 .flash-input { flex:1; font-size:13px; }
 .flash-note-row { display:flex; gap:6px; margin-top:8px; }
-.flash-summary-btn {
-  flex-shrink:0; width:38px; border-radius:10px; border:1px solid var(--rule);
-  background:var(--bg); font-size:16px; cursor:pointer; transition:all .15s;
-}
-.flash-summary-btn:active { transform:scale(0.94); background:var(--accent-soft); }
+.flash-sum-sel { flex:0 0 96px; font-size:12px; padding:6px 4px; }
 .dsm-field { margin-bottom:10px; }
 .dsm-label { display:block; font-size:12px; font-weight:600; color:var(--muted); margin-bottom:4px; }
 /* ─── 纪念日 ─── */
@@ -2363,7 +2359,15 @@ function renderDashboard() {
     + '</div>'
     + '<div class="flash-note-row">'
     +   '<input class="input-field flash-input" id="flashNoteInp" placeholder="💬 随手记一句，回车存入时间轴…" onkeydown="if(event.key===\'Enter\')flashNote(this)">'
-    +   '<button class="flash-summary-btn" onclick="openDaySummary()" title="写全天总结">📝</button>'
+    + '</div>'
+    + '<div class="flash-note-row">'
+    +   '<select class="input-field flash-sum-sel" id="flashSumSel">'
+    +     '<option value="mood">😊 心情</option>'
+    +     '<option value="body">💪 身体</option>'
+    +     '<option value="joys">✨ 小确幸</option>'
+    +     '<option value="improve">🌱 做更好</option>'
+    +   '</select>'
+    +   '<input class="input-field flash-input" id="flashSumInp" placeholder="写一句，回车存入选中的部分…" onkeydown="if(event.key===\'Enter\')flashSummary(this)">'
     + '</div>'
     + '</div>';
 
@@ -2473,45 +2477,26 @@ function flashNote(inp) {
   saveData(); toast('💬 已存入今日日记时间轴');
 }
 
-// ─── 弹出式「全天总结」快速输入 ───
-function openDaySummary() {
-  var t = today();
-  var entry = (state.gratitude.entries || []).find(function(e){ return e.date === t; }) || {};
-  var old = document.getElementById('daySummaryModal');
-  if (old) old.remove();
-  var m = document.createElement('div');
-  m.className = 'modal-overlay show'; m.id = 'daySummaryModal';
-  m.innerHTML = '<div class="modal-box" style="max-width:420px;">'
-    + '<h3>📝 全天总结</h3>'
-    + '<div class="dsm-field"><label class="dsm-label">😊 心情</label>'
-    +   '<input class="input-field" id="dsmMood" style="width:100%;" placeholder="今天心情如何…" value="'+escHtml(entry.mood||'')+'"></div>'
-    + '<div class="dsm-field"><label class="dsm-label">💪 身体</label>'
-    +   '<input class="input-field" id="dsmBody" style="width:100%;" placeholder="身体状态、精力如何…" value="'+escHtml(entry.body||'')+'"></div>'
-    + '<div class="dsm-field"><label class="dsm-label">✨ 小确幸</label>'
-    +   '<textarea class="input-field" id="dsmJoys" rows="3" style="width:100%;resize:vertical;" placeholder="今天值得开心/感恩的小事…">'+escHtml(entry.joys||'')+'</textarea></div>'
-    + '<div class="dsm-field"><label class="dsm-label">🌱 做更好</label>'
-    +   '<textarea class="input-field" id="dsmImprove" rows="3" style="width:100%;resize:vertical;" placeholder="可以改进的地方/明天想做的事…">'+escHtml(entry.improve||'')+'</textarea></div>'
-    + '<div class="modal-actions">'
-    +   '<button class="btn-sm" onclick="document.getElementById(\'daySummaryModal\').remove()">取消</button>'
-    +   '<button class="btn-sm primary" onclick="saveDaySummary()">保存</button>'
-    + '</div></div>';
-  document.body.appendChild(m);
-  m.addEventListener('click', function(e) { if (e.target === m) m.remove(); });
-  setTimeout(function() { var el = $('dsmMood'); if (el) el.focus(); }, 50);
-}
-function saveDaySummary() {
+// ─── 全天总结随手记：选中部分 + 回车追加 ───
+var FLASH_SUM_META = {
+  mood:    { icon:'😊', label:'心情',   sep:'、' },
+  body:    { icon:'💪', label:'身体',   sep:'、' },
+  joys:    { icon:'✨', label:'小确幸', sep:'\n' },
+  improve: { icon:'🌱', label:'做更好', sep:'\n' }
+};
+function flashSummary(inp) {
+  var v = inp.value.trim(); if (!v) return;
+  var sel = document.getElementById('flashSumSel');
+  var field = sel ? sel.value : 'joys';
+  var meta = FLASH_SUM_META[field] || FLASH_SUM_META.joys;
   var t = today();
   if (!state.gratitude.entries) state.gratitude.entries = [];
   var entry = state.gratitude.entries.find(function(e){ return e.date === t; });
-  if (!entry) { entry = { id:'d'+Date.now(), date:t, joys:'', improve:'', timeline:[] }; state.gratitude.entries.push(entry); }
-  entry.mood = $('dsmMood').value.trim();
-  entry.body = $('dsmBody').value.trim();
-  entry.joys = $('dsmJoys').value.trim();
-  entry.improve = $('dsmImprove').value.trim();
+  if (!entry) { entry = { id:'d'+Date.now(), date:t, mood:'', body:'', joys:'', improve:'', timeline:[] }; state.gratitude.entries.push(entry); }
+  entry[field] = entry[field] ? entry[field] + meta.sep + v : v;
+  inp.value = '';
   saveData();
-  document.getElementById('daySummaryModal').remove();
-  renderPage(currentPage);
-  toast('📝 全天总结已保存');
+  toast(meta.icon + ' 已存入' + meta.label);
 }
 
 function renderTodayTodos(todayStr, todayPlans, donePlans, checkedHabits, totalHabits) {
