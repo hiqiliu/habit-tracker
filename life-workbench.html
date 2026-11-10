@@ -1165,6 +1165,51 @@ textarea.input-field { resize:vertical; min-height:60px; }
   max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
 }
 .study-plan-chip.active { background:var(--accent); border-color:var(--accent); color:#fff; }
+/* ─── 能量站 · 餐食周视图 ─── */
+.meal-week-bar { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+.meal-week-title { flex:1; text-align:center; font-size:14px; font-weight:600; color:var(--ink); }
+.meal-week-stats { display:flex; gap:14px; flex-wrap:wrap; font-size:12px; color:var(--muted); margin-bottom:12px; }
+.meal-week-stats b { color:var(--ink); font-weight:600; }
+.meal-week-hint { font-size:12px; color:var(--muted); text-align:center; margin-bottom:8px; }
+.meal-day-card {
+  border:1px solid var(--rule); border-radius:var(--radius-sm);
+  background:var(--bg); padding:8px 12px; margin-bottom:8px;
+  box-shadow:var(--shadow);
+}
+.meal-day-card.today { border-color:var(--accent); background:var(--accent-soft); }
+.meal-day-head {
+  display:flex; align-items:center; gap:6px; padding-bottom:4px;
+  border-bottom:1px dashed var(--rule); margin-bottom:2px;
+}
+.meal-day-name { font-size:13px; font-weight:700; color:var(--ink); }
+.meal-day-date { font-size:11px; color:var(--muted); }
+.meal-day-badge {
+  font-size:10px; color:#fff; background:var(--accent);
+  border-radius:8px; padding:0 6px; line-height:16px;
+}
+.meal-day-add {
+  margin-left:auto; border:none; background:none; color:var(--muted);
+  font-size:15px; line-height:1; padding:2px 4px; cursor:pointer;
+}
+.meal-day-add:hover { color:var(--accent); }
+.meal-line {
+  display:flex; align-items:flex-start; gap:6px; padding:4px 0;
+  font-size:12px; border-bottom:1px dotted var(--rule);
+}
+.meal-line:last-child { border-bottom:none; }
+.meal-line-ic { flex-shrink:0; width:16px; text-align:center; }
+.meal-line-lb { flex-shrink:0; width:34px; color:var(--muted); }
+.meal-line-tx { flex:1; min-width:0; color:var(--ink); cursor:pointer; word-break:break-word; }
+.meal-line-tx:hover { color:var(--accent); }
+.meal-line-plus { flex:1; color:var(--muted); opacity:.55; }
+.meal-line-del {
+  flex-shrink:0; border:none; background:none; color:var(--muted);
+  font-size:12px; line-height:1; padding:2px 4px; cursor:pointer; opacity:.5;
+}
+.meal-line-del:hover { color:var(--danger); opacity:1; }
+.meal-line.empty { cursor:pointer; }
+.meal-line.empty:hover .meal-line-plus { color:var(--accent); opacity:1; }
+.meal-note { color:var(--muted); }
 /* ─── 流通罐 ─── */
 .finance-sub-tabs {
   display:flex; gap:8px; margin-bottom:12px;
@@ -2885,8 +2930,7 @@ function getDayActivities(dateStr) {
     if (m.date === dateStr) {
       var mIcon = mealTypeIcon(m.mealType);
       var mLabel = mealTypeLabel(m.mealType);
-      var sIcon = sourceIcon(m.source);
-      acts.push({ cat:'meal', icon:mIcon, text: mLabel + ' ' + sIcon + m.source + (m.content?' · '+m.content:'') + (m.note?' · '+m.note:''), tag:'餐食' });
+      acts.push({ cat:'meal', icon:mIcon, text: mLabel + (m.content?' · '+m.content:'') + (m.note?' · '+m.note:''), tag:'餐食' });
     }
   });
   // Outfits
@@ -9319,8 +9363,6 @@ var MEAL_TYPES = state.bar.mealTypes || [
   { id:'snack', icon:'🍪', label:'加餐', isDefault:true }
 ];
 if (!state.bar.mealTypes) { state.bar.mealTypes = MEAL_TYPES; }
-var MEAL_SOURCES = state.bar.mealSources || ['外食','家食','外卖'];
-if (!state.bar.mealSources) { state.bar.mealSources = MEAL_SOURCES; }
 var DRINK_TYPES = state.bar.drinkTypes || ['胶囊咖啡','手冲咖啡','拿铁','美式','茶','果汁','其他'];
 if (!state.bar.drinkTypes) { state.bar.drinkTypes = DRINK_TYPES; }
 if (!state.bar.perfumes) { state.bar.perfumes = []; }
@@ -9343,7 +9385,6 @@ function closetCatIcon(cat) {
 }
 function mealTypeLabel(t) { var m = MEAL_TYPES.find(function(x){return x.id===t;}); return m ? m.label : '餐'; }
 function mealTypeIcon(t) { var m = MEAL_TYPES.find(function(x){return x.id===t;}); return m ? m.icon : '🍽️'; }
-function sourceIcon(s) { return s==='外食'?'🍽️':s==='家食'?'🏠':'📦'; }
 
 function renderBar() {
   var mod = state.modules.find(function(m) { return m.id === 'bar'; });
@@ -9375,102 +9416,162 @@ function setBarSubView(v) { barSubView = v; renderPage('bar'); }
 function renderBarMeals() {
   var meals = (state.bar.meals || []).slice().sort(function(a,b) { return b.date.localeCompare(a.date); });
   var todayStr = today();
-  var todayMeals = meals.filter(function(m) { return m.date === todayStr; });
 
-  // Group by date (last 14 days)
-  var grouped = {};
-  meals.slice(0, 60).forEach(function(m) {
-    if (!grouped[m.date]) grouped[m.date] = [];
-    grouped[m.date].push(m);
+  // 本周日期（周一起算）
+  var wDates = mealWeekDates(mealWeekOffset);
+  var mealsByDate = {};
+  (state.bar.meals || []).forEach(function(m) {
+    if (!mealsByDate[m.date]) mealsByDate[m.date] = [];
+    mealsByDate[m.date].push(m);
   });
-  var dates = Object.keys(grouped).sort().reverse().slice(0, 14);
+  var typeOrder = MEAL_TYPES.map(function(t) { return t.id; });
+  var weekMeals = meals.filter(function(m) { return wDates.indexOf(m.date) >= 0; });
+  var daysWithRecord = wDates.filter(function(ds) { return (mealsByDate[ds] || []).length > 0; }).length;
+  var mainSlots = weekMeals.filter(function(m) { return ['breakfast','lunch','dinner'].indexOf(m.mealType) >= 0; }).length;
+  var wkLabel = mealWeekOffset === 0 ? '本周' : (mealWeekOffset === -1 ? '上周' : (mealWeekOffset === 1 ? '下周' : (mealWeekOffset < 0 ? Math.abs(mealWeekOffset)+'周前' : mealWeekOffset+'周后')));
 
-  var _hr = new Date().getHours();
-  var _defMt = _hr < 10 ? 'breakfast' : (_hr < 14 ? 'lunch' : (_hr < 17 ? 'snack' : 'dinner'));
-  var mealTypeOpts = MEAL_TYPES.map(function(t) {
-    return '<option value="'+t.id+'"'+(t.id===_defMt?' selected':'')+'>'+t.icon+' '+t.label+'</option>';
-  }).join('');
-  var _lastSrc = (state.appPrefs||{}).lastMealSource;
-  var sourceOpts = MEAL_SOURCES.map(function(s) {
-    return '<option value="'+s+'"'+(s===_lastSrc?' selected':'')+'>'+s+'</option>';
-  }).join('');
-
-  var listHtml = dates.length === 0
-    ? '<div class="empty-state">还没有餐食记录，开始记录今天吃了什么吧~</div>'
-    : dates.map(function(ds) {
-        var dayMeals = grouped[ds].sort(function(a,b) {
-          var order = ['breakfast','lunch','dinner','snack'];
-          return order.indexOf(a.mealType) - order.indexOf(b.mealType);
-        });
-        var isToday = ds === todayStr;
-        var d = new Date(ds);
-        var weekdays = ['日','一','二','三','四','五','六'];
-        var dateLabel = (d.getMonth()+1)+'/'+d.getDate()+' 周'+weekdays[d.getDay()];
-        return '<div class="card" style="margin-bottom:8px;">'
-          + '<div style="font-size:12px;font-weight:600;color:'+(isToday?'var(--accent)':'var(--muted)')+';margin-bottom:6px;border-bottom:1px dashed var(--rule);padding-bottom:4px;">'
-          +   (isToday?'📌 ':'')+dateLabel
-          + '</div>'
-          + dayMeals.map(function(m) {
-              return '<div class="card-row" style="padding:4px 0;">'
-                + '<span style="font-size:16px;">'+mealTypeIcon(m.mealType)+'</span>'
-                + '<span class="card-content" style="font-size:13px;">'
-                +   '<strong>'+mealTypeLabel(m.mealType)+'</strong>'
-                +   ' <span style="font-size:11px;color:var(--muted);background:var(--bg2);padding:1px 6px;border-radius:8px;">'+sourceIcon(m.source)+' '+m.source+'</span>'
-                +   (m.content ? ' · '+escHtml(m.content) : '')
-                +   (m.note ? ' · <span style="color:var(--muted);">'+escHtml(m.note)+'</span>' : '')
-                + '</span>'
-                + '<button class="btn-sm" onclick="editMeal(\''+m.id+'\')" style="font-size:10px;padding:2px 6px;">✏️</button>'
-                + '<button class="btn-sm danger" onclick="deleteMeal(\''+m.id+'\')" style="font-size:10px;padding:2px 6px;">删</button>'
-                + '</div>';
-            }).join('')
+  var listHtml = wDates.map(function(ds, wIdx) {
+    var dayMeals = (mealsByDate[ds] || []).slice().sort(function(a, b) {
+      return typeOrder.indexOf(a.mealType) - typeOrder.indexOf(b.mealType);
+    });
+    var isToday = ds === todayStr;
+    var dt = new Date(ds);
+    var wkNames = ['周一','周二','周三','周四','周五','周六','周日'];
+    var head = '<div class="meal-day-head'+(isToday?' today':'')+'">'
+      + '<span class="meal-day-name">'+wkNames[wIdx]+'</span>'
+      + '<span class="meal-day-date">'+(dt.getMonth()+1)+'/'+dt.getDate()+'</span>'
+      + (isToday ? '<span class="meal-day-badge">今天</span>' : '')
+      + '<button class="meal-day-add" onclick="openMealModal(null,\''+ds+'\')" title="添加一条">＋</button>'
+      + '</div>';
+    var rows = MEAL_TYPES.map(function(t) {
+      var recs = dayMeals.filter(function(x) { return x.mealType === t.id; });
+      if (recs.length === 0) {
+        return '<div class="meal-line empty" onclick="openMealModal(null,\''+ds+'\',\''+t.id+'\')">'
+          + '<span class="meal-line-ic">'+t.icon+'</span>'
+          + '<span class="meal-line-lb">'+t.label+'</span>'
+          + '<span class="meal-line-plus">+ 添加</span>'
+          + '</div>';
+      }
+      return recs.map(function(m) {
+        return '<div class="meal-line">'
+          + '<span class="meal-line-ic">'+t.icon+'</span>'
+          + '<span class="meal-line-lb">'+t.label+'</span>'
+          + '<span class="meal-line-tx" onclick="openMealModal(\''+m.id+'\')">'
+          +   (m.content ? escHtml(m.content) : '<span style="color:var(--muted)">（未填写）</span>')
+          +   (m.note ? ' <span class="meal-note">· '+escHtml(m.note)+'</span>' : '')
+          + '</span>'
+          + '<button class="meal-line-del" onclick="deleteMeal(\''+m.id+'\')" title="删除">×</button>'
           + '</div>';
       }).join('');
+    }).join('');
+    // 未在餐类列表里的历史记录（餐类被改名/删除时兜底）
+    var extra = dayMeals.filter(function(m) { return typeOrder.indexOf(m.mealType) < 0; });
+    extra.forEach(function(m) {
+      rows += '<div class="meal-line">'
+        + '<span class="meal-line-ic">🍽️</span>'
+        + '<span class="meal-line-lb">其他</span>'
+        + '<span class="meal-line-tx" onclick="openMealModal(\''+m.id+'\')">'+(m.content ? escHtml(m.content) : '（未填写）')+'</span>'
+        + '<button class="meal-line-del" onclick="deleteMeal(\''+m.id+'\')">×</button>'
+        + '</div>';
+    });
+    return '<div class="meal-day-card'+(isToday?' today':'')+'">'+head+rows+'</div>';
+  }).join('');
 
-  // Stats
-  var eatOut = meals.filter(function(m){return m.source==='外食';}).length;
-  var homeCook = meals.filter(function(m){return m.source==='家食';}).length;
-  var takeout = meals.filter(function(m){return m.source==='外卖';}).length;
+  if (wDates.every(function(ds) { return (mealsByDate[ds] || []).length === 0; })) {
+    listHtml = '<div class="meal-week-hint">这周还没有餐食记录，点任意一行「+ 添加」开始吧~</div>' + listHtml;
+  }
 
-  return '<div class="section-title">➕ 记录餐食</div>'
-    + '<div class="form-row">'
-    +   '<select class="input-field" id="mealType" style="flex:0.5;">'+mealTypeOpts+'</select>'
-    +   '<select class="input-field" id="mealSource" style="flex:0.5;">'+sourceOpts+'</select>'
-    +   '<input class="input-field" type="date" id="mealDate" value="'+todayStr+'" style="width:120px;flex-shrink:0;">'
+  var weekRange = (function() {
+    var a = new Date(wDates[0]), b = new Date(wDates[6]);
+    return (a.getMonth()+1)+'/'+a.getDate() + ' - ' + (b.getMonth()+1)+'/'+b.getDate();
+  })();
+
+  return '<div class="meal-week-bar">'
+    +   '<button class="btn-sm" onclick="mealWeekNav(-1)">◀</button>'
+    +   '<span class="meal-week-title">'+weekRange+' · '+wkLabel+'</span>'
+    +   '<button class="btn-sm" onclick="mealWeekNav(1)">▶</button>'
+    +   (mealWeekOffset !== 0 ? '<button class="btn-sm" onclick="mealWeekNav(0)">回到本周</button>' : '')
     + '</div>'
-    + '<div class="form-row">'
-    +   '<input class="input-field" id="mealContent" placeholder="吃了什么（如：番茄炒蛋、米饭）" style="flex:1;">'
-    +   '<input class="input-field" id="mealNote" placeholder="备注（可选）" style="flex:0.6;">'
-    +   '<button class="btn-sm primary" onclick="addMeal()">+ 添加</button>'
+    + '<div class="meal-week-stats">'
+    +   '<span>🍽️ 记录 <b>'+weekMeals.length+'</b> 条</span>'
+    +   '<span>📅 有记录 <b>'+daysWithRecord+'</b>/7 天</span>'
+    +   '<span>🥣 三餐 <b>'+mainSlots+'</b>/21</span>'
     + '</div>'
-    + '<div style="display:flex;gap:6px;margin-bottom:8px;">'
-    +   '<button class="btn-sm" onclick="openCatManager({title:\'管理餐食类型\',statePath:\'bar.mealTypes\',format:\'object\',reRender:\'bar\',refs:[{dataPath:\'bar.meals\',field:\'mealType\'}]})" style="font-size:12px;">⚙️ 管理餐类</button>'
-    +   '<button class="btn-sm" onclick="openCatManager({title:\'管理餐食来源\',statePath:\'bar.mealSources\',format:\'string\',reRender:\'bar\',refs:[{dataPath:\'bar.meals\',field:\'source\'}]})" style="font-size:12px;">⚙️ 管理来源</button>'
-    + '</div>'
-    + '<div class="section-title">📋 餐食记录</div>'
     + listHtml
-    + '<div class="section-title">📊 饮食统计</div>'
-    + '<div class="stats-row">'
-    +   '<div class="stat-card"><div class="stat-val">'+meals.length+'</div><div class="stat-lbl">总记录</div></div>'
-    +   '<div class="stat-card"><div class="stat-val" style="color:#e65100;">'+eatOut+'</div><div class="stat-lbl">🍽️外食</div></div>'
-    +   '<div class="stat-card"><div class="stat-val" style="color:#4caf50;">'+homeCook+'</div><div class="stat-lbl">🏠家食</div></div>'
-    +   '<div class="stat-card"><div class="stat-val" style="color:#2196f3;">'+takeout+'</div><div class="stat-lbl">📦外卖</div></div>'
+    + '<div style="display:flex;gap:6px;margin-top:10px;">'
+    +   '<button class="btn-sm" onclick="openCatManager({title:\'管理餐食类型\',statePath:\'bar.mealTypes\',format:\'object\',reRender:\'bar\',refs:[{dataPath:\'bar.meals\',field:\'mealType\'}]})" style="font-size:12px;">⚙️ 管理餐类</button>'
     + '</div>';
 }
 
-function addMeal() {
-  var typeSel = $('mealType'), sourceSel = $('mealSource'), dateInp = $('mealDate');
-  var contentInp = $('mealContent'), noteInp = $('mealNote');
+// ─── 餐食周视图辅助 ───
+let mealWeekOffset = 0;
+function mealWeekDates(offset) {
+  var d = new Date();
+  var day = d.getDay();
+  var diff = day === 0 ? -6 : 1 - day;
+  d.setDate(d.getDate() + diff + offset * 7);
+  var arr = [];
+  for (var i = 0; i < 7; i++) {
+    var x = new Date(d);
+    x.setDate(d.getDate() + i);
+    arr.push(fmtDate(x));
+  }
+  return arr;
+}
+function mealWeekNav(delta) {
+  mealWeekOffset = delta === 0 ? 0 : mealWeekOffset + delta;
+  renderPage('bar');
+}
+
+// ─── 餐食编辑弹窗（新增/编辑共用，无「就餐方式」）───
+var mealEditingId = null;
+function openMealModal(id, dateStr, defType) {
+  var m = id ? (state.bar.meals || []).find(function(x) { return x.id === id; }) : null;
+  mealEditingId = id || null;
+  var date = m ? m.date : (dateStr || today());
+  var type = m ? m.mealType : (defType || 'breakfast');
+  var typeOpts = MEAL_TYPES.map(function(t) {
+    return '<option value="'+t.id+'"'+(t.id===type?' selected':'')+'>'+t.icon+' '+t.label+'</option>';
+  }).join('');
+  var old = document.getElementById('mealEditModal');
+  if (old) old.remove();
+  var modal = document.createElement('div');
+  modal.className = 'modal-overlay show'; modal.id = 'mealEditModal';
+  modal.innerHTML = '<div class="modal-box" style="max-width:420px;">'
+    + '<h3>'+(m ? '✏️ 编辑餐食' : '🍽️ 记录餐食')+'</h3>'
+    + '<div class="form-row" style="margin-bottom:8px;">'
+    +   '<select class="input-field" id="emType" style="flex:0.6;">'+typeOpts+'</select>'
+    +   '<input class="input-field" type="date" id="emDate" value="'+date+'" style="flex:0.5;">'
+    + '</div>'
+    + '<input class="input-field" id="emContent" placeholder="吃了什么（如：番茄炒蛋、米饭）" value="'+escHtml(m ? (m.content||'') : '')+'" style="display:block;width:100%;margin-bottom:8px;" onkeydown="if(event.key===\'Enter\')saveMealModal()">'
+    + '<input class="input-field" id="emNote" placeholder="备注（可选）" value="'+escHtml(m ? (m.note||'') : '')+'" style="display:block;width:100%;margin-bottom:8px;">'
+    + '<div class="modal-actions">'
+    +   (m ? '<button class="btn-sm danger" onclick="deleteMeal(\''+m.id+'\');document.getElementById(\'mealEditModal\').remove()">删除</button>' : '')
+    +   '<button class="btn-sm" onclick="document.getElementById(\'mealEditModal\').remove()">取消</button>'
+    +   '<button class="btn-sm primary" onclick="saveMealModal()">保存</button>'
+    + '</div></div>';
+  document.body.appendChild(modal);
+  modal.addEventListener('click', function(e) { if (e.target === modal) modal.remove(); });
+  setTimeout(function() { var inp = $('emContent'); if (inp) inp.focus(); }, 50);
+}
+
+function saveMealModal() {
+  var type = $('emType').value;
+  var date = $('emDate').value || today();
+  var content = $('emContent').value.trim();
+  var note = $('emNote').value.trim();
   if (!state.bar.meals) state.bar.meals = [];
-  var prefs = state.appPrefs || (state.appPrefs = {}); prefs.lastMealSource = sourceSel ? sourceSel.value : '家食';
-  state.bar.meals.push({
-    id: 'ml'+Date.now(),
-    date: (dateInp && dateInp.value) ? dateInp.value : today(),
-    mealType: typeSel ? typeSel.value : 'breakfast',
-    source: sourceSel ? sourceSel.value : '家食',
-    content: contentInp ? contentInp.value.trim() : '',
-    note: noteInp ? noteInp.value.trim() : ''
-  });
-  saveData(); renderPage('bar'); toast('餐食已记录 🍽️');
+  if (mealEditingId) {
+    var m = state.bar.meals.find(function(x) { return x.id === mealEditingId; });
+    if (m) { m.mealType = type; m.date = date; m.content = content; m.note = note; }
+    toast('餐食已更新');
+  } else {
+    state.bar.meals.push({ id:'ml'+Date.now(), date:date, mealType:type, content:content, note:note });
+    toast('餐食已记录 🍽️');
+  }
+  saveData();
+  document.getElementById('mealEditModal').remove();
+  renderPage('bar');
 }
 
 function deleteMeal(id) {
@@ -9478,47 +9579,7 @@ function deleteMeal(id) {
   saveData(); renderPage('bar');
 }
 
-function editMeal(id) {
-  var m = (state.bar.meals || []).find(function(x) { return x.id === id; });
-  if (!m) return;
-  var typeOpts = MEAL_TYPES.map(function(t) {
-    return '<option value="'+t.id+'"'+(t.id===m.mealType?' selected':'')+'>'+t.icon+' '+t.label+'</option>';
-  }).join('');
-  var srcOpts = MEAL_SOURCES.map(function(s) {
-    return '<option value="'+s+'"'+(s===m.source?' selected':'')+'>'+s+'</option>';
-  }).join('');
-  var modal = document.createElement('div');
-  modal.className = 'modal-overlay show'; modal.id = 'editMealModal';
-  modal.innerHTML = '<div class="modal-box" style="max-width:460px;">'
-    + '<h3>✏️ 编辑餐食</h3>'
-    + '<div class="form-row" style="margin-bottom:8px;">'
-    +   '<select class="input-field" id="editMealType" style="flex:0.5;">'+typeOpts+'</select>'
-    +   '<select class="input-field" id="editMealSource" style="flex:0.5;">'+srcOpts+'</select>'
-    +   '<input class="input-field" type="date" id="editMealDate" value="'+m.date+'" style="width:120px;flex-shrink:0;">'
-    + '</div>'
-    + '<input class="input-field" id="editMealContent" placeholder="吃了什么" value="'+escHtml(m.content||'')+'" style="display:block;width:100%;margin-bottom:8px;">'
-    + '<input class="input-field" id="editMealNote" placeholder="备注" value="'+escHtml(m.note||'')+'" style="display:block;width:100%;margin-bottom:8px;">'
-    + '<div class="modal-actions">'
-    +   '<button class="btn-sm" onclick="document.getElementById(\'editMealModal\').remove()">取消</button>'
-    +   '<button class="btn-sm primary" onclick="saveEditMeal(\''+id+'\')">保存</button>'
-    + '</div></div>';
-  document.body.appendChild(modal);
-  modal.addEventListener('click', function(e) { if (e.target === modal) modal.remove(); });
-  setTimeout(function() { var inp = $('editMealContent'); if (inp) { inp.focus(); inp.select(); } }, 50);
-}
-
-function saveEditMeal(id) {
-  var m = (state.bar.meals || []).find(function(x) { return x.id === id; });
-  if (!m) return;
-  m.mealType = $('editMealType').value;
-  m.source = $('editMealSource').value;
-  m.date = $('editMealDate').value || today();
-  m.content = $('editMealContent').value.trim();
-  m.note = $('editMealNote').value.trim();
-  saveData();
-  document.getElementById('editMealModal').remove();
-  renderPage('bar'); toast('餐食已更新');
-}
+function editMeal(id) { openMealModal(id); }
 
 function renderBarDrinks() {
   const drinks = (state.bar.drinks || []).slice(-20).reverse();
