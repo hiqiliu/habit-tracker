@@ -1125,6 +1125,10 @@ textarea.input-field { resize:vertical; min-height:60px; }
 .flash-input { flex:1; font-size:13px; }
 .flash-note-row { display:flex; gap:6px; margin-top:8px; }
 .flash-sum-sel { flex:0 0 96px; font-size:12px; padding:6px 4px; }
+.flash-work-sel { flex:0 0 96px; font-size:12px; padding:6px 4px; }
+.flash-dur-inp { flex:0 0 64px; font-size:13px; text-align:center; }
+.flash-add-btn { flex:0 0 auto; padding:6px 10px; font-size:12px; }
+.flash-sync-sel { flex:0 0 118px; font-size:11px; padding:6px 2px; color:var(--muted); }
 .dsm-field { margin-bottom:10px; }
 .dsm-label { display:block; font-size:12px; font-weight:600; color:var(--muted); margin-bottom:4px; }
 /* ─── 纪念日 ─── */
@@ -2390,37 +2394,38 @@ function renderDashboard() {
     + '<div class="dash-overview">'
     + ovCard('📋', donePlans+'/'+todayPlans.length, '待办', 'plan', todayPlans.length === 0)
     + ovCard('✅', checkedHabits+'/'+totalHabits, '习惯', 'habit', totalHabits === 0)
-    + ovCard('🏃', todayWorkouts.length, '运动', 'gym', todayWorkouts.length === 0)
+    + ovCard('🏃', todayWorkouts.length, '运动', 'gym', todayWorkouts.length === 0, 'ovWorkoutVal')
     + ovCard('😴', todaySleep.length > 0 ? (todaySleep[0].hours != null ? todaySleep[0].hours+'h' : '🌙') : '—', '睡眠', 'bar', todaySleep.length === 0)
     + ovCard('📝', todayGratitude ? MOOD_EMOJIS[todayGratitude.level||3] : '—', '日记', 'soul', !todayGratitude)
     + ovCard('🍽️', todayMealCount, '餐食', 'bar', todayMealCount === 0, 'ovMealVal')
     + '</div>';
 
-  // ─── 闪电记录面板（零摩擦打卡）───
-  var flNight = (state.gym.sleepData || []).find(function(s){ return s.date === todayStr && s.type !== 'nap'; });
-  var flRead = (state.library.readDays || []).indexOf(todayStr) >= 0;
-  function flashBtn(action, icon, label, badge, id) {
-    var has = badge !== '';
-    return '<button class="flash-btn'+(has?' done':'')+'"'+(id?' id="'+id+'"':'')+' onclick="'+action+'">'
-      + '<span class="flash-ic">'+icon+'</span>'
-      + '<span class="flash-lb">'+label+'</span>'
-      + (has ? '<span class="flash-n" id="'+(id||'')+'Badge">'+badge+'</span>' : '')
-      + '</button>';
-  }
+  // ─── 自定义输入面板（零摩擦打卡）───
   var mealQuickOpts = mealSlotDefs().map(function(t) {
     var isLast = (state.appPrefs || {}).lastMealType === t.id;
     return '<option value="'+t.id+'"'+(isLast?' selected':'')+'>'+t.icon+' '+t.label+'</option>';
   }).join('');
+  var workQuickOpts = (state.gym.workoutTypes || []).map(function(t) {
+    return '<option'+(t===(state.appPrefs||{}).lastWorkoutType?' selected':'')+'>'+escHtml(t)+'</option>';
+  }).join('');
+  var gymTrackers = Object.keys(state.gym.weeklyTracker || {});
+  var syncOpts = gymTrackers.map(function(k) {
+    var t = state.gym.weeklyTracker[k];
+    return '<option value="'+k+'">'+(t.icon||'📌')+' '+escHtml(t.name||k)+'</option>';
+  }).join('');
   var flashHtml = '<div class="flash-panel">'
-    + '<div class="flash-row">'
-    + flashBtn('flashGo(\'meal\')', '🍽️', '餐食', todayMealCount > 0 ? '×'+todayMealCount : '', 'flashMealBtn')
-    + flashBtn('flashGo(\'sleep\')', '😴', '睡眠', flNight ? (flNight.waketime ? flNight.hours+'h' : '🌙入睡') : '')
-    + flashBtn('flashGo(\'workout\')', '🏃', '运动', todayWorkouts.length > 0 ? '×'+todayWorkouts.length : '')
-    + flashBtn('flashGo(\'read\')', '📖', '读书', flRead ? '✓' : '')
-    + '</div>'
     + '<div class="flash-note-row">'
     +   '<select class="input-field flash-sum-sel" id="flashMealSel">'+mealQuickOpts+'</select>'
     +   '<input class="input-field flash-input" id="flashMealInp" placeholder="吃了什么，回车存入餐食…" onkeydown="if(event.key===\'Enter\')flashMeal()">'
+    + '</div>'
+    + '<div class="flash-note-row">'
+    +   '<select class="input-field flash-work-sel" id="quickType">'+workQuickOpts+'</select>'
+    +   '<input class="input-field flash-dur-inp" id="quickDur" placeholder="分钟" type="number">'
+    +   '<button class="btn-sm primary flash-add-btn" onclick="quickAddWorkout()">+ 记录</button>'
+    + '</div>'
+    + '<div class="flash-note-row">'
+    +   '<input class="input-field flash-input" id="quickNote" placeholder="运动备注（可选）">'
+    +   (syncOpts ? '<select class="input-field flash-sync-sel" id="quickSync"><option value="">📅 同步追踪</option>'+syncOpts+'</select>' : '')
     + '</div>'
     + '<div class="flash-note-row">'
     +   '<input class="input-field flash-input" id="flashNoteInp" placeholder="💬 随手记一句，回车存入时间轴…" onkeydown="if(event.key===\'Enter\')flashNote(this)">'
@@ -4642,31 +4647,6 @@ function renderGymOverview(mod) {
         </div>
       </div>
 
-      <div class="section-title">⚡ 快速记录</div>
-      <div class="form-row">
-        <select class="input-field" id="quickType" style="flex:0.8;">
-          ${(state.gym.workoutTypes||[]).map(t => `<option${t===(state.appPrefs||{}).lastWorkoutType?' selected':''}>${t}</option>`).join('')}
-        </select>
-        <input class="input-field" id="quickDur" placeholder="分钟" type="number" style="flex:0.4;">
-        <input class="input-field" id="quickNote" placeholder="备注" style="flex:1;">
-        <button class="btn-sm primary" onclick="quickAddWorkout()">+ 记录</button>
-      </div>
-      ${(() => {
-        var tracker = state.gym.weeklyTracker || {};
-        var keys = Object.keys(tracker);
-        if (keys.length === 0) return '';
-        var opts = keys.map(function(k) {
-          var t = tracker[k];
-          return '<option value="'+k+'">'+(t.icon||'📌')+' '+escHtml(t.name||k)+'</option>';
-        }).join('');
-        return '<div class="form-row" style="margin-top:6px;">'
-          + '<select class="input-field" id="quickSync" style="flex:1;font-size:12px;color:var(--muted);">'
-          +   '<option value="">📅 同步到本周追踪（可选）</option>'
-          +   opts
-          + '</select>'
-          + '</div>';
-      })()}
-
       <div class="section-title">📈 本周概况</div>
       <div class="gym-stat-row">
         <div class="stat-card"><div class="stat-val">${weekWorkouts.length}</div><div class="stat-lbl">运动次数</div></div>
@@ -4725,20 +4705,35 @@ function renderGymOverview(mod) {
 }
 function quickAddWorkout() {
   const type = $('quickType'), dur = $('quickDur'), note = $('quickNote');
+  if (!type) return;
   if (!state.gym.workouts) state.gym.workouts = [];
   var prefs = state.appPrefs || (state.appPrefs = {}); prefs.lastWorkoutType = type.value;
   var wId = 'w'+Date.now();
   state.gym.workouts.push({ id:wId, date:today(), type:type.value, duration:parseInt(dur.value)||0, note:note.value.trim() });
-  // 自动同步到本周追踪
+  // 可选：同步到本周追踪
   var syncSel = $('quickSync');
+  var syncedTo = '';
   if (syncSel && syncSel.value && state.gym.weeklyTracker && state.gym.weeklyTracker[syncSel.value]) {
     var tk = state.gym.weeklyTracker[syncSel.value];
     if (!tk.logs) tk.logs = [];
     tk.logs.push({ id:'wl'+Date.now(), date:today(), note: type.value + (dur.value?' · '+dur.value+'分钟':'') + (note.value?' · '+note.value:'') + ' _w'+wId });
-    saveData(); dur.value=''; note.value=''; renderPage('gym'); toast('运动已记录 ✅ 已同步到'+(tk.name||'追踪'));
-  } else {
-    saveData(); dur.value=''; note.value=''; renderPage('gym'); toast('运动已记录');
+    syncedTo = tk.name || '追踪';
   }
+  saveData();
+  if (dur) dur.value = '';
+  if (note) note.value = '';
+  if (syncSel) syncSel.value = '';
+  refreshWorkoutQuickUI();
+  toast(syncedTo ? '运动已记录 ✅ 已同步到' + syncedTo : '运动已记录 ✅');
+}
+
+// 首页内联更新运动计数，避免整页重绘丢失输入焦点
+function refreshWorkoutQuickUI() {
+  var n = (state.gym.workouts || []).filter(function(w) { return w.date === today(); }).length;
+  var ov = document.getElementById('ovWorkoutVal');
+  if (!ov) return;
+  ov.textContent = n;
+  if (ov.parentElement) ov.parentElement.classList.toggle('empty', n === 0);
 }
 
 // ─── WORKOUT (运动记录) ───
