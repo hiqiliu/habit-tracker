@@ -1125,10 +1125,14 @@ textarea.input-field { resize:vertical; min-height:60px; }
 .flash-input { flex:1; font-size:13px; }
 .flash-note-row { display:flex; gap:6px; margin-top:8px; }
 .flash-sum-sel { flex:0 0 96px; font-size:12px; padding:6px 4px; }
-.flash-work-sel { flex:0 0 96px; font-size:12px; padding:6px 4px; }
-.flash-dur-inp { flex:0 0 64px; font-size:13px; text-align:center; }
-.flash-add-btn { flex:0 0 auto; padding:6px 10px; font-size:12px; }
-.flash-sync-sel { flex:0 0 118px; font-size:11px; padding:6px 2px; color:var(--muted); }
+/* 运动记录：一张卡片内的连贯表单项，每项一行 */
+.flash-record-card {
+  border:1px solid var(--rule); border-radius:var(--radius-sm);
+  background:var(--bg); padding:10px 12px; margin-bottom:8px;
+}
+.flash-record-title { font-size:12px; font-weight:600; color:var(--muted); margin-bottom:6px; }
+.flash-record-card .input-field { display:block; width:100%; margin-bottom:6px; }
+.flash-record-btn { display:block; width:100%; padding:7px 0; font-size:13px; }
 .dsm-field { margin-bottom:10px; }
 .dsm-label { display:block; font-size:12px; font-weight:600; color:var(--muted); margin-bottom:4px; }
 /* ─── 纪念日 ─── */
@@ -2428,14 +2432,13 @@ function renderDashboard() {
     +   '<select class="input-field flash-sum-sel" id="flashMealSel">'+mealQuickOpts+'</select>'
     +   '<input class="input-field flash-input" id="flashMealInp" placeholder="吃了什么，回车存入餐食…" onkeydown="if(event.key===\'Enter\')flashMeal()">'
     + '</div>'
-    + '<div class="flash-note-row">'
-    +   '<select class="input-field flash-work-sel" id="quickType">'+workQuickOpts+'</select>'
-    +   '<input class="input-field flash-dur-inp" id="quickDur" placeholder="分钟" type="number">'
-    +   '<button class="btn-sm primary flash-add-btn" onclick="quickAddWorkout()">+ 记录</button>'
-    + '</div>'
-    + '<div class="flash-note-row">'
-    +   '<input class="input-field flash-input" id="quickNote" placeholder="运动备注（可选）">'
-    +   (syncOpts ? '<select class="input-field flash-sync-sel" id="quickSync"><option value="">📅 同步追踪</option>'+syncOpts+'</select>' : '')
+    + '<div class="flash-record-card">'
+    +   '<div class="flash-record-title">🏃 运动记录</div>'
+    +   '<select class="input-field" id="quickType">'+workQuickOpts+'</select>'
+    +   '<input class="input-field" id="quickDur" placeholder="时长（分钟）" type="number" onkeydown="if(event.key===\'Enter\')quickAddWorkout()">'
+    +   '<input class="input-field" id="quickNote" placeholder="备注（可选）" onkeydown="if(event.key===\'Enter\')quickAddWorkout()">'
+    +   (syncOpts ? '<select class="input-field" id="quickSync"><option value="">📅 不同步 / 选择本周追踪</option>'+syncOpts+'</select>' : '')
+    +   '<button class="btn-sm primary flash-record-btn" onclick="quickAddWorkout()">+ 记录这次运动</button>'
     + '</div>'
     + '<div class="flash-note-row">'
     +   '<input class="input-field flash-input" id="flashNoteInp" placeholder="💬 随手记一句，回车存入时间轴…" onkeydown="if(event.key===\'Enter\')flashNote(this)">'
