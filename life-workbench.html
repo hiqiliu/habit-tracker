@@ -2424,7 +2424,14 @@ function renderDashboard() {
   var workQuickOpts = (state.gym.workoutTypes || []).map(function(t) {
     return '<option'+(t===(state.appPrefs||{}).lastWorkoutType?' selected':'')+'>'+escHtml(t)+'</option>';
   }).join('');
-  var gymTrackers = Object.keys(state.gym.weeklyTracker || {});
+  var libTitleOpts = (state.library.items || []).filter(function(i) {
+    return i.status !== 'done';
+  }).map(function(i) {
+    return '<option value="'+escHtml(i.title)+'"></option>';
+  }).join('');
+  var libTypeOpts = (state.library.types || LIB_TYPES).slice(0, 3).map(function(t) {
+    return '<option value="'+t.id+'">'+t.icon+' '+t.label+'</option>';
+  }).join('');
   var syncOpts = gymTrackers.map(function(k) {
     var t = state.gym.weeklyTracker[k];
     return '<option value="'+k+'">'+(t.icon||'📌')+' '+escHtml(t.name||k)+'</option>';
@@ -2455,6 +2462,17 @@ function renderDashboard() {
     +     '<option value="我不行">🚫 我不行</option>'
     +   '</select>'
     +   '<button class="btn-sm primary flash-record-btn" onclick="flashPerfume()">+ 记录试香</button>'
+    + '</div>'
+    + '<div class="flash-block">'
+    +   '<div class="flash-block-title">📚 在看记录</div>'
+    +   '<input class="input-field" id="flashLibTitle" list="flashLibTitles" placeholder="在看什么书 / 电影 / 剧集…" onkeydown="if(event.key===\'Enter\')flashLib()">'
+    +   '<datalist id="flashLibTitles">'+libTitleOpts+'</datalist>'
+    +   '<div class="flash-note-row">'
+    +     '<select class="input-field flash-sum-sel" id="flashLibType">'+libTypeOpts+'</select>'
+    +     '<input class="input-field flash-input" id="flashLibProgress" placeholder="进度（如 30 或 30%）">'
+    +   '</div>'
+    +   '<input class="input-field" id="flashLibFeeling" placeholder="当下的感受（可选，回车一起保存）" onkeydown="if(event.key===\'Enter\')flashLib()">'
+    +   '<button class="btn-sm primary flash-record-btn" onclick="flashLib()">+ 记录 / 更新</button>'
     + '</div>'
     + '<div class="flash-block">'
     +   '<div class="flash-block-title">💬 随手记</div>'
@@ -2612,7 +2630,60 @@ function flashPerfume() {
   toast('试香已记录 🌸 可去香水页补充调性/价格');
 }
 
-// 不整页重绘，仅更新首页的餐食计数，避免输入焦点与滚动位置丢失
+// ─── 首页在看快捷记录：同名则更新进度+追加感受，新名字则自动建档 ───
+function parseLibProgress(raw, item) {
+  var t = String(raw || '').trim();
+  if (!t) return null;
+  if (t.indexOf('%') >= 0) {
+    var p = parseFloat(t);
+    return isNaN(p) ? null : Math.max(0, Math.min(100, Math.round(p)));
+  }
+  var n = parseFloat(t.replace(/[^\d.]/g, ''));
+  if (isNaN(n)) return null;
+  // 填的是页/集数时，需要总量才能换算成百分比
+  if (item && item.totalUnits > 0) return Math.max(0, Math.min(100, Math.round(n / item.totalUnits * 100)));
+  if (n > 100) return null;
+  return Math.max(0, Math.round(n));
+}
+
+function flashLib() {
+  var titleEl = $('flashLibTitle'), typeEl = $('flashLibType'), progEl = $('flashLibProgress'), feelEl = $('flashLibFeeling');
+  if (!titleEl) return;
+  var title = titleEl.value.trim();
+  if (!title) { toast('请填写书名 / 片名'); titleEl.focus(); return; }
+  if (!state.library.items) state.library.items = [];
+  var item = state.library.items.find(function(i) { return (i.title || '').trim() === title; });
+  var prog = parseLibProgress(progEl.value, item);
+  if (progEl.value.trim() && prog === null) {
+    toast(item && item.totalUnits ? '进度填写有误' : '填 0-100 的百分比；填页数请先在详情里补总页数');
+    progEl.focus();
+    return;
+  }
+  var feeling = feelEl.value.trim();
+  var stamp = today();
+  if (item) {
+    if (prog !== null) item.progress = prog;
+    if (item.status === 'wish') item.status = 'doing';
+    if (!item.startDate) item.startDate = stamp;
+    if (prog === 100) { item.status = 'done'; if (!item.endDate) item.endDate = stamp; }
+    if (feeling) item.note = (item.note ? item.note + '\n' : '') + '【' + stamp + '】' + feeling;
+    toast('已更新「' + item.title + '」' + (prog !== null ? ' · 进度 ' + item.progress + '%' : ''));
+  } else {
+    var unit = typeEl.value === 'book' ? 'page' : (typeEl.value === 'tv' ? 'episode' : 'minute');
+    state.library.items.push({
+      id: 'lib' + Date.now(), title: title, type: typeEl.value,
+      status: prog === 100 ? 'done' : 'doing', tags: [], rating: null,
+      note: feeling ? '【' + stamp + '】' + feeling : '',
+      subtitle: '', year: '', link: '',
+      startDate: stamp, endDate: prog === 100 ? stamp : '',
+      progress: prog || 0, totalUnits: 0, progressUnit: unit,
+      excerpts: [], createdAt: stamp
+    });
+    toast('已加入在读 📚');
+  }
+  saveData();
+  titleEl.value = ''; progEl.value = ''; feelEl.value = '';
+}
 function refreshMealQuickUI() {
   var n = (state.bar.meals || []).filter(function(m) { return m.date === today() && m.mealType !== 'water'; }).length;
   var ov = document.getElementById('ovMealVal');
