@@ -1178,6 +1178,50 @@ textarea.input-field { resize:vertical; min-height:60px; }
   border-radius:8px; padding:0 6px; line-height:16px; cursor:pointer; margin-right:4px;
 }
 .hygiene-chip:hover { background:var(--danger); color:#fff; }
+/* ─── 快速记录 ─── */
+.qr-time { flex:0 0 88px; font-size:12px; padding:6px 4px; }
+.qr-dur { flex:0 0 110px; font-size:12px; }
+.qr-sleep-row { display:flex; gap:6px; align-items:center; flex-wrap:wrap; margin-top:8px; }
+.qr-sleep-hint { font-size:11px; color:var(--accent); }
+.qr-chips { margin-top:8px; }
+.flash-more { margin-top:8px; }
+.flash-more > summary {
+  font-size:12px; color:var(--muted); cursor:pointer; padding:8px 10px;
+  border:1px dashed var(--rule); border-radius:var(--radius-sm); list-style:none;
+}
+.flash-more > summary::-webkit-details-marker { display:none; }
+.flash-more[open] > summary { margin-bottom:8px; }
+/* ─── 日视图时间轴 ─── */
+.dv-stats { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px; }
+.dv-stat-chip {
+  font-size:11px; color:var(--muted); background:var(--bg2);
+  border:1px solid var(--rule); border-radius:999px; padding:2px 8px;
+}
+.dv-list { background:var(--bg); border:1px solid var(--rule); border-radius:var(--radius); padding:4px 12px; }
+.dv-row { display:flex; align-items:stretch; gap:8px; }
+.dv-time { flex:0 0 44px; font-size:11px; color:var(--muted); padding:10px 0; font-variant-numeric:tabular-nums; }
+.dv-rail { flex:0 0 14px; display:flex; flex-direction:column; align-items:center; padding-top:14px; }
+.dv-dot { width:8px; height:8px; border-radius:50%; background:var(--accent); flex-shrink:0; }
+.dv-dot.cat-health { background:#5fa8d3; }
+.dv-dot.cat-activity { background:#c4a882; }
+.dv-dot.cat-sleep { background:#9b8ec4; }
+.dv-dot.cat-todo { background:#8b9d83; }
+.dv-line { flex:1; width:1px; background:var(--rule); margin-top:2px; }
+.dv-card { flex:1; min-width:0; padding:8px 0; border-bottom:1px dashed rgba(0,0,0,0.05); }
+.dv-row:last-child .dv-card { border-bottom:none; }
+.dv-head { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.dv-title { font-size:13px; font-weight:500; }
+.dv-actions { display:flex; gap:2px; flex-shrink:0; }
+.dv-btn { background:none; border:none; cursor:pointer; font-size:11px; opacity:0.55; padding:0 2px; }
+.dv-btn:hover { opacity:1; }
+.dv-note { font-size:12px; color:var(--ink); margin-top:2px; word-break:break-word; }
+.dv-meta { font-size:11px; color:var(--muted); margin-top:2px; font-variant-numeric:tabular-nums; }
+.dv-untimed { margin-top:12px; }
+.dv-untimed-title { font-size:12px; color:var(--muted); margin-bottom:6px; }
+.dv-untimed-chip {
+  display:inline-block; font-size:11px; color:var(--muted); background:var(--bg2);
+  border-radius:8px; padding:1px 7px; margin:0 4px 4px 0;
+}
 /* 每一类快捷输入是一张独立小卡片 */
 .flash-block {
   background:var(--bg); border:1px solid var(--rule);
@@ -2503,13 +2547,22 @@ function renderDashboard() {
   (state.bar.hygiene || []).forEach(function(h) {
     if (h.date === todayStr) hygTodayCounts[h.type] = (hygTodayCounts[h.type] || 0) + 1;
   });
-  var hygQuickHtml = (state.bar.hygieneTypes || []).map(function(t) {
-    var n = hygTodayCounts[t.id] || 0;
-    return '<button class="hygiene-quick-btn" onclick="quickHygiene(\''+t.id+'\')">'
-      + t.icon + ' ' + escHtml(t.label)
-      + (n > 0 ? ' <span class="hq-count">×'+n+'</span>' : '')
-      + '</button>';
-  }).join('');
+  var waterToday = (state.bar.meals || []).filter(function(m) { return m.date === todayStr && m.mealType === 'water'; })
+    .reduce(function(s, m) { return s + parseWaterMl(m.content); }, 0);
+  var qrChipsHtml = ['toilet','shower','brush','wash'].map(function(id) {
+    var n = hygTodayCounts[id] || 0;
+    return '<button class="hygiene-quick-btn" onclick="qrQuick(\''+id+'\')">'
+      + hygieneIcon(id) + ' ' + hygieneLabel(id)
+      + (n > 0 ? ' <span class="hq-count">×'+n+'</span>' : '') + '</button>';
+  }).join('')
+    + '<button class="hygiene-quick-btn" onclick="qrQuick(\'water\')">💧 饮水 200ml'
+      + (waterToday > 0 ? ' <span class="hq-count">'+waterToday+'</span>' : '') + '</button>';
+  var qrSleepStartInfo = (state.appPrefs || {}).sleepStart;
+  var qrSleepHtml = qrSleepStartInfo
+    ? '<div class="qr-sleep-hint">🌙 已入睡 '+qrSleepStartInfo.time+'，醒来记得点一下</div>'
+      + '<button class="btn-sm primary" onclick="qrSleepWake()">☀️ 我起床了</button>'
+    : '<button class="btn-sm" onclick="qrSleepStart()">🌙 准备睡觉</button>'
+      + '<button class="btn-sm" onclick="barSubView=\'sleep\';navigate(\'bar\')">☀️ 补记睡眠</button>';
   var flashHtml = '<div class="flash-panel">'
     + '<div class="flash-block">'
     +   '<div class="flash-block-title">💬 随手记</div>'
@@ -2528,16 +2581,21 @@ function renderDashboard() {
     + '</div>'
     + '</div>'
     + '<div class="flash-block">'
-    +   '<div class="flash-block-title">🍽️ 餐食记录</div>'
+    +   '<div class="flash-block-title">⚡ 快速记录</div>'
     +   '<div class="flash-note-row">'
-    +     '<select class="input-field flash-sum-sel" id="flashMealSel">'+mealQuickOpts+'</select>'
-    +     '<input class="input-field flash-input" id="flashMealInp" placeholder="吃了什么，回车存入餐食…" onkeydown="if(event.key===\'Enter\')flashMeal()">'
+    +     '<input class="input-field qr-time" type="time" id="qrTime" value="'+nowHM()+'">'
+    +     '<select class="input-field flash-input" id="qrType" onchange="qrTypeChange()">'+qrTypeOptsHtml()+'</select>'
     +   '</div>'
+    +   '<div class="flash-note-row" style="margin-top:6px;">'
+    +     '<input class="input-field qr-dur" type="number" id="qrDur" placeholder="时长（分钟）" style="display:none;">'
+    +     '<input class="input-field flash-input" id="qrNote" placeholder="备注（可留空）" onkeydown="if(event.key===\'Enter\')qrSubmit()">'
+    +   '</div>'
+    +   '<button class="btn-sm primary flash-record-btn" onclick="qrSubmit()">+ 记录</button>'
+    +   '<div class="qr-sleep-row">'+qrSleepHtml+'</div>'
+    +   '<div class="hygiene-quick-row qr-chips">'+qrChipsHtml+'</div>'
     + '</div>'
-    + '<div class="flash-block">'
-    +   '<div class="flash-block-title">🧼 卫生记录</div>'
-    +   '<div class="hygiene-quick-row">'+hygQuickHtml+'</div>'
-    + '</div>'
+    + '<details class="flash-more">'
+    + '<summary>更多录入 · 运动 / 试香 / 在看</summary>'
     + '<div class="flash-block">'
     +   '<div class="flash-block-title">🏃 运动记录</div>'
     +   '<select class="input-field" id="quickType">'+workQuickOpts+'</select>'
@@ -2568,6 +2626,7 @@ function renderDashboard() {
     +   '<input class="input-field" id="flashLibFeeling" placeholder="当下的感受（可选，回车一起保存）" onkeydown="if(event.key===\'Enter\')flashLib()">'
     +   '<button class="btn-sm primary flash-record-btn" onclick="flashLib()">+ 记录 / 更新</button>'
     + '</div>'
+    + '</details>'
     + '</div>';
 
   // Quick navigation
@@ -2646,6 +2705,374 @@ function renderDashboard() {
 
 // ─── 闪电记录：一键进入对应记录页 ───
 function nowHM() { var d = new Date(); return ('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2); }
+
+// ═══════════════════════════════════════
+// 统一快速记录（P0）
+// ═══════════════════════════════════════
+var QR_TYPES = [
+  { id:'breakfast', icon:'🍳', label:'早餐',   group:'健康 · 饮食', refType:'meal',   mode:'moment' },
+  { id:'lunch',     icon:'🍱', label:'午餐',   group:'健康 · 饮食', refType:'meal',   mode:'moment' },
+  { id:'dinner',    icon:'🍲', label:'晚餐',   group:'健康 · 饮食', refType:'meal',   mode:'moment' },
+  { id:'snack',     icon:'🍪', label:'加餐',   group:'健康 · 饮食', refType:'meal',   mode:'moment' },
+  { id:'drink',     icon:'🥤', label:'饮料',   group:'健康 · 饮食', refType:'meal',   mode:'moment' },
+  { id:'water',     icon:'💧', label:'饮水',   group:'健康 · 饮食', refType:'meal',   mode:'water' },
+  { id:'shower',    icon:'🚿', label:'洗澡',   group:'健康 · 卫生', refType:'hygiene', mode:'moment' },
+  { id:'toilet',    icon:'💩', label:'排泄',   group:'健康 · 卫生', refType:'hygiene', mode:'moment' },
+  { id:'wash',      icon:'🧴', label:'洗漱',   group:'健康 · 卫生', refType:'hygiene', mode:'moment' },
+  { id:'brush',     icon:'🪥', label:'刷牙',   group:'健康 · 卫生', refType:'hygiene', mode:'moment' },
+  { id:'workout',   icon:'🏃', label:'运动',   group:'活动',        refType:'workout', mode:'span' },
+  { id:'chore',     icon:'🧹', label:'家务',   group:'活动',        refType:'timeline', mode:'span' },
+  { id:'makeup',    icon:'💄', label:'化妆',   group:'活动',        refType:'timeline', mode:'span' },
+  { id:'read',      icon:'📖', label:'阅读',   group:'活动',        refType:'timeline', mode:'span' },
+  { id:'sleep_in',  icon:'🌙', label:'准备睡觉', group:'睡眠',       refType:'sleep',   mode:'moment' },
+  { id:'wake',      icon:'☀️', label:'起床',   group:'睡眠',        refType:'sleep',   mode:'moment' }
+];
+if (!state.timeline) { state.timeline = []; }
+function qrTypeDef(id) { return QR_TYPES.find(function(t) { return t.id === id; }); }
+function qrTypeOptsHtml() {
+  var groups = {}, order = [];
+  QR_TYPES.forEach(function(t) {
+    if (!groups[t.group]) { groups[t.group] = []; order.push(t.group); }
+    groups[t.group].push(t);
+  });
+  return order.map(function(g) {
+    return '<optgroup label="'+g+'">' + groups[g].map(function(t) {
+      return '<option value="'+t.id+'"'+(t.id===(state.appPrefs||{}).lastQrType?' selected':'')+'>'+t.icon+' '+t.label+'</option>';
+    }).join('') + '</optgroup>';
+  }).join('');
+}
+function addMin(t, m) {
+  var p = String(t||'00:00').split(':');
+  var total = (parseInt(p[0])||0) * 60 + (parseInt(p[1])||0) + (m||0);
+  total = ((total % 1440) + 1440) % 1440;
+  return ('0'+Math.floor(total/60)).slice(-2) + ':' + ('0'+(total%60)).slice(-2);
+}
+function pushTimelineEvent(ev) {
+  if (!state.timeline) state.timeline = [];
+  var e = {
+    id: 'tl' + Date.now() + Math.floor(Math.random()*1000),
+    date: ev.date || today(),
+    time: ev.time || nowHM(),
+    endTime: ev.endTime || '',
+    cat: ev.cat || 'activity',
+    type: ev.type || 'custom',
+    label: ev.label || '记录',
+    icon: ev.icon || '📌',
+    note: ev.note || '',
+    dur: ev.dur || 0,
+    refType: ev.refType || '',
+    refId: ev.refId || ''
+  };
+  state.timeline.push(e);
+  return e;
+}
+function qrTypeChange() {
+  var sel = $('qrType'); if (!sel) return;
+  var def = qrTypeDef(sel.value); if (!def) return;
+  var dur = $('qrDur');
+  if (dur) { dur.style.display = def.mode === 'span' ? '' : 'none'; }
+  var note = $('qrNote');
+  if (note) {
+    note.placeholder = def.mode === 'water' ? '毫升数，留空记 200ml'
+      : (def.mode === 'span' ? '做了什么（可选，如：拖地 / 跑步）' : '备注（可留空）');
+  }
+}
+function qrSubmit() {
+  var sel = $('qrType'), timeEl = $('qrTime'), noteEl = $('qrNote'), durEl = $('qrDur');
+  if (!sel) return;
+  var def = qrTypeDef(sel.value);
+  if (!def) return;
+  if (def.refType === 'sleep') {
+    if (def.id === 'sleep_in') qrSleepStart(); else qrSleepWake();
+    return;
+  }
+  var time = (timeEl && timeEl.value) || nowHM();
+  var note = noteEl ? noteEl.value.trim() : '';
+  var dur = durEl && durEl.value ? parseInt(durEl.value) || 0 : 0;
+  var ds = today();
+  if (def.refType === 'meal') {
+    if (!state.bar.meals) state.bar.meals = [];
+    var content = def.mode === 'water' ? normWaterContent(note || '200ml') : note;
+    state.bar.meals.push({ id:'ml'+Date.now(), date:ds, mealType:def.id, content:content, note:'', time:time });
+  } else if (def.refType === 'hygiene') {
+    if (!state.bar.hygiene) state.bar.hygiene = [];
+    state.bar.hygiene.push({ id:'hg'+Date.now(), date:ds, type:def.id, time:time, note:note });
+  } else if (def.refType === 'workout') {
+    if (!state.gym.workouts) state.gym.workouts = [];
+    var isType = (state.gym.workoutTypes || []).indexOf(note) >= 0;
+    state.gym.workouts.push({
+      id:'w'+Date.now(), date:ds,
+      type: isType ? note : '运动',
+      duration: dur,
+      note: isType ? '' : note,
+      time: time,
+      endTime: dur ? addMin(time, dur) : ''
+    });
+  } else {
+    pushTimelineEvent({
+      date: ds, time: time, cat: 'activity', type: def.id, label: def.label, icon: def.icon,
+      endTime: dur ? addMin(time, dur) : '', dur: dur, note: note
+    });
+  }
+  if (!state.appPrefs) state.appPrefs = {};
+  state.appPrefs.lastQrType = def.id;
+  saveData();
+  if (noteEl) noteEl.value = '';
+  if (durEl) durEl.value = '';
+  renderPage('dashboard');
+  toast(def.icon + ' ' + def.label + ' 已记录 ' + time);
+}
+// 常用项目一键记录
+function qrQuick(typeId) {
+  var ds = today(), time = nowHM();
+  if (typeId === 'water') {
+    if (!state.bar.meals) state.bar.meals = [];
+    state.bar.meals.push({ id:'ml'+Date.now(), date:ds, mealType:'water', content:'200ml', note:'', time:time });
+  } else {
+    if (!state.bar.hygiene) state.bar.hygiene = [];
+    state.bar.hygiene.push({ id:'hg'+Date.now(), date:ds, type:typeId, time:time, note:'' });
+  }
+  saveData();
+  renderPage('dashboard');
+  toast((typeId === 'water' ? '💧 饮水 200ml' : hygieneIcon(typeId) + ' ' + hygieneLabel(typeId)) + ' 已记录 ' + time);
+}
+// 睡眠：睡前点一下、醒来点一下
+function qrSleepStart() {
+  if (!state.appPrefs) state.appPrefs = {};
+  state.appPrefs.sleepStart = { date: today(), time: nowHM() };
+  saveData();
+  renderPage('dashboard');
+  toast('🌙 已记录入睡时间 ' + nowHM());
+}
+function qrSleepWake() {
+  var st = (state.appPrefs || {}).sleepStart;
+  var ds = today(), wt = nowHM();
+  if (!st) { toast('先点「🌙 准备睡觉」，或去睡眠页补记一条'); return; }
+  var bt = st.time;
+  var hrs = (typeof calcSleepHours === 'function') ? calcSleepHours(bt, wt) : 0;
+  if (!state.gym.sleepData) state.gym.sleepData = [];
+  state.gym.sleepData = state.gym.sleepData.filter(function(s) { return !(s.date === ds && s.type !== 'nap'); });
+  state.gym.sleepData.push({
+    id:'sl'+Date.now(), date:ds, type:'night', bedtime:bt, waketime:wt,
+    hours: hrs || 0, quality:3, note:''
+  });
+  state.appPrefs.sleepStart = null;
+  saveData();
+  renderPage('dashboard');
+  toast('☀️ 睡眠已记录 ' + bt + ' → ' + wt + (hrs ? ' · ' + formatDuration(hrs) : ''));
+}
+
+// ─── 日视图：当天所有带时间的事件 ───
+function getDayEvents(dateStr) {
+  var evs = [];
+  (state.bar.meals || []).forEach(function(m) {
+    if (m.date !== dateStr) return;
+    evs.push({
+      src:'meal', id:m.id, time:m.time||'', endTime:'', icon:mealTypeIcon(m.mealType),
+      label:mealTypeLabel(m.mealType), cat:'health', dur:0,
+      note: (m.mealType === 'water' ? (parseWaterMl(m.content) + ' ml') : (m.content || '')) +
+            (m.note ? ' · ' + m.note : '')
+    });
+  });
+  (state.bar.hygiene || []).forEach(function(h) {
+    if (h.date !== dateStr) return;
+    evs.push({ src:'hygiene', id:h.id, time:h.time||'', endTime:'', icon:hygieneIcon(h.type),
+      label:hygieneLabel(h.type), cat:'health', dur:0, note:h.note||'' });
+  });
+  (state.gym.workouts || []).forEach(function(w) {
+    if (w.date !== dateStr) return;
+    evs.push({ src:'workout', id:w.id, time:w.time||'', endTime:w.endTime||'', icon:'🏃',
+      label:'运动', cat:'activity', dur:w.duration||0,
+      note:(w.type||'') + (w.note?' · '+w.note:'') });
+  });
+  (state.gym.sleepData || []).forEach(function(s) {
+    if (s.date !== dateStr) return;
+    evs.push({ src:'sleep', id:s.id, time:s.bedtime||'', endTime:s.waketime||'',
+      icon:s.type==='nap'?'☀️':'🌙', label:s.type==='nap'?'小憩':'睡眠', cat:'sleep',
+      dur:Math.round((s.hours||0)*60), note:s.note||'' });
+  });
+  (state.timeline || []).forEach(function(t) {
+    if (t.date !== dateStr) return;
+    evs.push({ src:'timeline', id:t.id, time:t.time||'', endTime:t.endTime||'',
+      icon:t.icon||'📌', label:t.label||'记录', cat:t.cat||'activity',
+      dur:t.dur||0, note:t.note||'' });
+  });
+  evs.sort(function(a, b) {
+    if (!a.time && !b.time) return 0;
+    if (!a.time) return 1;
+    if (!b.time) return -1;
+    return a.time.localeCompare(b.time);
+  });
+  return evs;
+}
+function fmtDurMin(m) {
+  if (!m || m <= 0) return '';
+  if (m < 60) return Math.round(m) + ' 分钟';
+  var h = Math.floor(m/60), r = Math.round(m%60);
+  return h + ' 小时' + (r ? ' ' + r + ' 分' : '');
+}
+function renderJournalDay(dateStr) {
+  var evs = getDayEvents(dateStr);
+  var timed = evs.filter(function(e) { return !!e.time; });
+  var untimed = evs.filter(function(e) { return !e.time; });
+  var durByCat = {};
+  evs.forEach(function(e) {
+    if (e.dur > 0) durByCat[e.cat] = (durByCat[e.cat] || 0) + e.dur;
+  });
+  var totalDur = 0;
+  Object.keys(durByCat).forEach(function(k) { totalDur += durByCat[k]; });
+  var catLabel = { health:'健康', activity:'活动', sleep:'睡眠', todo:'待办', outfit:'穿搭' };
+  var durChips = Object.keys(durByCat).sort(function(a,b){ return durByCat[b]-durByCat[a]; })
+    .map(function(k) { return '<span class="dv-stat-chip">' + (catLabel[k]||k) + ' ' + fmtDurMin(durByCat[k]) + '</span>'; })
+    .join('');
+
+  var rows = timed.map(function(e, idx) {
+    var meta = e.time + (e.endTime ? ' → ' + e.endTime : '');
+    if (e.dur > 0) meta += ' · ' + fmtDurMin(e.dur);
+    return '<div class="dv-row">'
+      + '<div class="dv-time">'+escHtml(e.time)+'</div>'
+      + '<div class="dv-rail"><span class="dv-dot cat-'+e.cat+'"></span>'+(idx < timed.length-1 ? '<span class="dv-line"></span>' : '')+'</div>'
+      + '<div class="dv-card">'
+      +   '<div class="dv-head"><span class="dv-title">'+e.icon+' '+escHtml(e.label)+'</span>'
+      +     '<span class="dv-actions">'
+      +       '<button class="dv-btn" onclick="openEventEdit(\''+e.src+'\',\''+e.id+'\')" title="编辑">✏️</button>'
+      +       '<button class="dv-btn" onclick="deleteDayEvent(\''+e.src+'\',\''+e.id+'\')" title="删除">🗑️</button>'
+      +     '</span></div>'
+      +   (e.note ? '<div class="dv-note">'+escHtml(e.note)+'</div>' : '')
+      +   '<div class="dv-meta">'+meta+'</div>'
+      + '</div>'
+      + '</div>';
+  }).join('');
+
+  var untimedHtml = untimed.length ? '<div class="dv-untimed"><div class="dv-untimed-title">未记录时间的记录</div>'
+    + untimed.map(function(e) {
+        return '<span class="dv-untimed-chip">'+e.icon+' '+escHtml(e.label)+(e.note?' · '+escHtml(e.note):'')+'</span>';
+      }).join('') + '</div>' : '';
+
+  return '<div class="section-title">⏱ 时间轴</div>'
+    + '<div class="dv-stats">'
+    +   '<span class="dv-stat-chip">📌 '+evs.length+' 条记录</span>'
+    +   (totalDur > 0 ? '<span class="dv-stat-chip">⏳ 共 '+fmtDurMin(totalDur)+'</span>' : '')
+    +   durChips
+    + '</div>'
+    + (timed.length ? '<div class="dv-list">'+rows+'</div>' : '<div class="empty-state">这一天还没有带时间的记录，用首页「⚡ 快速记录」添加吧</div>')
+    + untimedHtml;
+}
+// 事件编辑（只改时间/内容/时长，完整信息仍在各功能页）
+function openEventEdit(src, id) {
+  var rec = null;
+  if (src === 'meal') rec = (state.bar.meals||[]).find(function(x){ return x.id === id; });
+  else if (src === 'hygiene') rec = (state.bar.hygiene||[]).find(function(x){ return x.id === id; });
+  else if (src === 'workout') rec = (state.gym.workouts||[]).find(function(x){ return x.id === id; });
+  else if (src === 'sleep') rec = (state.gym.sleepData||[]).find(function(x){ return x.id === id; });
+  else rec = (state.timeline||[]).find(function(x){ return x.id === id; });
+  if (!rec) return;
+  var fields = '';
+  if (src === 'meal') {
+    fields = '<input class="input-field" type="time" id="eeTime" value="'+(rec.time||'')+'" style="width:100%;margin-bottom:8px;">'
+      + '<input class="input-field" id="eeContent" value="'+escHtml(rec.content||'')+'" placeholder="内容 / 毫升数" style="display:block;width:100%;margin-bottom:8px;">'
+      + '<input class="input-field" id="eeNote" value="'+escHtml(rec.note||'')+'" placeholder="备注（可选）" style="display:block;width:100%;margin-bottom:8px;">';
+  } else if (src === 'hygiene') {
+    fields = '<input class="input-field" type="time" id="eeTime" value="'+(rec.time||'')+'" style="width:100%;margin-bottom:8px;">'
+      + '<input class="input-field" id="eeNote" value="'+escHtml(rec.note||'')+'" placeholder="备注（可选）" style="display:block;width:100%;margin-bottom:8px;">';
+  } else if (src === 'workout') {
+    fields = '<input class="input-field" type="time" id="eeTime" value="'+(rec.time||'')+'" style="width:100%;margin-bottom:8px;">'
+      + '<input class="input-field" type="number" id="eeDur" value="'+(rec.duration||'')+'" placeholder="时长（分钟）" style="width:100%;margin-bottom:8px;">'
+      + '<input class="input-field" id="eeNote" value="'+escHtml(rec.note||'')+'" placeholder="备注（可选）" style="display:block;width:100%;margin-bottom:8px;">';
+  } else if (src === 'sleep') {
+    fields = '<div class="form-row" style="margin-bottom:8px;">'
+      + '<input class="input-field" type="time" id="eeTime" value="'+(rec.bedtime||'')+'" style="flex:1;">'
+      + '<input class="input-field" type="time" id="eeEnd" value="'+(rec.waketime||'')+'" style="flex:1;">'
+      + '</div>'
+      + '<input class="input-field" id="eeNote" value="'+escHtml(rec.note||'')+'" placeholder="备注（可选）" style="display:block;width:100%;margin-bottom:8px;">';
+  } else {
+    fields = '<div class="form-row" style="margin-bottom:8px;">'
+      + '<input class="input-field" type="time" id="eeTime" value="'+(rec.time||'')+'" style="flex:1;">'
+      + '<input class="input-field" type="time" id="eeEnd" value="'+(rec.endTime||'')+'" style="flex:1;">'
+      + '</div>'
+      + '<input class="input-field" id="eeNote" value="'+escHtml(rec.note||'')+'" placeholder="备注（可选）" style="display:block;width:100%;margin-bottom:8px;">';
+  }
+  var m = document.createElement('div');
+  m.className = 'modal-overlay show'; m.id = 'eventEditModal';
+  var recTitle = src === 'meal' ? mealTypeLabel(rec.mealType)
+    : src === 'hygiene' ? hygieneLabel(rec.type)
+    : src === 'workout' ? '运动'
+    : src === 'sleep' ? (rec.type === 'nap' ? '小憩' : '睡眠')
+    : (rec.label || '记录');
+  m.innerHTML = '<div class="modal-box" style="max-width:380px;">'
+    + '<h3>✏️ 编辑记录</h3>'
+    + '<div style="font-size:12px;color:var(--muted);margin-bottom:8px;">'+escHtml(recTitle)+'</div>'
+    + fields
+    + '<div class="modal-actions">'
+    +   '<button class="btn-sm" onclick="document.getElementById(\'eventEditModal\').remove()">取消</button>'
+    +   '<button class="btn-sm primary" onclick="saveEventEdit(\''+src+'\',\''+id+'\')">保存</button>'
+    + '</div></div>';
+  document.body.appendChild(m);
+  m.addEventListener('click', function(e) { if (e.target === m) m.remove(); });
+}
+function saveEventEdit(src, id) {
+  var timeEl = $('eeTime'), noteEl = $('eeNote'), endEl = $('eeEnd'), contentEl = $('eeContent'), durEl = $('eeDur');
+  if (src === 'meal') {
+    var m = (state.bar.meals||[]).find(function(x){ return x.id === id; });
+    if (m) {
+      if (timeEl) m.time = timeEl.value;
+      if (contentEl) m.content = m.mealType === 'water' ? normWaterContent(contentEl.value) : contentEl.value;
+      if (noteEl) m.note = noteEl.value.trim();
+    }
+  } else if (src === 'hygiene') {
+    var h = (state.bar.hygiene||[]).find(function(x){ return x.id === id; });
+    if (h) { if (timeEl) h.time = timeEl.value; if (noteEl) h.note = noteEl.value.trim(); }
+  } else if (src === 'workout') {
+    var w = (state.gym.workouts||[]).find(function(x){ return x.id === id; });
+    if (w) {
+      if (timeEl) w.time = timeEl.value;
+      if (durEl) {
+        w.duration = parseInt(durEl.value) || 0;
+        w.endTime = w.duration ? addMin(w.time || '00:00', w.duration) : '';
+      }
+      if (noteEl) w.note = noteEl.value.trim();
+    }
+  } else if (src === 'sleep') {
+    var s = (state.gym.sleepData||[]).find(function(x){ return x.id === id; });
+    if (s) {
+      if (timeEl) s.bedtime = timeEl.value;
+      if (endEl) s.waketime = endEl.value;
+      if (timeEl && endEl && s.bedtime && s.waketime && typeof calcSleepHours === 'function') {
+        s.hours = calcSleepHours(s.bedtime, s.waketime) || s.hours;
+      }
+      if (noteEl) s.note = noteEl.value.trim();
+    }
+  } else {
+    var t = (state.timeline||[]).find(function(x){ return x.id === id; });
+    if (t) {
+      if (timeEl) t.time = timeEl.value;
+      if (endEl) t.endTime = endEl.value;
+      if (endEl && t.endTime && t.time) {
+        var a = t.time.split(':'), b = t.endTime.split(':');
+        var mins = (parseInt(b[0])*60+parseInt(b[1])) - (parseInt(a[0])*60+parseInt(a[1]));
+        if (mins < 0) mins += 1440;
+        t.dur = mins;
+      }
+      if (noteEl) t.note = noteEl.value.trim();
+    }
+  }
+  var mm = document.getElementById('eventEditModal'); if (mm) mm.remove();
+  saveData();
+  renderPage('review');
+  toast('已保存');
+}
+function deleteDayEvent(src, id) {
+  if (src === 'meal') state.bar.meals = (state.bar.meals||[]).filter(function(x){ return x.id !== id; });
+  else if (src === 'hygiene') state.bar.hygiene = (state.bar.hygiene||[]).filter(function(x){ return x.id !== id; });
+  else if (src === 'workout') state.gym.workouts = (state.gym.workouts||[]).filter(function(x){ return x.id !== id; });
+  else if (src === 'sleep') state.gym.sleepData = (state.gym.sleepData||[]).filter(function(x){ return x.id !== id; });
+  else state.timeline = (state.timeline||[]).filter(function(x){ return x.id !== id; });
+  saveData();
+  renderPage('review');
+  toast('已删除');
+}
+
+// ─── 闪电记录：一键进入对应记录页 ───
 function flashGo(kind) {
   var focusId = '';
   if (kind === 'meal') { barSubView = 'meal'; navigate('bar'); }
@@ -2877,7 +3304,7 @@ function dashAddTodo(inp) {
   var v = inp.value.trim();
   if (!v) return;
   if (!state.plan.todos) state.plan.todos = [];
-  state.plan.todos.push({ id:'t'+Date.now(), text:v, date:today(), done:false, repeat:'none' });
+  state.plan.todos.push({ id:'t'+Date.now(), text:v, date:today(), done:false, cat:'生活', repeat:'none' });
   saveData(); renderPage('dashboard'); toast('待办已添加');
 }
 
@@ -2918,6 +3345,14 @@ function renderTodo() {
           <option value="weekly">每周</option>
           <option value="monthly">每月</option>
         </select>
+        <select class="input-field" id="newTodoCat" style="width:88px;flex-shrink:0;">
+          <option value="生活">生活</option>
+          <option value="家务">家务</option>
+          <option value="运动">运动</option>
+          <option value="学习">学习</option>
+          <option value="工作">工作</option>
+          <option value="健康">健康</option>
+        </select>
         <button class="btn-sm primary" onclick="addTodo()">+ 添加</button>
       </div>
       <div id="todoList">
@@ -2925,7 +3360,7 @@ function renderTodo() {
           todos.map(t => `
             <div class="card card-row">
               <span style="cursor:pointer;font-size:18px;" onclick="toggleTodo('${t.id}')">${t.done ? '✅' : '⬜'}</span>
-              <span class="card-content" style="${t.done ? 'text-decoration:line-through;color:var(--muted)' : ''}">${escHtml(t.text)}${t.repeat && t.repeat !== 'none' ? ' <span class="card-tag" style="font-size:10px;">🔄'+({daily:'日',weekly:'周',monthly:'月'})[t.repeat]+'</span>' : ''}</span>
+              <span class="card-content" style="${t.done ? 'text-decoration:line-through;color:var(--muted)' : ''}">${escHtml(t.text)}${t.cat ? ' <span class="card-tag" style="font-size:10px;">'+escHtml(t.cat)+'</span>' : ''}${t.repeat && t.repeat !== 'none' ? ' <span class="card-tag" style="font-size:10px;">🔄'+({daily:'日',weekly:'周',monthly:'月'})[t.repeat]+'</span>' : ''}${t.done && t.doneAt ? ' <span class="card-tag" style="font-size:10px;">✓'+t.doneAt+'</span>' : ''}</span>
               <button class="btn-sm" onclick="editTodo('${t.id}')">✏️</button>
               <button class="btn-sm danger" onclick="deleteTodo('${t.id}')">删除</button>
             </div>
@@ -2963,6 +3398,7 @@ function addTodo() {
   const inp = $('newTodoInput');
   const dateInp = $('newTodoDate');
   const repeatInp = $('newTodoRepeat');
+  const catInp = $('newTodoCat');
   if (!inp || !inp.value.trim()) return;
   if (!state.plan.todos) state.plan.todos = [];
   const todoDate = (dateInp && dateInp.value) ? dateInp.value : today();
@@ -2971,6 +3407,7 @@ function addTodo() {
     text: inp.value.trim(),
     date: todoDate,
     done: false,
+    cat: catInp ? catInp.value : '生活',
     repeat: repeatInp ? repeatInp.value : 'none'
   });
   saveData(); renderPage(currentPage); toast('待办已添加');
@@ -2979,6 +3416,20 @@ function toggleTodo(id) {
   const t = state.plan.todos.find(t => t.id === id);
   if (t) {
     t.done = !t.done;
+    // 完成时写入时间轴：完成时刻 + 归类
+    if (t.done) {
+      t.doneAt = nowHM();
+      pushTimelineEvent({
+        date: t.date || today(), time: t.doneAt,
+        cat: 'todo', type: 'todo', label: (t.cat ? '[' + t.cat + '] ' : '') + t.text,
+        icon: '✅', note: '', refType: 'todo', refId: t.id
+      });
+    } else {
+      t.doneAt = '';
+      state.timeline = (state.timeline || []).filter(function(e) {
+        return !(e.refType === 'todo' && e.refId === t.id);
+      });
+    }
     // Auto-generate next occurrence for recurring todos
     if (t.done && t.repeat && t.repeat !== 'none') {
       var d = new Date(t.date);
@@ -2996,6 +3447,7 @@ function toggleTodo(id) {
           text: t.text,
           date: nextDate,
           done: false,
+          cat: t.cat || '生活',
           repeat: t.repeat
         });
       }
@@ -3100,6 +3552,14 @@ function saveEditAnniversary(id) {
 // ═══════════════════════════════════════
 let journalWeekOffset = 0;
 let journalView = 'today'; // 'today' | 'week' | 'month' | 'year' | 'habit' | 'report'
+let dayViewOffset = 0; // 日视图偏移（0 = 今天）
+function dayViewDate() {
+  var d = new Date();
+  d.setDate(d.getDate() + dayViewOffset);
+  return fmtDate(d);
+}
+function shiftDayView(delta) { dayViewOffset += delta; renderPage('review'); }
+function resetDayView() { dayViewOffset = 0; renderPage('review'); }
 let journalMonthOffset = 0;
 let journalYearOffset = 0;
 let journalFilters = null; // lazy init
@@ -3289,7 +3749,7 @@ function renderReview() {
 
   // View toggle
   var viewToggleHtml = '<div class="journal-view-toggle jvt-6">'
-    + '<button class="jvt-btn'+(journalView==='today'?' active':'')+'" onclick="setJournalView(\'today\')">今天</button>'
+    + '<button class="jvt-btn'+(journalView==='today'?' active':'')+'" onclick="setJournalView(\'today\')">日</button>'
     + '<button class="jvt-btn'+(journalView==='week'?' active':'')+'" onclick="setJournalView(\'week\')">周</button>'
     + '<button class="jvt-btn'+(journalView==='month'?' active':'')+'" onclick="setJournalView(\'month\')">月</button>'
     + '<button class="jvt-btn'+(journalView==='year'?' active':'')+'" onclick="setJournalView(\'year\')">年</button>'
@@ -3300,8 +3760,16 @@ function renderReview() {
   var navHtml, contentHtml;
 
   if (journalView === 'today') {
-    navHtml = '';
-    contentHtml = renderTodo() + renderTodayDiary(todayStr);
+    var dv = dayViewDate();
+    navHtml = '<div class="journal-nav">'
+      + '<button class="btn-sm" onclick="shiftDayView(-1)">◀ 前一天</button>'
+      + '<span class="jnav-title">' + fmtDateShort(dv) + (dayViewOffset === 0 ? ' · 今天' : '') + '</span>'
+      + '<button class="btn-sm" onclick="shiftDayView(1)">后一天 ▶</button>'
+      + (dayViewOffset !== 0 ? '<button class="btn-sm" onclick="resetDayView()">回到今天</button>' : '')
+      + '</div>';
+    contentHtml = (dayViewOffset === 0 ? renderTodo() : '')
+      + renderJournalDay(dv)
+      + renderTodayDiary(dv);
   } else if (journalView === 'habit') {
     navHtml = '';
     contentHtml = renderHabit();
@@ -9831,11 +10299,20 @@ var EXTRA_MEAL_SLOTS = [
 // ─── 个人管理（卫生）：排泄 / 洗澡，可自行扩展类型 ───
 var HYGIENE_TYPES = [
   { id:'toilet', icon:'💩', label:'排泄' },
-  { id:'shower', icon:'🚿', label:'洗澡' }
+  { id:'shower', icon:'🚿', label:'洗澡' },
+  { id:'wash', icon:'🧴', label:'洗漱' },
+  { id:'brush', icon:'🪥', label:'刷牙' }
 ];
 if (!state.bar.hygiene) { state.bar.hygiene = []; }
 if (!state.bar.hygieneTypes) {
   state.bar.hygieneTypes = HYGIENE_TYPES.map(function(t) { return { id:t.id, icon:t.icon, label:t.label }; });
+} else {
+  // 迁移：补齐新增的卫生类型
+  HYGIENE_TYPES.forEach(function(t) {
+    if (!state.bar.hygieneTypes.some(function(x) { return x.id === t.id; })) {
+      state.bar.hygieneTypes.push({ id:t.id, icon:t.icon, label:t.label });
+    }
+  });
 }
 function hygieneSlotDefs() { return state.bar.hygieneTypes || HYGIENE_TYPES; }
 function hygieneSlotDef(t) { return hygieneSlotDefs().find(function(x) { return x.id === t; }); }
