@@ -1378,6 +1378,21 @@ textarea.input-field { resize:vertical; min-height:60px; }
 .jar-section-title {
   font-size:13px; font-weight:600; color:var(--muted); margin:14px 0 6px; padding-left:4px;
 }
+/* ─── 资料完整度面板 ─── */
+.cp-panel {
+  border:1px solid var(--rule); border-radius:var(--radius);
+  background:var(--bg2); padding:12px 14px; margin-bottom:14px;
+}
+.cp-title { font-size:13px; font-weight:600; color:var(--ink); margin-bottom:8px; }
+.cp-chips { display:flex; flex-wrap:wrap; gap:6px; }
+.cp-chip {
+  display:inline-flex; align-items:center; gap:4px;
+  padding:4px 10px; border-radius:12px; font-size:12px; cursor:pointer;
+  background:var(--bg); border:1px solid var(--rule); color:var(--ink);
+  transition:all 0.15s;
+}
+.cp-chip:hover { border-color:var(--accent); color:var(--accent); }
+.cp-chip b { color:var(--danger); font-weight:600; }
 .jar-card { border-left:3px solid #f57f17; }
 .jar-card-top {
   display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;
@@ -2616,6 +2631,9 @@ function renderDashboard() {
     +   '<div class="flash-block-title">🌸 试香记录</div>'
     +   '<input class="input-field" id="flashPerfumeName" placeholder="香水名称（如：夏日青柠）" onkeydown="if(event.key===\'Enter\')flashPerfume()">'
     +   '<input class="input-field" id="flashPerfumeDate" type="date" value="'+todayStr+'">'
+    +   '<select class="input-field" id="flashPerfumeScent"><option value="">🏷 调性（可留空，稍后补）</option>'
+    +     (state.bar.perfumeScents||PERFUME_SCENTS).map(function(s){ return '<option value="'+escHtml(s)+'">'+escHtml(s)+'</option>'; }).join('')
+    +   '</select>'
     +   '<select class="input-field" id="flashPerfumeRating">'
     +     '<option value="我超爱">🌸 我超爱</option>'
     +     '<option value="我可以" selected>🙂 我可以</option>'
@@ -3127,17 +3145,19 @@ function flashMeal() {
 // ─── 首页试香快捷输入：名称 + 日期 + 喜爱，先建记录，细节去香水页补 ───
 function flashPerfume() {
   var nameEl = $('flashPerfumeName'), dateEl = $('flashPerfumeDate'), rateEl = $('flashPerfumeRating');
+  var scentEl = $('flashPerfumeScent');
   if (!nameEl || !dateEl || !rateEl) return;
   var name = nameEl.value.trim();
   if (!name) { toast('请填写香水名称'); nameEl.focus(); return; }
   if (!state.bar.perfumes) state.bar.perfumes = [];
   var rl = rateEl.value;
+  var scent = scentEl ? scentEl.value : '';
   state.bar.perfumes.push({
     id: 'p' + Date.now(),
     name: name,
     brand: '',
-    scents: [],
-    scent: '',
+    scents: scent ? [scent] : [],
+    scent: scent,
     topNotes: '', midNotes: '', baseNotes: '',
     channel: '', price: 0,
     ratingLabel: rl,
@@ -3148,7 +3168,8 @@ function flashPerfume() {
   saveData();
   nameEl.value = '';
   dateEl.value = today();
-  toast('试香已记录 🌸 可去香水页补充调性/价格');
+  if (scentEl) scentEl.value = '';
+  toast(scent ? '试香已记录 🌸' : '试香已记录 🌸 可去香水页补充调性/价格');
 }
 
 // ─── 首页在看快捷记录：同名则更新进度+追加感受，新名字则自动建档 ───
@@ -3847,6 +3868,7 @@ function renderReview() {
       }
       contentHtml = renderJournalReport(monthDates, 'month');
     }
+    contentHtml = completenessPanelHtml() + contentHtml;
   } else {
     // Year view
     var now = new Date();
@@ -3984,6 +4006,54 @@ function renderJournalWeek(weekDates, todayStr) {
   }).join('');
 
   return '<div class="journal-week">'+daysHtml+'</div>';
+}
+
+// ─── 资料完整度 ───
+function completenessStats() {
+  var perfumes = (state.bar.perfumes || []).filter(function(p){ return getScents(p).indexOf('未分类') >= 0; });
+  var outfits = (state.closet.outfits || []).filter(function(o){ return !o.occasion || o.occasion === '未分类'; });
+  var items = (state.closet.wardrobe || []).filter(function(w){ return !w.season; });
+  var decl = (state.finance.declutter || []).filter(function(d){ return !d.category || d.category === '未分类'; });
+  var libs = (state.library.items || []).filter(function(i){ return !(i.tags && i.tags.length); });
+  return [
+    { key:'perfume', icon:'🌸', label:'香水缺调性', count: perfumes.length },
+    { key:'outfit', icon:'👗', label:'搭配缺场合', count: outfits.length },
+    { key:'season', icon:'🧥', label:'单品缺季节', count: items.length },
+    { key:'declutter', icon:'🗑️', label:'断舍离缺类别', count: decl.length },
+    { key:'library', icon:'📚', label:'书影音缺标签', count: libs.length }
+  ];
+}
+
+function completenessPanelHtml() {
+  var stats = completenessStats();
+  var total = stats.reduce(function(a,s){ return a + s.count; }, 0);
+  if (total === 0) return '';
+  var chips = stats.filter(function(s){ return s.count > 0; }).map(function(s){
+    return '<span class="cp-chip" onclick="goFix(\''+s.key+'\')">'+s.icon+' '+s.label+' <b>'+s.count+'</b></span>';
+  }).join('');
+  return '<div class="cp-panel">'
+    + '<div class="cp-title">🧩 资料完整度 <span style="font-size:11px;color:var(--muted);font-weight:400;">共 '+total+' 项待补充，点击前往</span></div>'
+    + '<div class="cp-chips">'+chips+'</div>'
+    + '</div>';
+}
+
+function goFix(key) {
+  if (key === 'perfume') {
+    barSubView = 'perfume';
+    window.__perfumeFilter = '未分类';
+    navigate('bar');
+  } else if (key === 'outfit') {
+    closetSubView = 'outfits';
+    setClosetOutfitFilter('未分类');
+  } else if (key === 'season') {
+    closetSubView = 'items';
+    navigate('closet');
+  } else if (key === 'declutter') {
+    finView = 'declutter';
+    navigate('finance');
+  } else if (key === 'library') {
+    navigate('library');
+  }
 }
 
 function renderJournalReport(dateList, mode) {
@@ -9660,7 +9730,10 @@ function renderClosetOutfits() {
   var filterBar = '<div class="closet-filter-bar" style="margin-bottom:10px;">'
     + '<div class="picker-cats" style="margin-bottom:0;">'
     + '<span class="picker-cat-btn'+(filterOccasion===''?' active':'')+'" onclick="setClosetOutfitFilter(\'\')">全部场合</span>'
-    + allOccasions.map(function(occ) { return '<span class="picker-cat-btn'+(filterOccasion===occ?' active':'')+'" onclick="setClosetOutfitFilter(\''+escHtml(occ)+'\')">'+escHtml(occ)+'</span>'; }).join('')
+    + allOccasions.map(function(occ) {
+        var lbl = occ === '未分类' ? '未分类 · 待补充' : occ;
+        return '<span class="picker-cat-btn'+(filterOccasion===occ?' active':'')+'" onclick="setClosetOutfitFilter(\''+escHtml(occ)+'\')">'+escHtml(lbl)+'</span>';
+      }).join('')
     + '</div></div>';
   return `
     <div class="section-title">👗 搭配</div>
@@ -9693,7 +9766,7 @@ function renderClosetOutfits() {
               for (var i = 1; i <= 5; i++) { ratingHtml += i <= o.rating ? '★' : '<span class="dim">★</span>'; }
             }
             var itemSummary = picked.map(function(p) { return closetCatIcon(p.cat)+' '+p.name; }).join(' · ');
-            var occTag = o.occasion || '未分类';
+            var occTag = o.occasion || '未分类 · 待补充';
             return '<div class="outfit-compact-card">'
               + '<div class="outfit-compact-summary" onclick="toggleOutfitExpand(\''+o.id+'\')">'
               +   '<div class="outfit-compact-info">'
@@ -10860,6 +10933,8 @@ function renderBarPerfumes() {
       +   '<span class="perfume-group-name">未分类</span>'
       +   '<span class="perfume-group-count">'+ucSorted.length+'</span>'
       +   '<span style="font-size:11px;color:var(--muted);margin-left:6px;">待补充调性</span>'
+      +   '<button class="btn-sm" style="margin-left:auto;padding:2px 10px;font-size:11px;" onclick="'+(ucSorted.length === 1 ? 'editPerfume(\''+ucSorted[0].id+'\')' : 'openBatchScentModal()')+'">'
+      +     (ucSorted.length === 1 ? '补调性' : '批量补调性') + '</button>'
       + '</div>'
       + '<div class="perfume-grid">'
       + ucSorted.map(function(p) {
@@ -11238,6 +11313,71 @@ function saveEditPerfume(id) {
   toast('已更新');
 }
 
+// ─── 批量补充调性：未分类香水一次处理 ───
+function openBatchScentModal() {
+  var list = (state.bar.perfumes || []).filter(function(p) { return getScents(p).indexOf('未分类') >= 0; });
+  if (list.length === 0) { toast('暂无未分类香水'); return; }
+  var old = document.getElementById('batchScentModal');
+  if (old) old.remove();
+  var scents = (state.bar.perfumeScents || PERFUME_SCENTS);
+  var m = document.createElement('div');
+  m.className = 'modal-overlay show';
+  m.id = 'batchScentModal';
+  m.innerHTML = '<div class="modal-box" style="max-width:520px;">'
+    + '<h3>🏷 批量补充调性</h3>'
+    + '<div style="font-size:12px;color:var(--muted);margin-bottom:6px;">选择要补充的香水</div>'
+    + '<div style="max-height:170px;overflow:auto;border:1px solid var(--rule);border-radius:8px;padding:8px;margin-bottom:12px;">'
+    + list.map(function(p) {
+        return '<label style="display:flex;align-items:center;gap:8px;padding:4px 0;font-size:13px;">'
+          + '<input type="checkbox" class="bs-pf" value="'+p.id+'" checked>'
+          + '<span>'+escHtml(p.name||'未命名')+'</span>'
+          + (p.brand ? '<span style="color:var(--muted);font-size:11px;">'+escHtml(p.brand)+'</span>' : '')
+          + '</label>';
+      }).join('')
+    + '</div>'
+    + '<div style="font-size:12px;color:var(--muted);margin-bottom:6px;">选择调性（应用到上述香水）</div>'
+    + '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;">'
+    + scents.map(function(s) {
+        var c = scentColor(s);
+        return '<label class="bs-scent-chip" data-color="'+c+'" style="border:1px solid '+c+';color:'+c+';padding:4px 10px;border-radius:14px;font-size:12px;cursor:pointer;">'
+          + '<input type="radio" name="bsScent" class="bs-scent" value="'+escHtml(s)+'" style="display:none;">'+escHtml(s)+'</label>';
+      }).join('')
+    + '</div>'
+    + '<div class="modal-actions">'
+    +   '<button class="btn-sm" onclick="document.getElementById(\'batchScentModal\').remove()">取消</button>'
+    +   '<button class="btn-sm primary" onclick="applyBatchScent()">应用</button>'
+    + '</div></div>';
+  document.body.appendChild(m);
+  m.addEventListener('click', function(e) { if (e.target === m) m.remove(); });
+  m.querySelectorAll('.bs-scent').forEach(function(radio) {
+    radio.addEventListener('change', function() {
+      m.querySelectorAll('.bs-scent-chip').forEach(function(chip) {
+        chip.style.background = '';
+        chip.style.color = chip.getAttribute('data-color');
+      });
+      var chip = radio.parentNode;
+      chip.style.background = chip.getAttribute('data-color');
+      chip.style.color = '#fff';
+    });
+  });
+}
+function applyBatchScent() {
+  var ids = [];
+  document.querySelectorAll('.bs-pf:checked').forEach(function(cb) { ids.push(cb.value); });
+  var sel = document.querySelector('.bs-scent:checked');
+  if (ids.length === 0) { toast('请勾选香水'); return; }
+  if (!sel) { toast('请选择调性'); return; }
+  var scent = sel.value;
+  (state.bar.perfumes || []).forEach(function(p) {
+    if (ids.indexOf(p.id) >= 0) { p.scents = [scent]; p.scent = scent; }
+  });
+  saveData();
+  var m = document.getElementById('batchScentModal');
+  if (m) m.remove();
+  renderPage('bar');
+  toast('已为 ' + ids.length + ' 瓶补充调性');
+}
+
 // ═══════════════════════════════════════
 // 10. FINANCE (记账本 + 流通罐)
 // ═══════════════════════════════════════
@@ -11524,8 +11664,20 @@ function renderDeclutter() {
       if (!groups[cat]) groups[cat] = [];
       groups[cat].push(d);
     });
-    Object.keys(groups).forEach(function(cat){
-      html += '<div class="jar-section-title">📦 '+escHtml(cat)+' <span style="font-size:12px;color:var(--muted);font-weight:400;">('+groups[cat].length+'件)</span></div>';
+    // 未分类置顶，其余按名称排序
+    var cats = Object.keys(groups);
+    cats.sort(function(a,b){
+      if (a === '未分类' && b !== '未分类') return -1;
+      if (b === '未分类' && a !== '未分类') return 1;
+      return 0;
+    });
+    cats.forEach(function(cat){
+      var isUnc = (cat === '未分类');
+      html += '<div class="jar-section-title"'+(isUnc?' style="display:flex;align-items:center;gap:6px;"':'')+'>📦 '+escHtml(cat)
+        + ' <span style="font-size:12px;color:var(--muted);font-weight:400;">('+groups[cat].length+'件)</span>'
+        + (isUnc ? '<span style="font-size:11px;color:var(--muted);font-weight:400;">待补充类别</span>'
+          + '<button class="btn-sm" style="margin-left:auto;padding:2px 10px;font-size:11px;" onclick="openEditDeclutter(\''+groups[cat][0].id+'\')">补类别</button>' : '')
+        + '</div>';
       html += groups[cat].map(function(d){ return declutterCardHtml(d); }).join('');
     });
   }
@@ -11541,7 +11693,7 @@ function declutterCardHtml(d) {
     +   '<div class="jar-card-price">'+(d.price?'¥'+d.price:'')+'</div>'
     + '</div>'
     + '<div class="jar-declutter-info">'
-    +   '<span>'+escHtml(d.category||'未分类')+'</span>'
+    +   '<span>'+escHtml(d.category||'未分类 · 待补充')+'</span>'
     +   '<span>· '+escHtml(d.channel||'扔掉')+'</span>'
     +   (d.ownedDays ? '<span>· 拥有 '+d.ownedDays+' 天</span>' : '')
     +   (d.sellPrice ? '<span style="color:var(--accent);">· 回收 ¥'+d.sellPrice+'</span>' : '')
