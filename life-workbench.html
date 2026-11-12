@@ -2899,6 +2899,14 @@ function getDayEvents(dateStr) {
       icon:t.icon||'📌', label:t.label||'记录', cat:t.cat||'activity',
       dur:t.dur||0, note:t.note||'' });
   });
+  // 旧版日记时间轴：只读并入，保证历史记录不丢
+  (state.gratitude.entries || []).forEach(function(en) {
+    if (en.date !== dateStr || !en.timeline) return;
+    en.timeline.forEach(function(t) {
+      evs.push({ src:'legacy', id:t.id, time:t.time||'', endTime:'', icon:'💬',
+        label:'随手记', cat:'note', dur:0, note:t.content||'', readonly:true });
+    });
+  });
   evs.sort(function(a, b) {
     if (!a.time && !b.time) return 0;
     if (!a.time) return 1;
@@ -2936,10 +2944,10 @@ function renderJournalDay(dateStr) {
       + '<div class="dv-rail"><span class="dv-dot cat-'+e.cat+'"></span>'+(idx < timed.length-1 ? '<span class="dv-line"></span>' : '')+'</div>'
       + '<div class="dv-card">'
       +   '<div class="dv-head"><span class="dv-title">'+e.icon+' '+escHtml(e.label)+'</span>'
-      +     '<span class="dv-actions">'
+      +     (e.readonly ? '' : '<span class="dv-actions">'
       +       '<button class="dv-btn" onclick="openEventEdit(\''+e.src+'\',\''+e.id+'\')" title="编辑">✏️</button>'
       +       '<button class="dv-btn" onclick="deleteDayEvent(\''+e.src+'\',\''+e.id+'\')" title="删除">🗑️</button>'
-      +     '</span></div>'
+      +     '</span>') + '</div>'
       +   (e.note ? '<div class="dv-note">'+escHtml(e.note)+'</div>' : '')
       +   '<div class="dv-meta">'+meta+'</div>'
       + '</div>'
@@ -3218,18 +3226,17 @@ function refreshMealQuickUI() {
   }
 }
 function flashPushTimeline(content) {
-  if (!state.gratitude.entries) state.gratitude.entries = [];
-  var t = today();
-  var entry = state.gratitude.entries.find(function(e){ return e.date === t; });
-  if (!entry) { entry = { id:'d'+Date.now(), date:t, joys:'', improve:'', timeline:[] }; state.gratitude.entries.push(entry); }
-  if (!entry.timeline) entry.timeline = [];
-  entry.timeline.push({ id:'tl'+Date.now(), time:nowHM(), content:content });
+  // 统一写入时间轴（不再单独写入日记 timeline），日视图统一展示
+  pushTimelineEvent({
+    date: today(), time: nowHM(), cat: 'note', type: 'note',
+    label: '随手记', icon: '💬', note: content
+  });
 }
 function flashNote(inp) {
   var v = inp.value.trim(); if (!v) return;
   flashPushTimeline(v);
   inp.value = '';
-  saveData(); toast('💬 已存入今日日记时间轴');
+  saveData(); toast('💬 已记入时间轴');
 }
 
 // ─── 全天总结随手记：选中部分 + 回车追加 ───
@@ -3897,7 +3904,7 @@ function renderTodayDiary(todayStr) {
       html += '<div style="font-size:13px;color:var(--muted);margin-bottom:6px;">🌱 ' + escHtml(entry.improve.length > 80 ? entry.improve.slice(0, 80) + '…' : entry.improve) + '</div>';
     }
     if (timeline.length > 0) {
-      html += '<div style="font-size:12px;color:var(--muted);">⏰ 时间轴 ' + timeline.length + ' 条</div>';
+      html += '<div style="font-size:12px;color:var(--muted);">⏰ 旧版手记 ' + timeline.length + ' 条（已并入上方时间轴）</div>';
     }
     html += '<div style="font-size:12px;color:var(--accent);margin-top:6px;">点击编辑 →</div>';
     html += '</div>';
