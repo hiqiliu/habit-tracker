@@ -343,6 +343,12 @@ body {
 .lookbook-mode-btn { padding:4px 12px; border-radius:14px; font-size:12px; border:1px solid var(--rule); background:var(--bg2); color:var(--ink); cursor:pointer; transition: all 0.12s; }
 .lookbook-mode-btn.active { background:var(--accent); color:#fff; border-color:var(--accent); }
 .closet-filter-bar { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:10px; }
+.wardrobe-undo-bar {
+  display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+  padding:8px 12px; margin-bottom:12px; border-radius:var(--radius-sm);
+  background:var(--accent-soft); border:1px solid var(--rule); font-size:12px;
+}
+.wardrobe-undo-bar .wub-text { flex:1; min-width:0; }
 .closet-filter-select { padding:5px 8px; font-size:12px; border:1px solid var(--rule); border-radius:8px; background:var(--bg2); color:var(--ink); font-family:inherit; }
 .wisdom-card {
   border:1px solid var(--rule); border-radius:12px; padding:12px 14px; margin-bottom:10px;
@@ -1157,6 +1163,21 @@ textarea.input-field { resize:vertical; min-height:60px; }
 .flash-input { flex:1; font-size:13px; }
 .flash-note-row { display:flex; gap:6px; }
 .flash-sum-sel { flex:0 0 96px; font-size:12px; padding:6px 4px; }
+/* ─── 首页卫生快捷勾选 ─── */
+.hygiene-quick-row { display:flex; gap:8px; flex-wrap:wrap; }
+.hygiene-quick-btn {
+  flex:1; min-width:96px; padding:8px 10px; border-radius:10px; cursor:pointer;
+  border:1px solid var(--rule); background:var(--bg2); color:var(--ink);
+  font-family:inherit; font-size:13px; transition:all 0.15s;
+}
+.hygiene-quick-btn:hover { border-color:var(--accent); color:var(--accent); }
+.hygiene-quick-btn:active { transform:scale(0.97); }
+.hygiene-quick-btn .hq-count { font-size:11px; color:var(--accent); font-weight:600; }
+.hygiene-chip {
+  display:inline-block; font-size:11px; color:var(--accent); background:var(--accent-soft);
+  border-radius:8px; padding:0 6px; line-height:16px; cursor:pointer; margin-right:4px;
+}
+.hygiene-chip:hover { background:var(--danger); color:#fff; }
 /* 每一类快捷输入是一张独立小卡片 */
 .flash-block {
   background:var(--bg); border:1px solid var(--rule);
@@ -1312,6 +1333,11 @@ textarea.input-field { resize:vertical; min-height:60px; }
   display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;
 }
 .jar-card-title { font-size:15px; font-weight:600; }
+.from-closet-tag {
+  display:inline-block; margin-left:6px; font-size:10px; font-weight:500;
+  padding:0 6px; border-radius:8px; background:var(--accent-soft); color:var(--accent);
+  vertical-align:middle;
+}
 .jar-card-price { font-size:13px; color:var(--accent); font-weight:500; }
 .jar-level-tag {
   display:inline-block; font-size:11px; padding:1px 8px; border-radius:10px; margin-bottom:4px;
@@ -1492,6 +1518,11 @@ textarea.input-field { resize:vertical; min-height:60px; }
 .journal-act:last-child { border-bottom:none; }
 .journal-act .ja-icon { flex-shrink:0; font-size:15px; line-height:1.6; width:20px; text-align:center; }
 .journal-act .ja-text { flex:1; min-width:0; word-break:break-word; }
+.journal-act .ja-water-head { display:flex; justify-content:space-between; gap:8px; font-size:11px; color:var(--muted); margin-bottom:3px; }
+.journal-act .ja-water-pct { font-variant-numeric:tabular-nums; }
+.journal-act .ja-water-bar { display:block; height:5px; border-radius:3px; background:var(--bg2); overflow:hidden; }
+.journal-act .ja-water-fill { display:block; height:100%; border-radius:3px; background:linear-gradient(90deg,#9ec9e8,#5fa8d3); transition:width 0.3s; }
+.journal-act .ja-water-fill.done { background:linear-gradient(90deg,#8fd39a,#4caf50); }
 .journal-act .ja-tag {
   flex-shrink:0; font-size:9px; padding:1px 6px; border-radius:8px;
   background:var(--bg); color:var(--muted); white-space:nowrap;
@@ -2468,13 +2499,44 @@ function renderDashboard() {
     var t = state.gym.weeklyTracker[k];
     return '<option value="'+k+'">'+(t.icon||'📌')+' '+escHtml(t.name||k)+'</option>';
   }).join('');
+  var hygTodayCounts = {};
+  (state.bar.hygiene || []).forEach(function(h) {
+    if (h.date === todayStr) hygTodayCounts[h.type] = (hygTodayCounts[h.type] || 0) + 1;
+  });
+  var hygQuickHtml = (state.bar.hygieneTypes || []).map(function(t) {
+    var n = hygTodayCounts[t.id] || 0;
+    return '<button class="hygiene-quick-btn" onclick="quickHygiene(\''+t.id+'\')">'
+      + t.icon + ' ' + escHtml(t.label)
+      + (n > 0 ? ' <span class="hq-count">×'+n+'</span>' : '')
+      + '</button>';
+  }).join('');
   var flashHtml = '<div class="flash-panel">'
+    + '<div class="flash-block">'
+    +   '<div class="flash-block-title">💬 随手记</div>'
+    +   '<input class="input-field" id="flashNoteInp" placeholder="记一句，回车存入时间轴…" onkeydown="if(event.key===\'Enter\')flashNote(this)">'
+    + '</div>'
+    + '<div class="flash-block">'
+    +   '<div class="flash-block-title">📝 今日小结</div>'
+    +   '<div class="flash-note-row">'
+    +     '<select class="input-field flash-sum-sel" id="flashSumSel">'
+    +     '<option value="mood">😊 心情</option>'
+    +     '<option value="body">💪 身体</option>'
+    +     '<option value="joys">✨ 小确幸</option>'
+    +     '<option value="improve">🌱 做更好</option>'
+    +   '</select>'
+    +   '<input class="input-field flash-input" id="flashSumInp" placeholder="写一句，回车存入选中的部分…" onkeydown="if(event.key===\'Enter\')flashSummary(this)">'
+    + '</div>'
+    + '</div>'
     + '<div class="flash-block">'
     +   '<div class="flash-block-title">🍽️ 餐食记录</div>'
     +   '<div class="flash-note-row">'
     +     '<select class="input-field flash-sum-sel" id="flashMealSel">'+mealQuickOpts+'</select>'
     +     '<input class="input-field flash-input" id="flashMealInp" placeholder="吃了什么，回车存入餐食…" onkeydown="if(event.key===\'Enter\')flashMeal()">'
     +   '</div>'
+    + '</div>'
+    + '<div class="flash-block">'
+    +   '<div class="flash-block-title">🧼 卫生记录</div>'
+    +   '<div class="hygiene-quick-row">'+hygQuickHtml+'</div>'
     + '</div>'
     + '<div class="flash-block">'
     +   '<div class="flash-block-title">🏃 运动记录</div>'
@@ -2505,22 +2567,6 @@ function renderDashboard() {
     +   '</div>'
     +   '<input class="input-field" id="flashLibFeeling" placeholder="当下的感受（可选，回车一起保存）" onkeydown="if(event.key===\'Enter\')flashLib()">'
     +   '<button class="btn-sm primary flash-record-btn" onclick="flashLib()">+ 记录 / 更新</button>'
-    + '</div>'
-    + '<div class="flash-block">'
-    +   '<div class="flash-block-title">💬 随手记</div>'
-    +   '<input class="input-field" id="flashNoteInp" placeholder="记一句，回车存入时间轴…" onkeydown="if(event.key===\'Enter\')flashNote(this)">'
-    + '</div>'
-    + '<div class="flash-block">'
-    +   '<div class="flash-block-title">📝 今日小结</div>'
-    +   '<div class="flash-note-row">'
-    +     '<select class="input-field flash-sum-sel" id="flashSumSel">'
-    +     '<option value="mood">😊 心情</option>'
-    +     '<option value="body">💪 身体</option>'
-    +     '<option value="joys">✨ 小确幸</option>'
-    +     '<option value="improve">🌱 做更好</option>'
-    +   '</select>'
-    +   '<input class="input-field flash-input" id="flashSumInp" placeholder="写一句，回车存入选中的部分…" onkeydown="if(event.key===\'Enter\')flashSummary(this)">'
-    + '</div>'
     + '</div>'
     + '</div>';
 
@@ -3161,14 +3207,23 @@ function getDayActivities(dateStr) {
       acts.push({ cat:'drink', icon:'☕', text: (d.name||d.type) + (d.rating?' '+d.rating+'⭐':'') + (d.taste?' · '+d.taste:''), tag:'饮品' });
     }
   });
-  // Meals (能量站 餐食)
+  // Meals (能量站 餐食)；饮水按天聚合为一条，仅展示总量进度
+  var dayWaterMl = 0, dayWaterCount = 0;
   (state.bar.meals || []).forEach(function(m) {
-    if (m.date === dateStr) {
-      var mIcon = mealTypeIcon(m.mealType);
-      var mLabel = mealTypeLabel(m.mealType);
-      acts.push({ cat:'meal', icon:mIcon, text: mLabel + (m.content?' · '+m.content:'') + (m.note?' · '+m.note:''), tag:'餐食' });
+    if (m.date !== dateStr) return;
+    if (m.mealType === 'water') {
+      dayWaterMl += parseWaterMl(m.content);
+      dayWaterCount++;
+      return;
     }
+    var mIcon = mealTypeIcon(m.mealType);
+    var mLabel = mealTypeLabel(m.mealType);
+    acts.push({ cat:'meal', icon:mIcon, text: mLabel + (m.content?' · '+m.content:'') + (m.note?' · '+m.note:''), tag:'餐食' });
   });
+  if (dayWaterCount > 0) {
+    acts.push({ cat:'meal', icon:'💧', text:'饮水', tag:'饮水',
+      water:{ ml: dayWaterMl, goal: WATER_GOAL, count: dayWaterCount } });
+  }
   // Outfits
   (state.closet.outfits || []).forEach(function(o) {
     if (o.date === dateStr) {
@@ -3397,6 +3452,17 @@ function renderJournalWeek(weekDates, todayStr) {
     var actsHtml = acts.length === 0
       ? '<div class="journal-day-empty">— 无记录 —</div>'
       : acts.map(function(a) {
+          if (a.water) {
+            var wp = Math.min(100, Math.round(a.water.ml / a.water.goal * 100));
+            return '<div class="journal-act cat-'+a.cat+'">'
+              + '<span class="ja-icon">'+a.icon+'</span>'
+              + '<span class="ja-text">'
+              +   '<span class="ja-water-head"><span>'+a.water.ml+' / '+a.water.goal+' ml</span><span class="ja-water-pct">'+wp+'%</span></span>'
+              +   '<span class="ja-water-bar"><span class="ja-water-fill'+(a.water.ml>=a.water.goal?' done':'')+'" style="width:'+wp+'%"></span></span>'
+              + '</span>'
+              + '<span class="ja-tag">'+a.tag+'</span>'
+              + '</div>';
+          }
           return '<div class="journal-act cat-'+a.cat+'">'
             + '<span class="ja-icon">'+a.icon+'</span>'
             + '<span class="ja-text">'+escHtml(a.text)+'</span>'
@@ -8965,12 +9031,21 @@ function renderCloset() {
   if (closetSubView === 'outfits') contentHtml = renderClosetOutfits();
   else if (closetSubView === 'lookbook') contentHtml = renderLookbook();
   else contentHtml = renderClosetItems();
+  var undoHtml = '';
+  if (lastWardrobeDispose) {
+    undoHtml = '<div class="wardrobe-undo-bar">'
+      + '<span class="wub-text">🗑️ 已移出「'+escHtml(lastWardrobeDispose.item.name)+'」</span>'
+      + '<button class="btn-sm primary" onclick="undoWardrobeDispose()">撤销</button>'
+      + '<button class="btn-sm" onclick="dismissWardrobeUndo()" title="关闭">×</button>'
+      + '</div>';
+  }
   return '<div class="page active">'
     + '<div class="module-title">'
     +   mod.icon + ' <span class="editable-title" ondblclick="editModule(\'closet\')">'+mod.name+'</span>'
     +   '<button class="edit-icon-btn" onclick="editModule(\'closet\')" title="编辑">✏️</button>'
     + '</div>'
     + toggleHtml
+    + undoHtml
     + contentHtml
     + '</div>';
 }
@@ -9246,21 +9321,71 @@ function deleteWardrobeItem(id) {
   m.addEventListener('click', function(e) { if (e.target === m) m.remove(); });
 }
 function confirmRemoveWardrobe(id) {
-  state.closet.wardrobe = state.closet.wardrobe.filter(function(w) { return w.id !== id; });
+  if (!removeWardrobeWithUndo(id)) return;
   saveData();
   var m = document.getElementById('wardrobeDisposeModal'); if (m) m.remove();
   renderPage('closet');
-  toast('已删除');
+  toast('已移出，可在顶部撤销');
 }
+// 清理搭配/每日穿搭里对该单品的悬空引用
+function purgeWardrobeRefs(id) {
+  var touched = { outfits: [], daily: [] };
+  (state.closet.outfits || []).forEach(function(o) {
+    if (Array.isArray(o.items) && o.items.indexOf(id) >= 0) {
+      o.items = o.items.filter(function(x) { return x !== id; });
+      touched.outfits.push(o.id);
+    }
+  });
+  (state.closet.dailyOutfits || []).forEach(function(d) {
+    if (Array.isArray(d.items) && d.items.indexOf(id) >= 0) {
+      d.items = d.items.filter(function(x) { return x !== id; });
+      touched.daily.push(d.id);
+    }
+  });
+  return touched;
+}
+var lastWardrobeDispose = null;
+function removeWardrobeWithUndo(id) {
+  var item = (state.closet.wardrobe || []).find(function(w) { return w.id === id; });
+  if (!item) return null;
+  var touched = purgeWardrobeRefs(id);
+  state.closet.wardrobe = state.closet.wardrobe.filter(function(w) { return w.id !== id; });
+  lastWardrobeDispose = { item: JSON.parse(JSON.stringify(item)), touched: touched, declutterId: null };
+  return item;
+}
+function undoWardrobeDispose() {
+  var snap = lastWardrobeDispose;
+  if (!snap) return;
+  state.closet.wardrobe = state.closet.wardrobe || [];
+  state.closet.wardrobe.push(snap.item);
+  (snap.touched.outfits || []).forEach(function(oid) {
+    var o = (state.closet.outfits || []).find(function(x) { return x.id === oid; });
+    if (o) { if (!Array.isArray(o.items)) o.items = []; if (o.items.indexOf(snap.item.id) < 0) o.items.push(snap.item.id); }
+  });
+  (snap.touched.daily || []).forEach(function(did) {
+    var d = (state.closet.dailyOutfits || []).find(function(x) { return x.id === did; });
+    if (d) { if (!Array.isArray(d.items)) d.items = []; if (d.items.indexOf(snap.item.id) < 0) d.items.push(snap.item.id); }
+  });
+  if (snap.declutterId && state.finance && state.finance.declutter) {
+    state.finance.declutter = state.finance.declutter.filter(function(x) { return x.id !== snap.declutterId; });
+  }
+  lastWardrobeDispose = null;
+  saveData();
+  renderPage('closet');
+  toast('已撤销，单品回到衣帽间');
+}
+function dismissWardrobeUndo() { lastWardrobeDispose = null; renderPage('closet'); }
 function disposeWardrobeItem(id) {
   var item = (state.closet.wardrobe || []).find(function(w) { return w.id === id; });
   if (!item) return;
   var toJar = document.getElementById('wdToJar');
+  var declutterId = null;
   if (!toJar || toJar.checked) {
     if (!state.finance) state.finance = {};
     if (!state.finance.declutter) state.finance.declutter = [];
+    declutterId = 'd' + Date.now();
     state.finance.declutter.push({
-      id: 'd' + Date.now(),
+      id: declutterId,
       item: item.name,
       category: item.cat || '衣物',
       date: today(),
@@ -9273,11 +9398,12 @@ function disposeWardrobeItem(id) {
       fromCloset: item.id
     });
   }
-  state.closet.wardrobe = state.closet.wardrobe.filter(function(w) { return w.id !== id; });
+  removeWardrobeWithUndo(id);
+  if (lastWardrobeDispose) lastWardrobeDispose.declutterId = declutterId;
   saveData();
   var m = document.getElementById('wardrobeDisposeModal'); if (m) m.remove();
   renderPage('closet');
-  toast(toJar && !toJar.checked ? '已删除' : '已移出，并记入流通罐 🗑️');
+  toast(toJar && !toJar.checked ? '已移出，可在顶部撤销' : '已移出并记入流通罐，可在顶部撤销');
 }
 function editWardrobeItem(id) {
   const item = (state.closet.wardrobe||[]).find(w => w.id === id);
@@ -9702,6 +9828,19 @@ var EXTRA_MEAL_SLOTS = [
   { id:'drink', icon:'🥤', label:'饮料' },
   { id:'water', icon:'💧', label:'饮水' }
 ];
+// ─── 个人管理（卫生）：排泄 / 洗澡，可自行扩展类型 ───
+var HYGIENE_TYPES = [
+  { id:'toilet', icon:'💩', label:'排泄' },
+  { id:'shower', icon:'🚿', label:'洗澡' }
+];
+if (!state.bar.hygiene) { state.bar.hygiene = []; }
+if (!state.bar.hygieneTypes) {
+  state.bar.hygieneTypes = HYGIENE_TYPES.map(function(t) { return { id:t.id, icon:t.icon, label:t.label }; });
+}
+function hygieneSlotDefs() { return state.bar.hygieneTypes || HYGIENE_TYPES; }
+function hygieneSlotDef(t) { return hygieneSlotDefs().find(function(x) { return x.id === t; }); }
+function hygieneLabel(t) { var d = hygieneSlotDef(t); return d ? d.label : '卫生'; }
+function hygieneIcon(t) { var d = hygieneSlotDef(t); return d ? d.icon : '🧼'; }
 if (!state.bar.perfumes) { state.bar.perfumes = []; }
 // 兼容迁移：旧数据 scent 单值 → scents 数组
 state.bar.perfumes.forEach(function(p) {
@@ -9744,14 +9883,16 @@ function normWaterContent(content) {
 
 function renderBar() {
   var mod = state.modules.find(function(m) { return m.id === 'bar'; });
-  var toggleHtml = '<div class="journal-view-toggle" style="margin-bottom:14px;">'
+  var toggleHtml = '<div class="journal-view-toggle jvt-6" style="margin-bottom:14px;">'
     + '<button class="jvt-btn'+(barSubView==='meal'?' active':'')+'" onclick="setBarSubView(\'meal\')">🍽️ 餐食</button>'
+    + '<button class="jvt-btn'+(barSubView==='hygiene'?' active':'')+'" onclick="setBarSubView(\'hygiene\')">🧼 个人管理</button>'
     + '<button class="jvt-btn'+(barSubView==='sleep'?' active':'')+'" onclick="setBarSubView(\'sleep\')">😴 睡眠</button>'
     + '<button class="jvt-btn'+(barSubView==='perfume'?' active':'')+'" onclick="setBarSubView(\'perfume\')">🌸 香水</button>'
     + '</div>';
 
   var contentHtml;
   if (barSubView === 'meal') contentHtml = renderBarMeals();
+  else if (barSubView === 'hygiene') contentHtml = renderBarHygiene();
   else if (barSubView === 'perfume') contentHtml = renderBarPerfumes();
   else contentHtml = renderBarSleep();
 
@@ -9895,6 +10036,114 @@ function renderWaterRow(ds, recs) {
     +   '</div>'
     + '</div>'
     + '</div>';
+}
+
+// ─── 个人管理（卫生）：周视图，展示与餐食一致 ───
+function renderBarHygiene() {
+  var todayStr = today();
+  var wDates = mealWeekDates(mealWeekOffset);
+  var logs = state.bar.hygiene || [];
+  var byDate = {};
+  logs.forEach(function(h) {
+    if (!byDate[h.date]) byDate[h.date] = [];
+    byDate[h.date].push(h);
+  });
+  var slots = hygieneSlotDefs();
+  var weekLogs = logs.filter(function(h) { return wDates.indexOf(h.date) >= 0; });
+  var daysWith = wDates.filter(function(ds) { return (byDate[ds] || []).length > 0; }).length;
+  var wkLabel = mealWeekOffset === 0 ? '本周' : (mealWeekOffset === -1 ? '上周' : (mealWeekOffset === 1 ? '下周' : (mealWeekOffset < 0 ? Math.abs(mealWeekOffset)+'周前' : mealWeekOffset+'周后')));
+  var wkNames = ['周一','周二','周三','周四','周五','周六','周日'];
+
+  var listHtml = wDates.map(function(ds, wIdx) {
+    var dayRecs = (byDate[ds] || []).slice().sort(function(a, b) {
+      return String(a.time||'').localeCompare(String(b.time||''));
+    });
+    var isToday = ds === todayStr;
+    var dt = new Date(ds);
+    var head = '<div class="meal-day-head'+(isToday?' today':'')+'">'
+      + '<span class="meal-day-name">'+wkNames[wIdx]+'</span>'
+      + '<span class="meal-day-date">'+(dt.getMonth()+1)+'/'+dt.getDate()+'</span>'
+      + (isToday ? '<span class="meal-day-badge">今天</span>' : '')
+      + '</div>';
+    var rows = slots.map(function(t) {
+      var recs = dayRecs.filter(function(x) { return x.type === t.id; });
+      if (recs.length === 0) {
+        return '<div class="meal-line empty" onclick="addHygiene(\''+t.id+'\',\''+ds+'\')">'
+          + '<span class="meal-line-ic">'+t.icon+'</span>'
+          + '<span class="meal-line-lb">'+t.label+'</span>'
+          + '<span class="meal-line-plus">+ 勾选</span>'
+          + '</div>';
+      }
+      return '<div class="meal-line">'
+        + '<span class="meal-line-ic">'+t.icon+'</span>'
+        + '<span class="meal-line-lb">'+t.label+'</span>'
+        + '<span class="meal-line-tx">'
+        +   recs.map(function(h) {
+              return '<span class="hygiene-chip" onclick="deleteHygiene(\''+h.id+'\')" title="点击删除">'+escHtml(h.time||'')+' ×</span>';
+            }).join('')
+        +   '<button class="meal-water-add" onclick="addHygiene(\''+t.id+'\',\''+ds+'\')" title="再记一次">＋</button>'
+        + '</span>'
+        + '</div>';
+    }).join('');
+    // 历史类型兜底
+    dayRecs.forEach(function(h) {
+      if (slots.some(function(t) { return t.id === h.type; })) return;
+      rows += '<div class="meal-line">'
+        + '<span class="meal-line-ic">🧼</span>'
+        + '<span class="meal-line-lb">'+escHtml(hygieneLabel(h.type))+'</span>'
+        + '<span class="meal-line-tx"><span class="hygiene-chip" onclick="deleteHygiene(\''+h.id+'\')" title="点击删除">'+escHtml(h.time||'')+' ×</span></span>'
+        + '</div>';
+    });
+    return '<div class="meal-day-card'+(isToday?' today':'')+'">'+head+rows+'</div>';
+  }).join('');
+
+  if (weekLogs.length === 0) {
+    listHtml = '<div class="meal-week-hint">这周还没有卫生记录，点任意一行「+ 勾选」记录吧~</div>' + listHtml;
+  }
+
+  var weekRange = (function() {
+    var a = new Date(wDates[0]), b = new Date(wDates[6]);
+    return (a.getMonth()+1)+'/'+a.getDate() + ' - ' + (b.getMonth()+1)+'/'+b.getDate();
+  })();
+  var statsHtml = slots.map(function(t) {
+    var n = weekLogs.filter(function(h) { return h.type === t.id; }).length;
+    return '<span>'+t.icon+' '+t.label+' <b>'+n+'</b> 次</span>';
+  }).join('');
+
+  return '<div class="meal-week-bar">'
+    +   '<button class="btn-sm" onclick="mealWeekNav(-1)">◀</button>'
+    +   '<span class="meal-week-title">'+weekRange+' · '+wkLabel+'</span>'
+    +   '<button class="btn-sm" onclick="mealWeekNav(1)">▶</button>'
+    +   (mealWeekOffset !== 0 ? '<button class="btn-sm" onclick="mealWeekNav(0)">回到本周</button>' : '')
+    + '</div>'
+    + '<div class="meal-week-stats">'
+    +   '<span>🧼 记录 <b>'+weekLogs.length+'</b> 条</span>'
+    +   '<span>📅 有记录 <b>'+daysWith+'</b>/7 天</span>'
+    +   statsHtml
+    + '</div>'
+    + listHtml;
+}
+function addHygiene(typeId, dateStr) {
+  if (!state.bar.hygiene) state.bar.hygiene = [];
+  var ds = dateStr || today();
+  state.bar.hygiene.push({ id:'hg'+Date.now(), date:ds, type:typeId, time: nowHM() });
+  saveData();
+  renderPage('bar');
+  toast('🧼 ' + hygieneLabel(typeId) + ' 已记录 ' + nowHM());
+}
+function deleteHygiene(id) {
+  state.bar.hygiene = (state.bar.hygiene || []).filter(function(h) { return h.id !== id; });
+  saveData();
+  renderPage('bar');
+  toast('已删除该条');
+}
+// ─── 首页卫生快捷勾选：点一下即记录 ───
+function quickHygiene(typeId) {
+  if (!state.bar.hygiene) state.bar.hygiene = [];
+  state.bar.hygiene.push({ id:'hg'+Date.now(), date:today(), type:typeId, time: nowHM() });
+  saveData();
+  renderPage('dashboard');
+  toast('🧼 ' + hygieneLabel(typeId) + ' 已记录 ' + nowHM());
 }
 
 // ─── 餐食周视图辅助 ───
@@ -10530,6 +10779,7 @@ function renderJar() {
   var wishDone = wishList.filter(function(w){ return w.status === 'bought'; });
   var wishAbandoned = wishList.filter(function(w){ return w.status === 'abandoned'; });
   var savedMoney = wishAbandoned.reduce(function(a,w){ return a + (w.price||0); }, 0);
+  var recoveredMoney = declutter.reduce(function(a,d){ return a + (d.sellPrice||0); }, 0);
   var html = '';
   html += '<div class="jar-stats-row">'
     + '<div class="jar-stat"><div class="jar-stat-num">'+wishPending.length+'</div><div class="jar-stat-lbl">💭 心愿中</div></div>'
@@ -10537,6 +10787,7 @@ function renderJar() {
     + '<div class="jar-stat"><div class="jar-stat-num">'+wishAbandoned.length+'</div><div class="jar-stat-lbl">🚫 放弃</div></div>'
     + '<div class="jar-stat"><div class="jar-stat-num" style="color:var(--accent);">¥'+savedMoney.toFixed(0)+'</div><div class="jar-stat-lbl">💰 省下的钱</div></div>'
     + '<div class="jar-stat"><div class="jar-stat-num">'+declutter.length+'</div><div class="jar-stat-lbl">🗑️ 已断舍离</div></div>'
+    + '<div class="jar-stat"><div class="jar-stat-num" style="color:var(--accent);">¥'+recoveredMoney.toFixed(0)+'</div><div class="jar-stat-lbl">♻️ 回血</div></div>'
     + '</div>';
   // 子页 tab
   html += '<div class="jar-tab-bar">'
@@ -10720,7 +10971,9 @@ function renderDeclutter() {
 function declutterCardHtml(d) {
   return '<div class="card jar-card declutter-card" style="border-left:3px solid #ff8a65;">'
     + '<div class="jar-card-top">'
-    +   '<div class="jar-card-title">'+escHtml(d.item)+'</div>'
+    +   '<div class="jar-card-title">'+escHtml(d.item)
+    +     (d.fromCloset ? '<span class="from-closet-tag">👗 来自衣帽间</span>' : '')
+    +   '</div>'
     +   '<div class="jar-card-price">'+(d.price?'¥'+d.price:'')+'</div>'
     + '</div>'
     + '<div class="jar-declutter-info">'
