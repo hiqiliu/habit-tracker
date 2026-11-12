@@ -9653,7 +9653,7 @@ function renderClosetOutfits() {
     if (allOccasions.indexOf(key) === -1) allOccasions.push(key);
   });
   allOccasions.sort(function(a,b) {
-    if (a === '未分类') return 1; if (b === '未分类') return -1; return a.localeCompare(b);
+    if (a === '未分类') return -1; if (b === '未分类') return 1; return a.localeCompare(b);
   });
   var filterOccasion = closetOutfitFilter.occasion;
   var outfits = filterOccasion ? allOutfits.filter(function(o) { return (o.occasion || '未分类') === filterOccasion; }) : allOutfits;
@@ -10826,6 +10826,15 @@ function renderBarPerfumes() {
 
   // ====== 筛选条 ======
   var filterBtns = '<button class="pf-btn'+(filter==='all'?' on':'')+'" onclick="setPerfumeFilter(\'all\')">全部 <span class="pf-count">'+total+'</span></button>';
+  // 未分类：仅有待补充的香水时显示，作为补充提醒
+  var unclassifiedList = groups['未分类'] || [];
+  if (unclassifiedList.length > 0) {
+    var ucFilterColor = SCENT_COLORS[0];
+    filterBtns += '<button class="pf-btn'+(filter==='未分类'?' on':'')+'" style="--pf-color:'+ucFilterColor+';" onclick="setPerfumeFilter(\'未分类\')">'
+      + '<span class="pf-dot" style="background:'+ucFilterColor+';"></span>未分类'
+      + '<span class="pf-count">'+unclassifiedList.length+'</span>'
+      + '</button>';
+  }
   // 只列出有香水的调性
   scentOrder.forEach(function(scent) {
     var list = groups[scent];
@@ -10838,8 +10847,33 @@ function renderBarPerfumes() {
       + '</button>';
   });
 
-  // ====== 分组渲染 ======
+  // ====== 分组渲染：未分类置顶 ======
   var html = '';
+  if (unclassifiedList.length > 0 && (filter === 'all' || filter === '未分类')) {
+    var ucSorted = unclassifiedList.slice().sort(function(a, b) {
+      return (b.date || '').localeCompare(a.date || '');
+    });
+    var ucColor = SCENT_COLORS[0];
+    html += '<div class="perfume-scent-group">'
+      + '<div class="perfume-group-header">'
+      +   '<span class="perfume-group-dot" style="background:'+ucColor+';"></span>'
+      +   '<span class="perfume-group-name">未分类</span>'
+      +   '<span class="perfume-group-count">'+ucSorted.length+'</span>'
+      +   '<span style="font-size:11px;color:var(--muted);margin-left:6px;">待补充调性</span>'
+      + '</div>'
+      + '<div class="perfume-grid">'
+      + ucSorted.map(function(p) {
+          var label = perfumeRatingLabel(p);
+          var labelClass = perfumeRatingClass(label);
+          return '<div class="perfume-card drink-card" style="border-left-color:'+ucColor+';" onclick="openPerfumeDetail(\''+p.id+'\')">'
+            + '<div class="perfume-card-top"><div class="perfume-card-info">'
+            + '<div class="perfume-card-name">'+escHtml(p.name||'未命名')+'</div>'
+            + '<div class="perfume-card-brand">'+escHtml(p.brand||'')+'</div>'
+            + '</div><span class="perfume-rating-label '+labelClass+'">'+label+'</span></div>'
+            + '<div class="perfume-card-notes">'+escHtml((p.notes||'').substring(0, 50))+'</div></div>';
+        }).join('')
+      + '</div></div>';
+  }
   scentOrder.forEach(function(scent) {
     var list = groups[scent];
     if (!list || list.length === 0) return;
@@ -10893,34 +10927,6 @@ function renderBarPerfumes() {
       + '<div class="perfume-grid">' + cards + '</div>'
       + '</div>';
   });
-
-  // 未分类的香水
-  var unclassified = groups['未分类'];
-  if (unclassified && scentOrder.indexOf('未分类') < 0 && (filter === 'all' || filter === '未分类')) {
-    unclassified = unclassified.slice();
-    unclassified.sort(function(a, b) {
-      return (b.date || '').localeCompare(a.date || '');
-    });
-    var defaultColor = SCENT_COLORS[0];
-    html += '<div class="perfume-scent-group">'
-      + '<div class="perfume-group-header">'
-      +   '<span class="perfume-group-dot" style="background:'+defaultColor+';"></span>'
-      +   '<span class="perfume-group-name">未分类</span>'
-      +   '<span class="perfume-group-count">'+unclassified.length+'</span>'
-      + '</div>'
-      + '<div class="perfume-grid">'
-      + unclassified.map(function(p) {
-          var label = perfumeRatingLabel(p);
-          var labelClass = perfumeRatingClass(label);
-          return '<div class="perfume-card drink-card" style="border-left-color:'+defaultColor+';" onclick="openPerfumeDetail(\''+p.id+'\')">'
-            + '<div class="perfume-card-top"><div class="perfume-card-info">'
-            + '<div class="perfume-card-name">'+escHtml(p.name||'未命名')+'</div>'
-            + '<div class="perfume-card-brand">'+escHtml(p.brand||'')+'</div>'
-            + '</div><span class="perfume-rating-label '+labelClass+'">'+label+'</span></div>'
-            + '<div class="perfume-card-notes">'+escHtml((p.notes||'').substring(0, 50))+'</div></div>';
-        }).join('')
-      + '</div></div>';
-  }
 
   // 筛选后无结果
   if (filter !== 'all' && html === '') {
