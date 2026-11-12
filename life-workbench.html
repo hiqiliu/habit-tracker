@@ -1491,6 +1491,8 @@ textarea.input-field { resize:vertical; min-height:60px; }
 /* Journal (手账本) - 每日一栏，每周一页 */
 .journal-nav { display:flex; align-items:center; justify-content:center; gap:12px; margin-bottom:14px; }
 .journal-nav button { padding:4px 14px; }
+.journal-nav.dv-nav { flex-wrap:wrap; gap:8px; }
+.dv-date-input { width:auto; min-width:160px; text-align:center; font-size:13px; padding:5px 10px; }
 .journal-nav .jnav-title { font-size:14px; font-weight:600; color:var(--ink); min-width:180px; text-align:center; }
 .jr-mode-toggle { display:flex; gap:0; border-radius:8px; overflow:hidden; border:1px solid var(--rule); }
 .jr-mode-toggle .jvt-btn { border-radius:0; }
@@ -3560,6 +3562,14 @@ function dayViewDate() {
 }
 function shiftDayView(delta) { dayViewOffset += delta; renderPage('review'); }
 function resetDayView() { dayViewOffset = 0; renderPage('review'); }
+function pickDayView(val) {
+  if (!val) return;
+  var d = new Date(val + 'T00:00:00');
+  if (isNaN(d.getTime())) return;
+  var t = new Date(); t.setHours(0, 0, 0, 0);
+  dayViewOffset = Math.round((d - t) / 86400000);
+  renderPage('review');
+}
 let journalMonthOffset = 0;
 let journalYearOffset = 0;
 let journalFilters = null; // lazy init
@@ -3761,10 +3771,8 @@ function renderReview() {
 
   if (journalView === 'today') {
     var dv = dayViewDate();
-    navHtml = '<div class="journal-nav">'
-      + '<button class="btn-sm" onclick="shiftDayView(-1)">◀ 前一天</button>'
-      + '<span class="jnav-title">' + fmtDateShort(dv) + (dayViewOffset === 0 ? ' · 今天' : '') + '</span>'
-      + '<button class="btn-sm" onclick="shiftDayView(1)">后一天 ▶</button>'
+    navHtml = '<div class="journal-nav dv-nav">'
+      + '<input class="input-field dv-date-input" type="date" id="dayPick" value="' + dv + '" onchange="pickDayView(this.value)">'
       + (dayViewOffset !== 0 ? '<button class="btn-sm" onclick="resetDayView()">回到今天</button>' : '')
       + '</div>';
     contentHtml = (dayViewOffset === 0 ? renderTodo() : '')
