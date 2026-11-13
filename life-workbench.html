@@ -9650,6 +9650,17 @@ function getClosetBrands() {
 }
 function setClosetItemFilter(key, val) { closetItemFilter[key] = val; renderPage('closet'); }
 function setClosetOutfitFilter(val) { closetOutfitFilter.occasion = val; renderPage('closet'); }
+// 持物单价 = 购入价 ÷ 穿着次数；未穿过时只显示购入价，穿过一次后自动计算
+function costPerWearTag(item, wc) {
+  var price = item.price || 0;
+  if (price <= 0) return '';
+  if (!wc) {
+    return '<span class="outfit-occasion-tag" style="background:var(--bg2);color:var(--muted);" title="还未穿过，记录穿搭后自动计算持物单价">💰 ¥'+price+'</span>';
+  }
+  var cpw = price / wc;
+  var txt = cpw >= 100 ? String(Math.round(cpw)) : cpw.toFixed(1);
+  return '<span class="outfit-occasion-tag" style="background:var(--accent-soft);color:var(--accent);" title="持物单价 = 价格 ÷ 穿着次数">💰 ¥'+txt+'/次</span>';
+}
 function renderClosetItems() {
   const wardrobe = state.closet.wardrobe || [];
   const wearCounts = computeItemWearCounts();
@@ -9697,18 +9708,20 @@ function renderClosetItems() {
           +       (metaParts.length > 0 ? '<span class="outfit-occasion-tag">'+escHtml(metaParts.join(' · '))+'</span>' : '')
           +       (item.season ? '<span class="outfit-occasion-tag" style="background:var(--bg2);color:var(--muted);">'+item.season+'</span>' : '')
           +       (wc > 0 ? '<span class="outfit-wear-badge worn">'+wc+'次</span>' : '<span class="outfit-wear-badge unworn">0次</span>')
+          +       costPerWearTag(item, wc)
           +     '</div>'
           +   '</div>'
           + '</div>'
           + '<div class="outfit-expand-body" id="itemExpand_'+item.id+'">'
           +   '<div style="padding-top:10px;">'
-          +     '<div style="font-size:12px;color:var(--muted);margin-bottom:6px;">'+[item.brand, item.cat, item.color].filter(Boolean).join(' · ')+'</div>'
+          +     '<div style="font-size:12px;color:var(--muted);margin-bottom:6px;">'+[item.brand, item.cat, item.color].filter(Boolean).join(' · ')+(item.price>0?' · 购入 ¥'+item.price:'')+'</div>'
           +     '<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px;">'
           +       (item.season ? '<span class="outfit-occasion-tag">'+item.season+'</span>' : '')
           +       (item.dimension ? '<span class="outfit-occasion-tag" style="background:var(--accent-soft);color:var(--accent);">📏 '+escHtml(item.dimension)+'</span>' : '')
           +       (item.channel ? '<span class="outfit-occasion-tag" style="background:var(--bg2);color:var(--muted);">'+(item.channel==='线上'?'🛒 线上':'🏪 线下')+'</span>' : '')
           +       '<span style="font-size:12px;color:var(--muted);">穿着频率：</span>'
           +       (wc > 0 ? '<span class="outfit-wear-badge worn">'+wc+'次</span>' : '<span class="outfit-wear-badge unworn">0次</span>')
+          +       costPerWearTag(item, wc)
           +     '</div>'
           +     (item.pros || item.cons ? '<div class="item-pros-cons" style="margin-bottom:8px;">'+(item.pros?'<span class="item-pros">✓ '+escHtml(item.pros)+'</span>':'')+(item.cons?'<span class="item-cons">✗ '+escHtml(item.cons)+'</span>':'')+'</div>' : '')
           +     '<div>'
@@ -9822,7 +9835,7 @@ function addWardrobeItem() {
   var channelEl = document.getElementById('addItemChannel');
   if (!nameEl || !nameEl.value.trim()) { toast('请输入单品名'); return; }
   if (!state.closet.wardrobe) state.closet.wardrobe = [];
-  state.closet.wardrobe.push({ id:'wi'+Date.now(), name:nameEl.value.trim(), brand:(brandEl && brandEl.value.trim())||'', cat:catEl.value, color:colorEl.value.trim(), season:(seasonEl && seasonEl.value)||'', pros:(prosEl && prosEl.value.trim())||'', cons:(consEl && consEl.value.trim())||'', dimension:(dimensionEl && dimensionEl.value.trim())||'', channel:(channelEl && channelEl.value)||'' });
+  state.closet.wardrobe.push({ id:'wi'+Date.now(), name:nameEl.value.trim(), brand:(brandEl && brandEl.value.trim())||'', cat:catEl.value, color:colorEl.value.trim(), season:(seasonEl && seasonEl.value)||'', pros:(prosEl && prosEl.value.trim())||'', cons:(consEl && consEl.value.trim())||'', dimension:(dimensionEl && dimensionEl.value.trim())||'', channel:(channelEl && channelEl.value)||'', price:parseFloat((document.getElementById('addItemPrice')||{}).value) || 0 });
   saveData();
   document.getElementById('addItemModal').remove();
   renderPage('closet'); toast('单品已添加');
@@ -9854,6 +9867,7 @@ function openAddItemModal() {
     +   '<select class="input-field" id="addItemChannel" style="flex:0.5;">'
     +   '<option value="">购买渠道</option><option value="线上">线上</option><option value="线下">线下</option>'
     +   '</select>'
+    +   '<input class="input-field" id="addItemPrice" type="number" min="0" step="0.01" placeholder="购入价 ¥" style="flex:0.5;">'
     + '</div>'
     + '<div class="modal-actions">'
     + '<button class="btn-sm" onclick="document.getElementById(\'addItemModal\').remove()">取消</button>'
@@ -9877,7 +9891,7 @@ function deleteWardrobeItem(id) {
     +     DECLUTTER_CHANNELS.map(function(c){ return '<option value="'+c+'"'+(c==='卖掉'?' selected':'')+'>'+c+'</option>'; }).join('')
     +   '</select>'
     +   '<input class="input-field" id="wdSellPrice" type="number" placeholder="回收价" style="flex:0.6;">'
-    +   '<input class="input-field" id="wdPrice" type="number" placeholder="购入价" style="flex:0.6;">'
+    +   '<input class="input-field" id="wdPrice" type="number" placeholder="购入价" value="'+(item.price||'')+'" style="flex:0.6;">'
     + '</div>'
     + '<textarea class="input-field" id="wdReflection" rows="2" placeholder="反思：为什么不要了？" style="width:100%;margin-bottom:8px;">'
     +   escHtml(item.cons ? '缺点：'+item.cons : '') + '</textarea>'
@@ -10002,6 +10016,7 @@ function editWardrobeItem(id) {
         <option value="线上"${item.channel==='线上'?' selected':''}>线上</option>
         <option value="线下"${item.channel==='线下'?' selected':''}>线下</option>
       </select>
+      <input class="input-field" id="editWardrobePrice" type="number" min="0" step="0.01" value="${item.price||''}" placeholder="购入价 ¥（可选）" style="display:block;width:100%;margin-bottom:8px;">
       <div class="modal-actions">
         <button class="btn-sm" onclick="document.getElementById('editWardrobeModal').remove()">取消</button>
         <button class="btn-sm primary" onclick="saveEditWardrobeItem('${id}')">保存</button>
@@ -10025,6 +10040,7 @@ function saveEditWardrobeItem(id) {
   item.cons = $('editWardrobeCons').value.trim();
   item.dimension = $('editWardrobeDimension').value.trim();
   item.channel = $('editWardrobeChannel').value;
+  item.price = parseFloat($('editWardrobePrice').value) || 0;
   saveData();
   document.getElementById('editWardrobeModal').remove();
   renderPage('closet'); toast('单品已更新');
