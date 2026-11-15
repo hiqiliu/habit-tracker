@@ -10271,15 +10271,26 @@ function renderLookbook() {
           if (o) items = (o.items||[]).map(id => wardrobe.find(w => w.id === id)).filter(Boolean);
         }
         items = sortClosetItems(items);
+        // 区分「搭配自带单品」与「额外加穿的单品」
+        var srcOutfit = d.outfitId ? outfits.find(x => x.id === d.outfitId) : null;
+        var srcIds = srcOutfit ? (srcOutfit.items || []) : [];
+        var baseItems = srcOutfit ? items.filter(p => srcIds.indexOf(p.id) >= 0) : items;
+        var extraItems = srcOutfit ? items.filter(p => srcIds.indexOf(p.id) < 0) : [];
+        var typeLabel = d.outfitId ? (extraItems.length > 0 ? ' · 搭配+单品' : ' · 搭配') : ' · 单品';
+        var chipsHtml = function(list, extra) {
+          return list.map(p => '<span class="outfit-picked-tag"'+(extra ? ' style="background:var(--accent-soft);color:var(--accent);"' : '')+'>'
+            + (extra ? '＋ ' : '') + closetCatIcon(p.cat) + ' ' + escHtml(p.name) + '</span>').join('');
+        };
         return '<div class="card lookbook-card">'
-          + '<div style="font-size:12px;color:var(--muted);margin-bottom:4px;">'+d.date+(d.outfitId?' · 搭配':' · 单品')
+          + '<div style="font-size:12px;color:var(--muted);margin-bottom:4px;">'+d.date+typeLabel
           + (d.scene ? ' <span class="outfit-scene-tag">'+sceneIcon(d.scene)+' '+escHtml(d.scene)+'</span>' : '')
           + (d.rating?' <span class="rating-display">'+'★'.repeat(d.rating)+'</span>':'')+'</div>'
-          + (items.length>0?'<div class="outfit-picked" style="margin-bottom:6px;">'+items.map(p=>'<span class="outfit-picked-tag">'+closetCatIcon(p.cat)+' '+escHtml(p.name)+'</span>').join('')+'</div>':'')
+          + (srcOutfit ? '<div style="font-size:12px;color:var(--accent);margin-bottom:4px;">👗 '+escHtml(srcOutfit.desc||'搭配')+'</div>' : '')
+          + (items.length>0?'<div class="outfit-picked" style="margin-bottom:6px;">'+chipsHtml(baseItems,false)+chipsHtml(extraItems,true)+'</div>':'')
           + (d.note?'<div style="font-size:13px;">'+escHtml(d.note)+'</div>':'')
           + '<div style="margin-top:6px;">'
           + '<button class="btn-sm" onclick="editDailyOutfit(\''+d.id+'\')">✏️</button>'
-          + (!d.outfitId && items.length > 0 ? '<button class="btn-sm" onclick="saveDailyAsOutfit(\''+d.id+'\')">⭐ 存为搭配</button>' : '')
+          + ((!d.outfitId || extraItems.length > 0) && items.length > 0 ? '<button class="btn-sm" onclick="saveDailyAsOutfit(\''+d.id+'\')">⭐ 存为搭配</button>' : '')
           + '<button class="btn-sm danger" onclick="deleteDailyOutfit(\''+d.id+'\')">删</button>'
           + '</div></div>';
       }).join('')
