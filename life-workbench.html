@@ -3209,7 +3209,9 @@ function flashLib() {
   }
   var feeling = feelEl.value.trim();
   var stamp = today();
+  var libId = '';
   if (item) {
+    libId = item.id;
     if (prog !== null) item.progress = prog;
     if (item.status === 'wish') item.status = 'doing';
     if (!item.startDate) item.startDate = stamp;
@@ -3232,9 +3234,20 @@ function flashLib() {
       logs: (feeling || prog !== null) ? [{ id: 'lg' + Date.now(), date: stamp, progress: prog, feeling: feeling }] : []
     });
     toast('已加入在读 📚');
+    libId = state.library.items[state.library.items.length - 1].id;
   }
+  // 同步写入每日时间轴，日视图可见
+  var libIcon = typeEl.value === 'book' ? '📖' : (typeEl.value === 'tv' ? '📺' : '🎬');
+  pushTimelineEvent({
+    date: stamp, time: nowHM(), cat: 'activity', type: 'read',
+    label: (typeEl.value === 'book' ? '阅读' : '观看') + '《' + title + '》',
+    icon: libIcon,
+    note: [prog !== null ? '进度 ' + prog + '%' : '', feeling].filter(Boolean).join(' · '),
+    refType: 'library', refId: libId
+  });
   saveData();
   titleEl.value = ''; progEl.value = ''; feelEl.value = '';
+  renderPage('dashboard');
 }
 function refreshMealQuickUI() {
   var n = (state.bar.meals || []).filter(function(m) { return m.date === today() && m.mealType !== 'water'; }).length;
@@ -9624,12 +9637,13 @@ function computeItemWearCounts() {
   var daily = state.closet.dailyOutfits || [];
   daily.forEach(function(d) {
     var ids = [];
-    if (d.outfitId) {
+    // 优先按记录实际单品计穿着；旧数据（仅存搭配引用）回退到搭配单品
+    if (d.items && d.items.length > 0) {
+      ids = d.items;
+    } else if (d.outfitId) {
       var o = outfits.find(function(x) { return x.id === d.outfitId; });
       if (o) ids = o.items || [];
       else ids = d.items || [];
-    } else {
-      ids = d.items || [];
     }
     ids.forEach(function(id) { counts[id] = (counts[id] || 0) + 1; });
   });
@@ -10213,6 +10227,7 @@ function renderLookbook() {
       <button class="lookbook-mode-btn" id="modeItem" onclick="setLookbookMode('item')">👕 选单品</button>
     </div>
     <div id="lookbookOutfitMode">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:6px;">选搭配会自动带出其单品，可再切到「👕 选单品」继续加 / 减</div>
       ${outfits.length === 0 ? '<div class="empty-state">暂无搭配记录，请先在「搭配」页创建</div>' :
         outfits.map(o => {
           var picked = sortClosetItems((o.items||[]).map(id => wardrobe.find(w => w.id === id)).filter(Boolean));
@@ -10248,11 +10263,12 @@ function renderLookbook() {
     ${daily.length === 0 ? '<div class="empty-state">暂无穿搭记录</div>' :
       daily.map(d => {
         var items = [];
-        if (d.outfitId) {
+        // 优先取记录实际穿的单品（选搭配后仍可加减）；旧数据回退到搭配引用
+        if (d.items && d.items.length > 0) {
+          items = d.items.map(id => wardrobe.find(w => w.id === id)).filter(Boolean);
+        } else if (d.outfitId) {
           var o = outfits.find(x => x.id === d.outfitId);
           if (o) items = (o.items||[]).map(id => wardrobe.find(w => w.id === id)).filter(Boolean);
-        } else {
-          items = (d.items||[]).map(id => wardrobe.find(w => w.id === id)).filter(Boolean);
         }
         items = sortClosetItems(items);
         return '<div class="card lookbook-card">'
@@ -10280,9 +10296,22 @@ function setLookbookMode(m) {
   if (outDiv) outDiv.style.display = m === 'outfit' ? '' : 'none';
   if (itemDiv) itemDiv.style.display = m === 'item' ? '' : 'none';
 }
+// 选中搭配后，把搭配的单品同步勾选到单品选择区，方便在此基础上继续加/减单品
+function applyOutfitToPicker(outfitId, pickerId) {
+  var o = (state.closet.outfits || []).find(function(x) { return x.id === outfitId; });
+  var ids = o ? (o.items || []) : [];
+  var picker = document.getElementById(pickerId);
+  if (!picker) return;
+  picker.querySelectorAll('.outfit-chip').forEach(function(c) {
+    c.classList.toggle('selected', ids.indexOf(c.getAttribute('data-id')) >= 0);
+  });
+  var countEl = document.getElementById(pickerId + 'Count');
+  if (countEl) countEl.textContent = '已选 ' + ids.length;
+}
 function toggleLookbookOutfit(el) {
   el.parentElement.querySelectorAll('.outfit-select-card').forEach(function(c) { c.classList.remove('selected'); });
   el.classList.add('selected');
+  applyOutfitToPicker(el.getAttribute('data-outfit-id'), 'lookbookItemPicker');
 }
 function addDailyOutfit() {
   var date = document.getElementById('lookbookDate').value || today();
@@ -10293,10 +10322,12 @@ function addDailyOutfit() {
   var outfitId = '';
   var items = [];
   var selectedOutfit = document.querySelector('#lookbookOutfitMode .outfit-select-card.selected');
-  if (selectedOutfit) {
-    outfitId = selectedOutfit.getAttribute('data-outfit-id');
-  } else {
-    items = getSelectedItemsFrom('lookbookItemPicker');
+  if (selectedOutfit) outfitId = selectedOutfit.getAttribute('data-outfit-id');
+  // 单品始终可叠加：以单品勾选区为准（选搭配时已自动带出其单品）
+  items = getSelectedItemsFrom('lookbookItemPicker');
+  if (items.length === 0 && outfitId) {
+    var so = (state.closet.outfits || []).find(function(x) { return x.id === outfitId; });
+    if (so) items = (so.items || []).slice();
   }
   if (!outfitId && items.length === 0 && !note) { toast('请选择搭配/单品或填写备注'); return; }
   items = sortWardrobeIds(items);
@@ -10353,6 +10384,11 @@ function editDailyOutfit(id) {
   if (!d) return;
   var wardrobe = state.closet.wardrobe || [];
   var outfits = state.closet.outfits || [];
+  // 编辑时单品勾选区初始化为实际穿着单品；旧数据回退到搭配单品
+  var initIds = (d.items && d.items.length > 0) ? d.items : (function() {
+    var o = outfits.find(function(x) { return x.id === d.outfitId; });
+    return o ? (o.items || []) : [];
+  })();
   var m = document.createElement('div');
   m.className = 'modal-overlay show'; m.id = 'editDailyOutfitModal';
   m.innerHTML = `
@@ -10367,6 +10403,7 @@ function editDailyOutfit(id) {
         <button class="lookbook-mode-btn${!d.outfitId?' active':''}" id="editModeItem" onclick="setEditLookbookMode('item')">👕 选单品</button>
       </div>
       <div id="editLookbookOutfitMode" style="${d.outfitId?'':'display:none;'}">
+        <div style="font-size:12px;color:var(--muted);margin-bottom:6px;">选搭配会自动带出其单品，可再切到「👕 选单品」继续加 / 减</div>
         ${outfits.map(o => {
           var picked = sortClosetItems((o.items||[]).map(id => wardrobe.find(w => w.id === id)).filter(Boolean));
           return '<div class="outfit-select-card'+(d.outfitId===o.id?' selected':'')+'" data-outfit-id="'+o.id+'" onclick="toggleEditLookbookOutfit(this)">'
@@ -10377,7 +10414,7 @@ function editDailyOutfit(id) {
       </div>
       <div id="editLookbookItemMode" style="${d.outfitId?'display:none;':''}">
         ${wardrobe.length === 0 ? '<div class="empty-state">衣橱空空</div>' :
-          buildOutfitPickerHtml(wardrobe, 'editLookbookItemPicker', d.items||[])
+          buildOutfitPickerHtml(wardrobe, 'editLookbookItemPicker', initIds)
         }
       </div>
       <input class="input-field" id="editLookbookNote" value="${escHtml(d.note||'')}" placeholder="穿搭备注（可选）" style="display:block;width:100%;margin:8px 0;">
@@ -10409,6 +10446,7 @@ function setEditLookbookMode(m) {
 function toggleEditLookbookOutfit(el) {
   el.parentElement.querySelectorAll('.outfit-select-card').forEach(function(c) { c.classList.remove('selected'); });
   el.classList.add('selected');
+  applyOutfitToPicker(el.getAttribute('data-outfit-id'), 'editLookbookItemPicker');
 }
 function saveEditDailyOutfit(id) {
   var d = (state.closet.dailyOutfits||[]).find(x => x.id === id);
@@ -10419,12 +10457,12 @@ function saveEditDailyOutfit(id) {
   var sceneEl = document.getElementById('editLookbookScene');
   if (sceneEl) d.scene = sceneEl.value;
   var selectedOutfit = document.querySelector('#editLookbookOutfitMode .outfit-select-card.selected');
-  if (selectedOutfit) {
-    d.outfitId = selectedOutfit.getAttribute('data-outfit-id');
-    d.items = [];
-  } else {
-    d.outfitId = '';
-    d.items = sortWardrobeIds(getSelectedItemsFrom('editLookbookItemPicker'));
+  // 单品始终可叠加：以单品勾选区为准（选搭配时已自动带出其单品）
+  d.outfitId = selectedOutfit ? selectedOutfit.getAttribute('data-outfit-id') : '';
+  d.items = sortWardrobeIds(getSelectedItemsFrom('editLookbookItemPicker'));
+  if (d.items.length === 0 && d.outfitId) {
+    var so = outfits.find(function(x) { return x.id === d.outfitId; });
+    if (so) d.items = sortWardrobeIds((so.items || []).slice());
   }
   if (d.scene) state.closet.lastScene = d.scene;
   saveData();
