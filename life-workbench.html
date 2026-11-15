@@ -10283,7 +10283,8 @@ function renderLookbook() {
         var itemsBlock = '';
         if (srcOutfit) {
           itemsBlock = '<div class="outfit-picked" style="margin-bottom:4px;align-items:center;">'
-            + '<span class="outfit-picked-tag" style="background:var(--accent-soft);color:var(--accent);">👗 '+escHtml(srcOutfit.desc||'搭配')+'</span>'
+            + '<span style="font-size:12px;font-weight:600;color:var(--accent);flex-shrink:0;" title="搭配名称">👗 '+escHtml(srcOutfit.desc||'搭配')+'</span>'
+            + '<span style="font-size:11px;color:var(--muted);flex-shrink:0;">：</span>'
             + baseItems.map(chipOf).join('')
             + '</div>';
           if (extraItems.length > 0) {
