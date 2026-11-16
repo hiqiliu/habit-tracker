@@ -1183,6 +1183,68 @@ textarea.input-field { resize:vertical; min-height:60px; }
 .hygiene-quick-btn:hover { border-color:var(--accent); color:var(--accent); }
 .hygiene-quick-btn:active { transform:scale(0.97); }
 .hygiene-quick-btn .hq-count { font-size:11px; color:var(--accent); font-weight:600; }
+/* ─── 首页四板块与六组快捷输入 ─── */
+.home-section + .home-section { margin-top:18px; padding-top:18px; border-top:1px solid var(--rule); }
+.home-time-section .dash-header { padding-bottom:0; }
+.home-greeting { text-align:center; font-size:20px; font-weight:600; color:var(--ink); }
+.home-sleep-row { justify-content:center; margin-top:12px; }
+.home-anniversary { border:1px solid var(--rule); border-radius:var(--radius); background:var(--bg2); }
+.home-anniversary > summary {
+  display:flex; align-items:center; gap:8px; padding:11px 13px; cursor:pointer;
+  list-style:none; font-size:13px; font-weight:600; color:var(--ink);
+}
+.home-anniversary > summary::-webkit-details-marker { display:none; }
+.home-anniversary > summary::after { content:'▸'; color:var(--muted); font-weight:400; }
+.home-anniversary[open] > summary::after { content:'▾'; }
+.home-ann-summary { margin-left:auto; font-size:11px; font-weight:400; color:var(--muted); }
+.home-ann-body { padding:0 12px 12px; }
+.home-quick-panel { display:flex; flex-direction:column; gap:8px; }
+.home-hq-group { overflow:hidden; border:1px solid var(--rule); border-radius:var(--radius); background:var(--bg); }
+.home-hq-group.open { border-color:var(--accent); box-shadow:var(--shadow); }
+.home-hq-toggle {
+  display:grid; grid-template-columns:auto minmax(0,1fr) auto; align-items:center; gap:10px;
+  width:100%; padding:11px 13px; border:none; background:var(--bg2); color:var(--ink);
+  font-family:inherit; font-size:14px; text-align:left; cursor:pointer;
+}
+.home-hq-toggle:hover { background:var(--accent-soft); }
+.home-hq-name { font-weight:600; white-space:nowrap; }
+.home-hq-summary { overflow:hidden; color:var(--muted); font-size:11px; text-align:right; text-overflow:ellipsis; white-space:nowrap; }
+.home-hq-group.open .home-hq-summary { visibility:hidden; }
+.home-hq-chevron { color:var(--muted); font-size:12px; }
+.home-hq-body { padding:12px; border-top:1px solid var(--rule); }
+.home-hq-chips { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:9px; }
+.home-hq-chip {
+  padding:5px 10px; border:1px solid var(--rule); border-radius:16px; background:var(--bg2);
+  color:var(--ink); font-family:inherit; font-size:12px; cursor:pointer; transition:all .15s;
+}
+.home-hq-chip:hover { border-color:var(--accent); color:var(--accent); }
+.home-hq-chip.active { border-color:var(--accent); background:var(--accent); color:#fff; }
+.home-hq-tabs { display:flex; gap:6px; margin-bottom:10px; padding:3px; border-radius:10px; background:var(--bg2); }
+.home-hq-tab {
+  flex:1; padding:6px 8px; border:none; border-radius:8px; background:transparent;
+  color:var(--muted); font-family:inherit; font-size:12px; cursor:pointer;
+}
+.home-hq-tab.active { background:var(--bg); color:var(--accent); font-weight:600; box-shadow:var(--shadow); }
+.home-hq-input { display:block; width:100%; margin-bottom:8px; }
+.home-hq-details { margin:4px 0 9px; }
+.home-hq-details > summary {
+  padding:7px 9px; border:1px dashed var(--rule); border-radius:var(--radius-sm);
+  color:var(--muted); font-size:12px; cursor:pointer; list-style:none;
+}
+.home-hq-details > summary::-webkit-details-marker { display:none; }
+.home-hq-details[open] > summary { margin-bottom:8px; }
+.home-hq-details .home-hq-input:last-child { margin-bottom:0; }
+.home-hq-label { margin:0 0 5px; color:var(--muted); font-size:11px; font-weight:600; }
+.home-hq-water-head { display:flex; align-items:baseline; justify-content:space-between; gap:8px; margin-bottom:5px; }
+.home-hq-water-head strong { color:var(--accent); }
+.home-hq-water-head span { color:var(--muted); font-size:11px; }
+.home-hq-progress { margin:0 0 12px; }
+.home-hq-undo {
+  display:flex; align-items:center; gap:8px; margin-top:9px; padding:7px 9px;
+  border-radius:var(--radius-sm); background:var(--accent-soft); color:var(--ink); font-size:12px;
+}
+.home-hq-undo span { flex:1; min-width:0; }
+.home-hq-undo small { color:var(--muted); white-space:nowrap; }
 .hygiene-chip {
   display:inline-block; font-size:11px; color:var(--accent); background:var(--accent-soft);
   border-radius:8px; padding:0 6px; line-height:16px; cursor:pointer; margin-right:4px;
@@ -2509,167 +2571,35 @@ function refreshPostureTip(el) {
 }
 
 function renderDashboard() {
-  const d = state.dashboard;
-  const todayStr = today();
-  const checkedToday = d.checkins[todayStr];
-  const q = QUOTES[Math.floor(Math.random() * QUOTES.length)];
-  const streak = d.checkinStreak || 0;
-
-  // Count today's items across modules
-  const todayPlans = (state.plan.todos || []).filter(t => t.date === todayStr);
-  const donePlans = todayPlans.filter(t => t.done).length;
-  const todayWorkouts = (state.gym.workouts || []).filter(w => w.date === todayStr);
-  const todaySleep = (state.gym.sleepData || []).filter(s => s.date === todayStr);
-  const todayMoods = (state.meditate.moods || []).filter(m => m.date === todayStr);
-  const todayGratitude = (state.gratitude.entries || []).find(e => e.date === todayStr); // diary entry for today
-  const todayMeals = (state.bar.meals || []).filter(me => me.date === todayStr);
-  const todayFin = (state.finance.records || []).filter(f => f.date === todayStr);
-  const todayOutfits = (state.closet.outfits || []).filter(o => o.date === todayStr);
-  const totalHabits = (state.habit.habits || []).length;
-  const checkedHabits = (state.habit.habits || []).filter(h => state.habit.checkins && state.habit.checkins[h.id] && state.habit.checkins[h.id][todayStr]).length;
-
-  // Overview cards
-  function ovCard(icon, val, lbl, target, isEmpty, id) {
-    var cls = 'dash-ov-card' + (isEmpty ? ' empty' : '');
-    return '<div class="'+cls+'"'+(id?' id="'+id+'"':'')+' onclick="navigate(\''+target+'\')">'
-      + '<div class="dash-ov-icon">'+icon+'</div>'
-      + '<div class="dash-ov-val">'+val+'</div>'
-      + '<div class="dash-ov-lbl">'+lbl+'</div>'
-      + '</div>';
-  }
-
-  var todayMealCount = todayMeals.filter(function(m) { return m.mealType !== 'water'; }).length;
-  var overviewHtml = '<div class="dash-section-title">📊 今日概览</div>'
-    + '<div class="dash-overview">'
-    + ovCard('📋', donePlans+'/'+todayPlans.length, '待办', 'plan', todayPlans.length === 0)
-    + ovCard('✅', checkedHabits+'/'+totalHabits, '习惯', 'habit', totalHabits === 0)
-    + ovCard('🏃', todayWorkouts.length, '运动', 'gym', todayWorkouts.length === 0, 'ovWorkoutVal')
-    + ovCard('😴', todaySleep.length > 0 ? (todaySleep[0].hours != null ? todaySleep[0].hours+'h' : '🌙') : '—', '睡眠', 'bar', todaySleep.length === 0)
-    + ovCard('📝', todayGratitude ? MOOD_EMOJIS[todayGratitude.level||3] : '—', '日记', 'soul', !todayGratitude)
-    + ovCard('🍽️', todayMealCount, '餐食', 'bar', todayMealCount === 0, 'ovMealVal')
-    + '</div>';
-
-  // ─── 自定义输入面板（零摩擦打卡）───
-  var mealQuickOpts = mealSlotDefs().map(function(t) {
-    var isLast = (state.appPrefs || {}).lastMealType === t.id;
-    return '<option value="'+t.id+'"'+(isLast?' selected':'')+'>'+t.icon+' '+t.label+'</option>';
-  }).join('');
-  var workQuickOpts = (state.gym.workoutTypes || []).map(function(t) {
-    return '<option'+(t===(state.appPrefs||{}).lastWorkoutType?' selected':'')+'>'+escHtml(t)+'</option>';
-  }).join('');
-  var libTitleOpts = ((state.library || {}).items || []).filter(function(i) {
-    return i.status !== 'done';
-  }).map(function(i) {
-    return '<option value="'+escHtml(i.title)+'"></option>';
-  }).join('');
-  var libTypeOpts = ((state.library || {}).types || LIB_TYPES).slice(0, 3).map(function(t) {
-    return '<option value="'+t.id+'">'+t.icon+' '+t.label+'</option>';
-  }).join('');
-  var gymTrackers = Object.keys(state.gym.weeklyTracker || {});
-  var syncOpts = gymTrackers.map(function(k) {
-    var t = state.gym.weeklyTracker[k];
-    return '<option value="'+k+'">'+(t.icon||'📌')+' '+escHtml(t.name||k)+'</option>';
-  }).join('');
-  var hygTodayCounts = {};
-  (state.bar.hygiene || []).forEach(function(h) {
-    if (h.date === todayStr) hygTodayCounts[h.type] = (hygTodayCounts[h.type] || 0) + 1;
-  });
-  var waterToday = (state.bar.meals || []).filter(function(m) { return m.date === todayStr && m.mealType === 'water'; })
-    .reduce(function(s, m) { return s + parseWaterMl(m.content); }, 0);
-  var qrChipsHtml = ['toilet','shower','brush','wash'].map(function(id) {
-    var n = hygTodayCounts[id] || 0;
-    return '<button class="hygiene-quick-btn" onclick="qrQuick(\''+id+'\')">'
-      + hygieneIcon(id) + ' ' + hygieneLabel(id)
-      + (n > 0 ? ' <span class="hq-count">×'+n+'</span>' : '') + '</button>';
-  }).join('')
-    + '<button class="hygiene-quick-btn" onclick="qrQuick(\'water\')">💧 饮水 200ml'
-      + (waterToday > 0 ? ' <span class="hq-count">'+waterToday+'</span>' : '') + '</button>';
-  var qrSleepStartInfo = (state.appPrefs || {}).sleepStart;
-  var qrSleepHtml = qrSleepStartInfo
-    ? '<div class="qr-sleep-hint">🌙 已入睡 '+qrSleepStartInfo.time+'，醒来记得点一下</div>'
+  var todayStr = today();
+  var q = QUOTES[Math.floor(Math.random() * QUOTES.length)];
+  var hour = new Date().getHours();
+  var greeting = hour < 5 ? '🌙 夜深了，好好休息' : hour < 11 ? '🌤️ 早上好' : hour < 14 ? '☀️ 中午好' : hour < 18 ? '🌿 下午好' : '🌙 晚上好';
+  var todayPlans = (state.plan.todos || []).filter(function(t) { return t.date === todayStr; });
+  var donePlans = todayPlans.filter(function(t) { return t.done; }).length;
+  var totalHabits = (state.habit.habits || []).length;
+  var checkedHabits = (state.habit.habits || []).filter(function(h) {
+    return state.habit.checkins && state.habit.checkins[h.id] && state.habit.checkins[h.id][todayStr];
+  }).length;
+  var sleepStartInfo = (state.appPrefs || {}).sleepStart;
+  var sleepHtml = sleepStartInfo
+    ? '<div class="qr-sleep-hint">🌙 已入睡 '+escHtml(sleepStartInfo.time)+'，醒来记得点一下</div>'
       + '<button class="btn-sm primary" onclick="qrSleepWake()">☀️ 我起床了</button>'
     : '<button class="btn-sm" onclick="qrSleepStart()">🌙 准备睡觉</button>'
       + '<button class="btn-sm" onclick="barSubView=\'sleep\';navigate(\'bar\')">☀️ 补记睡眠</button>';
-  var flashHtml = '<div class="flash-panel">'
-    + '<div class="flash-block">'
-    +   '<div class="flash-block-title">💬 随手记</div>'
-    +   '<input class="input-field" id="flashNoteInp" placeholder="记一句，回车存入时间轴…" onkeydown="if(event.key===\'Enter\')flashNote(this)">'
-    + '</div>'
-    + '<div class="flash-block">'
-    +   '<div class="flash-block-title">📝 今日小结</div>'
-    +   '<div class="flash-note-row">'
-    +     '<select class="input-field flash-sum-sel" id="flashSumSel">'
-    +     '<option value="mood">😊 心情</option>'
-    +     '<option value="body">💪 身体</option>'
-    +     '<option value="joys">✨ 小确幸</option>'
-    +     '<option value="improve">🌱 做更好</option>'
-    +   '</select>'
-    +   '<input class="input-field flash-input" id="flashSumInp" placeholder="写一句，回车存入选中的部分…" onkeydown="if(event.key===\'Enter\')flashSummary(this)">'
-    + '</div>'
-    + '</div>'
-    + '<div class="flash-block">'
-    +   '<div class="flash-block-title">⚡ 快速记录</div>'
-    +   '<div class="flash-note-row">'
-    +     '<input class="input-field qr-time" type="time" id="qrTime" value="'+nowHM()+'">'
-    +     '<select class="input-field flash-input" id="qrType" onchange="qrTypeChange()">'+qrTypeOptsHtml()+'</select>'
-    +   '</div>'
-    +   '<div class="flash-note-row" style="margin-top:6px;">'
-    +     '<input class="input-field qr-dur" type="number" id="qrDur" placeholder="时长（分钟）" style="display:none;">'
-    +     '<input class="input-field flash-input" id="qrNote" placeholder="备注（可留空）" onkeydown="if(event.key===\'Enter\')qrSubmit()">'
-    +   '</div>'
-    +   '<button class="btn-sm primary flash-record-btn" onclick="qrSubmit()">+ 记录</button>'
-    +   '<div class="qr-sleep-row">'+qrSleepHtml+'</div>'
-    +   '<div class="hygiene-quick-row qr-chips">'+qrChipsHtml+'</div>'
-    + '</div>'
-    + '<details class="flash-more">'
-    + '<summary>更多录入 · 运动 / 试香 / 在看</summary>'
-    + '<div class="flash-block">'
-    +   '<div class="flash-block-title">🏃 运动记录</div>'
-    +   '<select class="input-field" id="quickType">'+workQuickOpts+'</select>'
-    +   '<input class="input-field" id="quickDur" placeholder="时长（分钟）" type="number" onkeydown="if(event.key===\'Enter\')quickAddWorkout()">'
-    +   '<input class="input-field" id="quickNote" placeholder="备注（可选）" onkeydown="if(event.key===\'Enter\')quickAddWorkout()">'
-    +   (syncOpts ? '<select class="input-field" id="quickSync"><option value="">📅 不同步 / 选择本周追踪</option>'+syncOpts+'</select>' : '')
-    +   '<button class="btn-sm primary flash-record-btn" onclick="quickAddWorkout()">+ 记录这次运动</button>'
-    + '</div>'
-    + '<div class="flash-block">'
-    +   '<div class="flash-block-title">🌸 试香记录</div>'
-    +   '<input class="input-field" id="flashPerfumeName" placeholder="香水名称（如：夏日青柠）" onkeydown="if(event.key===\'Enter\')flashPerfume()">'
-    +   '<input class="input-field" id="flashPerfumeDate" type="date" value="'+todayStr+'">'
-    +   '<select class="input-field" id="flashPerfumeScent"><option value="">🏷 调性（可留空，稍后补）</option>'
-    +     (state.bar.perfumeScents||PERFUME_SCENTS).map(function(s){ return '<option value="'+escHtml(s)+'">'+escHtml(s)+'</option>'; }).join('')
-    +   '</select>'
-    +   '<select class="input-field" id="flashPerfumeRating">'
-    +     '<option value="我超爱">🌸 我超爱</option>'
-    +     '<option value="我可以" selected>🙂 我可以</option>'
-    +     '<option value="我不行">🚫 我不行</option>'
-    +   '</select>'
-    +   '<button class="btn-sm primary flash-record-btn" onclick="flashPerfume()">+ 记录试香</button>'
-    + '</div>'
-    + '<div class="flash-block">'
-    +   '<div class="flash-block-title">📚 在看记录</div>'
-    +   '<input class="input-field" id="flashLibTitle" list="flashLibTitles" placeholder="在看什么书 / 电影 / 剧集…" onkeydown="if(event.key===\'Enter\')flashLib()">'
-    +   '<datalist id="flashLibTitles">'+libTitleOpts+'</datalist>'
-    +   '<div class="flash-note-row">'
-    +     '<select class="input-field flash-sum-sel" id="flashLibType">'+libTypeOpts+'</select>'
-    +     '<input class="input-field flash-input" id="flashLibProgress" placeholder="进度（如 30 或 30%）">'
-    +   '</div>'
-    +   '<input class="input-field" id="flashLibFeeling" placeholder="当下的感受（可选，回车一起保存）" onkeydown="if(event.key===\'Enter\')flashLib()">'
-    +   '<button class="btn-sm primary flash-record-btn" onclick="flashLib()">+ 记录 / 更新</button>'
-    + '</div>'
-    + '</details>'
-    + '</div>';
 
-  // Quick navigation
-  var navHtml = '<div class="dash-section-title">🧭 快捷入口</div>'
-    + '<div class="dash-nav">';
-  (state.modules || []).forEach(function(m) {
-    if (m.id === 'dashboard') return;
-    navHtml += '<div class="dash-nav-item" onclick="navigate(\''+m.id+'\')">'
-      + '<div class="dash-nav-icon">'+m.icon+'</div>'
-      + '<div class="dash-nav-name">'+escHtml(m.name)+'</div>'
-      + '</div>';
-  });
-  navHtml += '</div>';
+
+
+
+
+
+
+
+
+
+
+
+
 
   // Anniversary section
   var anniversaries = (state.plan.anniversaries || []);
@@ -2688,14 +2618,13 @@ function renderDashboard() {
   }).sort(function(a,b) { return a.diff - b.diff; });
 
   var todayAnnCount = annList.filter(function(a) { return a.diff === 0; }).length;
-  var annHtml = '<div class="dash-section-title">🎂 纪念日'
-    + (todayAnnCount > 0 ? '<span class="ann-badge">今天 '+todayAnnCount+'</span>' : '')
-    + '</div>'
+  var annHtml = '<details class="home-anniversary"'+(todayAnnCount ? ' open' : '')+'>'
+    + '<summary><span>🎂 纪念日'+(todayAnnCount ? '<span class="ann-badge">今天 '+todayAnnCount+'</span>' : '')+'</span>'
+    + '<span class="home-ann-summary">共 '+annList.length+' 个</span></summary><div class="home-ann-body">'
     + '<div class="form-row" style="margin-bottom:10px;">'
     +   '<input class="input-field" id="newAnnName" placeholder="名称" style="flex:1;">'
     +   '<input class="input-field" type="date" id="newAnnDate" style="flex:0.6;">'
-    +   '<button class="btn-sm primary" onclick="addAnniversary()">+</button>'
-    + '</div>';
+    +   '<button class="btn-sm primary" onclick="addAnniversary()">+</button></div>';
   if (annList.length === 0) {
     annHtml += '<div class="empty-state">暂无纪念日，添加一个重要的日期吧~</div>';
   } else {
@@ -2713,24 +2642,294 @@ function renderDashboard() {
     });
     annHtml += '</div>';
   }
+  annHtml += '</div></details>';
 
   return `
     <div class="page active">
-      <div class="dash-header">
-        <div class="dash-time" id="liveClock">--:--:--</div>
-        <div class="dash-date">${fmtDateCN(todayStr)}</div>
-        <div class="dash-weekday">${['星期日','星期一','星期二','星期三','星期四','星期五','星期六'][new Date().getDay()]}</div>
-      </div>
-      <div class="quote-card">
-        <div class="quote-text">"${q.cn}"</div>
-        <div class="quote-en">"${q.en}"</div>
-      </div>
-      ${flashHtml}
-      ${renderTodayTodos(todayStr, todayPlans, donePlans, checkedHabits, totalHabits)}
-      ${annHtml}
-      ${overviewHtml}
-      ${navHtml}
+      <section class="home-section home-time-section">
+        <div class="dash-header">
+          <div class="dash-time" id="liveClock">--:--:--</div>
+          <div class="dash-date">${fmtDateCN(todayStr)}</div>
+          <div class="dash-weekday">${['星期日','星期一','星期二','星期三','星期四','星期五','星期六'][new Date().getDay()]}</div>
+        </div>
+      </section>
+      <section class="home-section home-welcome-section">
+        <div class="home-greeting">${greeting}</div>
+        <div class="quote-card">
+          <div class="quote-text">"${q.cn}"</div>
+          <div class="quote-en">"${q.en}"</div>
+          <div class="qr-sleep-row home-sleep-row">${sleepHtml}</div>
+        </div>
+      </section>
+      <section class="home-section home-task-section">
+        ${renderTodayTodos(todayStr, todayPlans, donePlans, checkedHabits, totalHabits)}
+        ${annHtml}
+      </section>
+      <section class="home-section home-quick-section">
+        <div class="dash-section-title">⚡ 快捷输入</div>
+        <div class="home-quick-panel" id="homeQuickPanel">${renderHomeQuickPanel()}</div>
+      </section>
     </div>`;
+}
+
+// ─── 首页六组快捷输入：只重绘面板，保留展开组与子页签 ───
+function homeQuickPrefs() {
+  var prefs = state.appPrefs || (state.appPrefs = {});
+  if (!prefs.homeQuickTabs) prefs.homeQuickTabs = {};
+  return prefs;
+}
+function refreshHomeQuickPanel(focusId) {
+  var panel = $('homeQuickPanel');
+  if (panel) panel.innerHTML = renderHomeQuickPanel();
+  if (focusId) {
+    var inp = $(focusId);
+    if (inp) inp.focus();
+  }
+}
+function homeQuickToggle(group) {
+  var prefs = homeQuickPrefs();
+  prefs.homeQuickGroup = prefs.homeQuickGroup === group ? '' : group;
+  saveData();
+  refreshHomeQuickPanel();
+}
+function homeQuickTab(group, tab) {
+  homeQuickPrefs().homeQuickTabs[group] = tab;
+  saveData();
+  refreshHomeQuickPanel();
+}
+function homeQuickChoose(btn, inputId, prefKey) {
+  var inp = $(inputId);
+  if (inp) inp.value = btn.dataset.value;
+  var chips = btn.parentElement.querySelectorAll('.home-hq-chip');
+  chips.forEach(function(chip) { chip.classList.toggle('active', chip === btn); });
+  if (prefKey) {
+    homeQuickPrefs()[prefKey] = btn.dataset.value;
+    saveData();
+  }
+}
+function homeQuickChip(inputId, value, label, icon, selected, prefKey) {
+  return '<button type="button" class="home-hq-chip'+(selected ? ' active' : '')+'" data-value="'+escHtml(String(value))+'"'
+    + ' onclick="homeQuickChoose(this,\''+inputId+'\',\''+(prefKey || '')+'\')">'
+    + (icon ? icon+' ' : '')+escHtml(label)+'</button>';
+}
+function homeQuickTabsHtml(group, tabs, active) {
+  return '<div class="home-hq-tabs">'+tabs.map(function(tab) {
+    return '<button type="button" class="home-hq-tab'+(tab.id === active ? ' active' : '')+'"'
+      + ' onclick="homeQuickTab(\''+group+'\',\''+tab.id+'\')">'+tab.icon+' '+tab.label+'</button>';
+  }).join('')+'</div>';
+}
+function homeQuickDefaultMealType() {
+  var h = new Date().getHours();
+  if (h >= 5 && h < 10) return 'breakfast';
+  if (h >= 10 && h < 15) return 'lunch';
+  if (h >= 15 && h < 17) return 'snack';
+  if (h >= 17 && h < 22) return 'dinner';
+  return 'snack';
+}
+function renderHomeQuickPanel() {
+  var prefs = homeQuickPrefs();
+  var openGroup = typeof prefs.homeQuickGroup === 'string' ? prefs.homeQuickGroup : 'eat';
+  var ds = today();
+  var meals = (state.bar.meals || []).filter(function(m) { return m.date === ds; });
+  var mealCount = meals.filter(function(m) { return m.mealType !== 'water' && m.mealType !== 'drink'; }).length;
+  var drinkCount = meals.filter(function(m) { return m.mealType === 'drink'; }).length;
+  var waterMl = meals.filter(function(m) { return m.mealType === 'water'; })
+    .reduce(function(sum, m) { return sum + parseWaterMl(m.content); }, 0);
+  var workouts = (state.gym.workouts || []).filter(function(w) { return w.date === ds; });
+  var workoutMin = workouts.reduce(function(sum, w) { return sum + (parseInt(w.duration) || 0); }, 0);
+  var hygieneCount = (state.bar.hygiene || []).filter(function(h) { return h.date === ds; }).length;
+  var readingCount = ((state.library || {}).items || []).filter(function(i) { return i.status === 'doing'; }).length;
+  var perfumeCount = (state.bar.perfumes || []).filter(function(p) { return p.date === ds; }).length;
+  var noteCount = (state.timeline || []).filter(function(t) { return t.date === ds && t.type === 'note'; }).length;
+  var gratitude = (state.gratitude.entries || []).find(function(e) { return e.date === ds; });
+  var hasSummary = gratitude && ['mood','body','joys','improve'].some(function(k) { return !!gratitude[k]; });
+  var groups = [
+    { id:'eat', icon:'🍽️', label:'吃', summary:mealCount+' 餐' },
+    { id:'drink', icon:'🥤', label:'喝', summary:waterMl+' / '+WATER_GOAL+' ml'+(drinkCount ? ' · 饮料 '+drinkCount : '') },
+    { id:'joy', icon:'🌸', label:'乐', summary:'在看 '+readingCount+' · 试香 '+perfumeCount },
+    { id:'workout', icon:'🏃', label:'动', summary:workouts.length+' 次 · '+workoutMin+' 分钟' },
+    { id:'think', icon:'💬', label:'思', summary:'随手记 '+noteCount+(hasSummary ? ' · 小结已写' : '') },
+    { id:'hygiene', icon:'🧼', label:'打卡', summary:'卫生 '+hygieneCount+' 次' }
+  ];
+  return groups.map(function(group) {
+    var open = openGroup === group.id;
+    return '<div class="home-hq-group'+(open ? ' open' : '')+'">'
+      + '<button type="button" class="home-hq-toggle" aria-expanded="'+open+'" onclick="homeQuickToggle(\''+group.id+'\')">'
+      + '<span class="home-hq-name">'+group.icon+' '+group.label+'</span>'
+      + '<span class="home-hq-summary">'+escHtml(group.summary)+'</span>'
+      + '<span class="home-hq-chevron">'+(open ? '▾' : '▸')+'</span></button>'
+      + (open ? '<div class="home-hq-body">'+homeQuickGroupBody(group.id, prefs)+'</div>' : '')
+      + '</div>';
+  }).join('');
+}
+
+function homeQuickGroupBody(group, prefs) {
+  if (group === 'eat') return homeQuickEatBody(prefs);
+  if (group === 'drink') return homeQuickDrinkBody(prefs);
+  if (group === 'joy') return homeQuickJoyBody(prefs);
+  if (group === 'workout') return homeQuickWorkoutBody(prefs);
+  if (group === 'think') return homeQuickThinkBody(prefs);
+  return homeQuickHygieneBody(prefs);
+}
+function homeQuickEatBody(prefs) {
+  var types = mealSlotDefs().filter(function(t) { return t.id !== 'water' && t.id !== 'drink'; });
+  var selected = prefs.homeQuickMealType || homeQuickDefaultMealType();
+  if (!types.some(function(t) { return t.id === selected; })) selected = homeQuickDefaultMealType();
+  if (!types.some(function(t) { return t.id === selected; }) && types.length) selected = types[0].id;
+  var chips = types.map(function(t) {
+    return homeQuickChip('flashMealSel', t.id, t.label, t.icon, t.id === selected, 'homeQuickMealType');
+  }).join('');
+  return '<input type="hidden" id="flashMealSel" value="'+escHtml(selected)+'">'
+    + '<div class="home-hq-chips">'+chips+'</div>'
+    + '<input class="input-field home-hq-input" id="flashMealInp" placeholder="吃了什么？回车即可保存" onkeydown="if(event.key===\'Enter\')flashMeal()">'
+    + '<input class="input-field home-hq-input" id="flashMealNote" placeholder="备注（可选）" onkeydown="if(event.key===\'Enter\')flashMeal()">'
+    + '<button class="btn-sm primary flash-record-btn" onclick="flashMeal()">+ 保存餐食</button>';
+}
+function homeQuickDrinkBody(prefs) {
+  var active = prefs.homeQuickTabs.drink || 'drink';
+  if (['drink','water'].indexOf(active) < 0) active = 'drink';
+  var html = homeQuickTabsHtml('drink', [
+    { id:'drink', icon:'🥤', label:'饮料' }, { id:'water', icon:'💧', label:'饮水' }
+  ], active);
+  if (active === 'drink') {
+    return html + '<input type="hidden" id="flashMealSel" value="drink">'
+      + '<input class="input-field home-hq-input" id="flashMealInp" placeholder="喝了什么饮料？回车保存" onkeydown="if(event.key===\'Enter\')flashMeal()">'
+      + '<input class="input-field home-hq-input" id="flashMealNote" placeholder="备注（可选）" onkeydown="if(event.key===\'Enter\')flashMeal()">'
+      + '<button class="btn-sm primary flash-record-btn" onclick="flashMeal()">+ 保存饮料</button>';
+  }
+  var total = (state.bar.meals || []).filter(function(m) { return m.date === today() && m.mealType === 'water'; })
+    .reduce(function(sum, m) { return sum + parseWaterMl(m.content); }, 0);
+  var pct = Math.min(100, Math.round(total / WATER_GOAL * 100));
+  return html + '<div class="home-hq-water-head"><strong>💧 '+total+' ml</strong><span>/ '+WATER_GOAL+' ml · '+pct+'%</span></div>'
+    + '<div class="progress-bar home-hq-progress"><div class="progress-fill" style="width:'+pct+'%;"></div></div>'
+    + '<div class="home-hq-chips">'
+    + [200,300,500].map(function(ml) { return '<button class="home-hq-chip" onclick="qrQuick(\'water\','+ml+')">+'+ml+' ml</button>'; }).join('')
+    + '</div><div class="form-row">'
+    + '<input class="input-field" id="homeQuickWaterInp" type="number" min="1" placeholder="自定义毫升" onkeydown="if(event.key===\'Enter\')homeQuickAddWater()">'
+    + '<button class="btn-sm primary" onclick="homeQuickAddWater()">+ 饮水</button></div>';
+}
+function homeQuickAddWater() {
+  var inp = $('homeQuickWaterInp');
+  var ml = inp ? parseFloat(inp.value) : 0;
+  if (!ml || ml <= 0) { toast('请输入饮水毫升数'); if (inp) inp.focus(); return; }
+  qrQuick('water', ml);
+  var refreshed = $('homeQuickWaterInp');
+  if (refreshed) refreshed.focus();
+}
+function homeQuickJoyBody(prefs) {
+  var active = prefs.homeQuickTabs.joy || 'library';
+  if (['library','perfume'].indexOf(active) < 0) active = 'library';
+  var html = homeQuickTabsHtml('joy', [
+    { id:'library', icon:'📚', label:'在看' }, { id:'perfume', icon:'🌸', label:'试香' }
+  ], active);
+  if (active === 'library') {
+    var titles = ((state.library || {}).items || []).filter(function(i) { return i.status !== 'done'; })
+      .map(function(i) { return '<option value="'+escHtml(i.title)+'"></option>'; }).join('');
+    var types = ((state.library || {}).types || LIB_TYPES).slice(0, 3).map(function(t) {
+      return '<option value="'+t.id+'">'+t.icon+' '+escHtml(t.label)+'</option>';
+    }).join('');
+    return html + '<input class="input-field home-hq-input" id="flashLibTitle" list="flashLibTitles" placeholder="在看什么书 / 电影 / 剧集…" onkeydown="if(event.key===\'Enter\')flashLib()">'
+      + '<datalist id="flashLibTitles">'+titles+'</datalist>'
+      + '<select class="input-field home-hq-input" id="flashLibType">'+types+'</select>'
+      + '<details class="home-hq-details"><summary>进度与当下感受（可选）</summary>'
+      + '<input class="input-field home-hq-input" id="flashLibProgress" placeholder="进度（如 30 或 30%）">'
+      + '<input class="input-field home-hq-input" id="flashLibFeeling" placeholder="当下的感受" onkeydown="if(event.key===\'Enter\')flashLib()"></details>'
+      + '<button class="btn-sm primary flash-record-btn" onclick="flashLib()">+ 记录 / 更新</button>';
+  }
+  var rating = prefs.homeQuickPerfumeRating || '我可以';
+  var ratings = [
+    { value:'我超爱', icon:'🌸' }, { value:'我可以', icon:'🙂' }, { value:'我不行', icon:'🚫' }
+  ];
+  var ratingChips = ratings.map(function(r) {
+    return homeQuickChip('flashPerfumeRating', r.value, r.value, r.icon, r.value === rating, 'homeQuickPerfumeRating');
+  }).join('');
+  var scents = (state.bar.perfumeScents || PERFUME_SCENTS).map(function(s) {
+    return '<option value="'+escHtml(s)+'">'+escHtml(s)+'</option>';
+  }).join('');
+  return html + '<input class="input-field home-hq-input" id="flashPerfumeName" placeholder="香水名称（如：夏日青柠）" onkeydown="if(event.key===\'Enter\')flashPerfume()">'
+    + '<input type="hidden" id="flashPerfumeRating" value="'+escHtml(rating)+'">'
+    + '<div class="home-hq-chips">'+ratingChips+'</div>'
+    + '<details class="home-hq-details"><summary>日期与调性（可选）</summary>'
+    + '<input class="input-field home-hq-input" id="flashPerfumeDate" type="date" value="'+today()+'">'
+    + '<select class="input-field home-hq-input" id="flashPerfumeScent"><option value="">🏷 调性（可留空，稍后补）</option>'+scents+'</select></details>'
+    + '<button class="btn-sm primary flash-record-btn" onclick="flashPerfume()">+ 记录试香</button>';
+}
+
+function homeQuickWorkoutBody(prefs) {
+  var types = state.gym.workoutTypes || [];
+  var selected = prefs.lastWorkoutType;
+  if (types.indexOf(selected) < 0) selected = types[0] || '其他';
+  var typeChips = types.map(function(type) {
+    return homeQuickChip('quickType', type, type, workoutIcon(type), type === selected, 'lastWorkoutType');
+  }).join('');
+  var duration = String(prefs.lastWorkoutDuration || '30');
+  var durationChips = [15,30,45,60].map(function(min) {
+    return homeQuickChip('quickDur', String(min), min+' 分钟', '', String(min) === duration, 'lastWorkoutDuration');
+  }).join('');
+  var syncOpts = Object.keys(state.gym.weeklyTracker || {}).map(function(k) {
+    var tracker = state.gym.weeklyTracker[k];
+    return '<option value="'+escHtml(k)+'">'+(tracker.icon || '📌')+' '+escHtml(tracker.name || k)+'</option>';
+  }).join('');
+  return '<input type="hidden" id="quickType" value="'+escHtml(selected)+'">'
+    + '<div class="home-hq-label">常用运动</div><div class="home-hq-chips">'+typeChips+'</div>'
+    + '<div class="home-hq-label">时长</div><div class="home-hq-chips">'+durationChips+'</div>'
+    + '<input class="input-field home-hq-input" id="quickDur" type="number" min="1" value="'+escHtml(duration)+'" placeholder="自定义时长（分钟）" onkeydown="if(event.key===\'Enter\')quickAddWorkout()">'
+    + '<input class="input-field home-hq-input" id="quickNote" placeholder="备注（可选）" onkeydown="if(event.key===\'Enter\')quickAddWorkout()">'
+    + (syncOpts ? '<details class="home-hq-details"><summary>同步到本周追踪（可选）</summary><select class="input-field home-hq-input" id="quickSync"><option value="">📅 不同步</option>'+syncOpts+'</select></details>' : '')
+    + '<button class="btn-sm primary flash-record-btn" onclick="quickAddWorkout()">+ 记录这次运动</button>';
+}
+function homeQuickThinkBody(prefs) {
+  var active = prefs.homeQuickTabs.think || 'note';
+  if (['note','summary'].indexOf(active) < 0) active = 'note';
+  var html = homeQuickTabsHtml('think', [
+    { id:'note', icon:'💬', label:'随手记' }, { id:'summary', icon:'📝', label:'今日小结' }
+  ], active);
+  if (active === 'note') {
+    return html + '<input class="input-field home-hq-input" id="flashNoteInp" placeholder="记一句，回车存入时间轴…" onkeydown="if(event.key===\'Enter\')flashNote(this)">'
+      + '<button class="btn-sm primary flash-record-btn" onclick="flashNote(document.getElementById(\'flashNoteInp\'))">+ 保存随手记</button>';
+  }
+  var field = prefs.homeQuickSummaryField || 'joys';
+  if (!FLASH_SUM_META[field]) field = 'joys';
+  var chips = Object.keys(FLASH_SUM_META).map(function(key) {
+    var meta = FLASH_SUM_META[key];
+    return homeQuickChip('flashSumSel', key, meta.label, meta.icon, key === field, 'homeQuickSummaryField');
+  }).join('');
+  var options = Object.keys(FLASH_SUM_META).map(function(key) {
+    return '<option value="'+key+'"'+(key === field ? ' selected' : '')+'>'+FLASH_SUM_META[key].label+'</option>';
+  }).join('');
+  return html + '<select id="flashSumSel" style="display:none;">'+options+'</select>'
+    + '<div class="home-hq-chips">'+chips+'</div>'
+    + '<input class="input-field home-hq-input" id="flashSumInp" placeholder="写一句，回车存入选中的部分…" onkeydown="if(event.key===\'Enter\')flashSummary(this)">'
+    + '<button class="btn-sm primary flash-record-btn" onclick="flashSummary(document.getElementById(\'flashSumInp\'))">+ 保存今日小结</button>';
+}
+var homeQuickHygieneUndo = null;
+var homeQuickHygieneUndoTimer = null;
+function homeQuickHygieneBody() {
+  var ds = today();
+  var counts = {};
+  (state.bar.hygiene || []).forEach(function(h) {
+    if (h.date === ds) counts[h.type] = (counts[h.type] || 0) + 1;
+  });
+  var html = '<div class="hygiene-quick-row">'+['toilet','brush','skincare','shower'].map(function(id) {
+    return '<button class="hygiene-quick-btn" onclick="qrQuick(\''+id+'\')">'+hygieneIcon(id)+' '+hygieneLabel(id)
+      + ' <span class="hq-count">今日 '+(counts[id] || 0)+' 次</span></button>';
+  }).join('')+'</div>';
+  if (homeQuickHygieneUndo && homeQuickHygieneUndo.expiresAt > Date.now()) {
+    html += '<div class="home-hq-undo"><span>已记录 '+hygieneIcon(homeQuickHygieneUndo.type)+' '+escHtml(hygieneLabel(homeQuickHygieneUndo.type))+'</span>'
+      + '<button class="btn-sm" onclick="homeQuickUndoHygiene()">撤销</button><small>5 秒内可撤销</small></div>';
+  }
+  return html;
+}
+function homeQuickUndoHygiene() {
+  var pending = homeQuickHygieneUndo;
+  homeQuickHygieneUndo = null;
+  if (homeQuickHygieneUndoTimer) clearTimeout(homeQuickHygieneUndoTimer);
+  homeQuickHygieneUndoTimer = null;
+  if (!pending || pending.expiresAt <= Date.now()) { refreshHomeQuickPanel(); return; }
+  state.bar.hygiene = (state.bar.hygiene || []).filter(function(h) { return h.id !== pending.id; });
+  saveData();
+  refreshHomeQuickPanel();
+  toast('已撤销这条'+hygieneLabel(pending.type)+'记录');
 }
 
 // ─── 闪电记录：一键进入对应记录页 ───
@@ -2750,6 +2949,7 @@ var QR_TYPES = [
   { id:'toilet',    icon:'💩', label:'排泄',   group:'健康 · 卫生', refType:'hygiene', mode:'moment' },
   { id:'wash',      icon:'🧴', label:'洗漱',   group:'健康 · 卫生', refType:'hygiene', mode:'moment' },
   { id:'brush',     icon:'🪥', label:'刷牙',   group:'健康 · 卫生', refType:'hygiene', mode:'moment' },
+  { id:'skincare',  icon:'🧴', label:'护肤',   group:'健康 · 卫生', refType:'hygiene', mode:'moment' },
   { id:'workout',   icon:'🏃', label:'运动',   group:'活动',        refType:'workout', mode:'span' },
   { id:'chore',     icon:'🧹', label:'家务',   group:'活动',        refType:'timeline', mode:'span' },
   { id:'makeup',    icon:'💄', label:'化妆',   group:'活动',        refType:'timeline', mode:'span' },
@@ -2853,18 +3053,31 @@ function qrSubmit() {
   toast(def.icon + ' ' + def.label + ' 已记录 ' + time);
 }
 // 常用项目一键记录
-function qrQuick(typeId) {
+function qrQuick(typeId, amount) {
   var ds = today(), time = nowHM();
+  var label = '';
   if (typeId === 'water') {
+    var ml = parseFloat(amount) || 200;
+    if (ml <= 0) ml = 200;
     if (!state.bar.meals) state.bar.meals = [];
-    state.bar.meals.push({ id:'ml'+Date.now(), date:ds, mealType:'water', content:'200ml', note:'', time:time });
+    state.bar.meals.push({ id:'ml'+Date.now(), date:ds, mealType:'water', content:normWaterContent(ml+'ml'), note:'', time:time });
+    label = '💧 饮水 '+ml+'ml';
   } else {
     if (!state.bar.hygiene) state.bar.hygiene = [];
-    state.bar.hygiene.push({ id:'hg'+Date.now(), date:ds, type:typeId, time:time, note:'' });
+    var hygieneId = 'hg'+Date.now()+Math.floor(Math.random()*1000);
+    state.bar.hygiene.push({ id:hygieneId, date:ds, type:typeId, time:time, note:'' });
+    homeQuickHygieneUndo = { id:hygieneId, type:typeId, expiresAt:Date.now()+5000 };
+    if (homeQuickHygieneUndoTimer) clearTimeout(homeQuickHygieneUndoTimer);
+    homeQuickHygieneUndoTimer = setTimeout(function() {
+      homeQuickHygieneUndo = null;
+      homeQuickHygieneUndoTimer = null;
+      refreshHomeQuickPanel();
+    }, 5000);
+    label = hygieneIcon(typeId)+' '+hygieneLabel(typeId);
   }
   saveData();
-  renderPage('dashboard');
-  toast((typeId === 'water' ? '💧 饮水 200ml' : hygieneIcon(typeId) + ' ' + hygieneLabel(typeId)) + ' 已记录 ' + time);
+  refreshHomeQuickPanel();
+  toast(label+' 已记录 '+time);
 }
 // 睡眠：睡前点一下、醒来点一下
 function qrSleepStart() {
@@ -3127,23 +3340,23 @@ function flashGo(kind) {
 
 // ─── 首页餐食快捷输入：选择餐类 + 回车直接写入餐食页 ───
 function flashMeal() {
-  var sel = document.getElementById('flashMealSel');
-  var inp = document.getElementById('flashMealInp');
+  var sel = $('flashMealSel'), inp = $('flashMealInp'), noteEl = $('flashMealNote');
   if (!sel || !inp) return;
   var raw = inp.value.trim();
   if (!raw) return;
   var type = sel.value;
   var content = type === 'water' ? normWaterContent(raw) : raw;
   if (!state.bar.meals) state.bar.meals = [];
-  var rec = { id:'ml'+Date.now(), date:today(), mealType:type, content:content, note:'' };
-  if (type === 'water') rec.time = nowHM();
-  state.bar.meals.push(rec);
+  state.bar.meals.push({
+    id:'ml'+Date.now(), date:today(), time:nowHM(), mealType:type,
+    content:content, note:noteEl ? noteEl.value.trim() : ''
+  });
   if (!state.appPrefs) state.appPrefs = {};
   state.appPrefs.lastMealType = type;
   saveData();
   inp.value = '';
-  refreshMealQuickUI();
-  toast(type === 'water' ? '💧 饮水 +' + content : '🍽️ ' + mealTypeLabel(type) + '已记录');
+  refreshHomeQuickPanel('flashMealInp');
+  toast(type === 'water' ? '💧 饮水 +' + content : (type === 'drink' ? '🥤 ' : '🍽️ ') + mealTypeLabel(type) + '已记录');
 }
 
 // ─── 首页试香快捷输入：名称 + 日期 + 喜爱，先建记录，细节去香水页补 ───
@@ -3156,7 +3369,7 @@ function flashPerfume() {
   if (!state.bar.perfumes) state.bar.perfumes = [];
   var rl = rateEl.value;
   var scent = scentEl ? scentEl.value : '';
-  state.bar.perfumes.push({
+  var perfume = {
     id: 'p' + Date.now(),
     name: name,
     brand: '',
@@ -3168,11 +3381,18 @@ function flashPerfume() {
     rating: (rl === '我超爱' ? 5 : rl === '我可以' ? 3 : 1),
     review: '', notes: '',
     date: dateEl.value || today()
+  };
+  state.bar.perfumes.push(perfume);
+  pushTimelineEvent({
+    date:perfume.date, time:nowHM(), cat:'activity', type:'perfume',
+    label:'试香 · '+name, icon:'🌸', note:scent,
+    refType:'perfume', refId:perfume.id
   });
   saveData();
   nameEl.value = '';
   dateEl.value = today();
   if (scentEl) scentEl.value = '';
+  refreshHomeQuickPanel('flashPerfumeName');
   toast(scent ? '试香已记录 🌸' : '试香已记录 🌸 可去香水页补充调性/价格');
 }
 
@@ -3247,7 +3467,7 @@ function flashLib() {
   });
   saveData();
   titleEl.value = ''; progEl.value = ''; feelEl.value = '';
-  renderPage('dashboard');
+  refreshHomeQuickPanel('flashLibTitle');
 }
 function refreshMealQuickUI() {
   var n = (state.bar.meals || []).filter(function(m) { return m.date === today() && m.mealType !== 'water'; }).length;
@@ -3280,7 +3500,9 @@ function flashNote(inp) {
   var v = inp.value.trim(); if (!v) return;
   flashPushTimeline(v);
   inp.value = '';
-  saveData(); toast('💬 已记入时间轴');
+  saveData();
+  refreshHomeQuickPanel('flashNoteInp');
+  toast('💬 已记入时间轴');
 }
 
 // ─── 全天总结随手记：选中部分 + 回车追加 ───
@@ -3302,6 +3524,7 @@ function flashSummary(inp) {
   entry[field] = entry[field] ? entry[field] + meta.sep + v : v;
   inp.value = '';
   saveData();
+  refreshHomeQuickPanel('flashSumInp');
   toast(meta.icon + ' 已存入' + meta.label);
 }
 
@@ -5515,26 +5738,31 @@ function renderGymOverview(mod) {
     </div>`;
 }
 function quickAddWorkout() {
-  const type = $('quickType'), dur = $('quickDur'), note = $('quickNote');
-  if (!type) return;
+  var type = $('quickType'), dur = $('quickDur'), note = $('quickNote');
+  if (!type || !dur) return;
+  var duration = parseInt(dur.value) || 0;
+  if (duration <= 0) { toast('请输入运动时长'); dur.focus(); return; }
   if (!state.gym.workouts) state.gym.workouts = [];
-  var prefs = state.appPrefs || (state.appPrefs = {}); prefs.lastWorkoutType = type.value;
-  var wId = 'w'+Date.now();
-  state.gym.workouts.push({ id:wId, date:today(), type:type.value, duration:parseInt(dur.value)||0, note:note.value.trim() });
+  var prefs = state.appPrefs || (state.appPrefs = {});
+  prefs.lastWorkoutType = type.value;
+  prefs.lastWorkoutDuration = String(duration);
+  var wId = 'w'+Date.now(), ds = today(), time = nowHM();
+  var noteText = note ? note.value.trim() : '';
+  state.gym.workouts.push({
+    id:wId, date:ds, type:type.value, duration:duration, note:noteText,
+    time:time, endTime:addMin(time, duration)
+  });
   // 可选：同步到本周追踪
   var syncSel = $('quickSync');
   var syncedTo = '';
   if (syncSel && syncSel.value && state.gym.weeklyTracker && state.gym.weeklyTracker[syncSel.value]) {
     var tk = state.gym.weeklyTracker[syncSel.value];
     if (!tk.logs) tk.logs = [];
-    tk.logs.push({ id:'wl'+Date.now(), date:today(), note: type.value + (dur.value?' · '+dur.value+'分钟':'') + (note.value?' · '+note.value:'') + ' _w'+wId });
+    tk.logs.push({ id:'wl'+Date.now(), date:ds, note:type.value+' · '+duration+'分钟'+(noteText?' · '+noteText:'')+' _w'+wId });
     syncedTo = tk.name || '追踪';
   }
   saveData();
-  if (dur) dur.value = '';
-  if (note) note.value = '';
-  if (syncSel) syncSel.value = '';
-  refreshWorkoutQuickUI();
+  refreshHomeQuickPanel('quickDur');
   toast(syncedTo ? '运动已记录 ✅ 已同步到' + syncedTo : '运动已记录 ✅');
 }
 
@@ -10605,7 +10833,8 @@ var HYGIENE_TYPES = [
   { id:'toilet', icon:'💩', label:'排泄' },
   { id:'shower', icon:'🚿', label:'洗澡' },
   { id:'wash', icon:'🧴', label:'洗漱' },
-  { id:'brush', icon:'🪥', label:'刷牙' }
+  { id:'brush', icon:'🪥', label:'刷牙' },
+  { id:'skincare', icon:'🧴', label:'护肤' }
 ];
 if (!state.bar.hygiene) { state.bar.hygiene = []; }
 if (!state.bar.hygieneTypes) {
