@@ -9737,6 +9737,7 @@ function renderClosetItems() {
           +       (wc > 0 ? '<span class="outfit-wear-badge worn">'+wc+'次</span>' : '<span class="outfit-wear-badge unworn">0次</span>')
           +       costPerWearTag(item, wc)
           +     '</div>'
+          +     (item.note ? '<div style="font-size:12px;color:var(--muted);margin-bottom:8px;line-height:1.5;">📝 '+escHtml(item.note).replace(/\n/g,'<br>')+'</div>' : '')
           +     (item.pros || item.cons ? '<div class="item-pros-cons" style="margin-bottom:8px;">'+(item.pros?'<span class="item-pros">✓ '+escHtml(item.pros)+'</span>':'')+(item.cons?'<span class="item-cons">✗ '+escHtml(item.cons)+'</span>':'')+'</div>' : '')
           +     '<div>'
           +       '<button class="btn-sm" onclick="editWardrobeItem(\''+item.id+'\')">✏️ 编辑</button>'
@@ -9843,13 +9844,12 @@ function addWardrobeItem() {
   var colorEl = document.getElementById('addItemColor');
   var brandEl = document.getElementById('addItemBrand');
   var seasonEl = document.getElementById('addItemSeason');
-  var prosEl = document.getElementById('addItemPros');
-  var consEl = document.getElementById('addItemCons');
+  var noteEl = document.getElementById('addItemNote');
   var dimensionEl = document.getElementById('addItemDimension');
   var channelEl = document.getElementById('addItemChannel');
   if (!nameEl || !nameEl.value.trim()) { toast('请输入单品名'); return; }
   if (!state.closet.wardrobe) state.closet.wardrobe = [];
-  state.closet.wardrobe.push({ id:'wi'+Date.now(), name:nameEl.value.trim(), brand:(brandEl && brandEl.value.trim())||'', cat:catEl.value, color:colorEl.value.trim(), season:(seasonEl && seasonEl.value)||'', pros:(prosEl && prosEl.value.trim())||'', cons:(consEl && consEl.value.trim())||'', dimension:(dimensionEl && dimensionEl.value.trim())||'', channel:(channelEl && channelEl.value)||'', price:parseFloat((document.getElementById('addItemPrice')||{}).value) || 0 });
+  state.closet.wardrobe.push({ id:'wi'+Date.now(), name:nameEl.value.trim(), brand:(brandEl && brandEl.value.trim())||'', cat:catEl.value, color:colorEl.value.trim(), season:(seasonEl && seasonEl.value)||'', note:(noteEl && noteEl.value.trim())||'', dimension:(dimensionEl && dimensionEl.value.trim())||'', channel:(channelEl && channelEl.value)||'', price:parseFloat((document.getElementById('addItemPrice')||{}).value) || 0 });
   saveData();
   document.getElementById('addItemModal').remove();
   renderPage('closet'); toast('单品已添加');
@@ -9873,8 +9873,7 @@ function openAddItemModal() {
     +   '</select>'
     + '</div>'
     + '<div class="form-row" style="margin-bottom:6px;">'
-    +   '<input class="input-field" id="addItemPros" placeholder="优点（可选）" style="flex:1;">'
-    +   '<input class="input-field" id="addItemCons" placeholder="缺点（可选）" style="flex:1;">'
+    +   '<textarea class="input-field" id="addItemNote" rows="2" placeholder="备注（可选：尺码、版型、洗护、搭配建议等）" style="flex:1;resize:vertical;"></textarea>'
     + '</div>'
     + '<div class="form-row" style="margin-bottom:8px;">'
     +   '<input class="input-field" id="addItemDimension" placeholder="维度（可选）" style="flex:1;">'
@@ -10022,8 +10021,7 @@ function editWardrobeItem(id) {
         <option value="">季节（可选）</option>
         ${['春','夏','秋','冬','全季'].map(s => '<option'+(item.season===s?' selected':'')+'>'+s+'</option>').join('')}
       </select>
-      <input class="input-field" id="editWardrobePros" value="${escHtml(item.pros||'')}" placeholder="优点（可选）" style="display:block;width:100%;margin-bottom:8px;">
-      <input class="input-field" id="editWardrobeCons" value="${escHtml(item.cons||'')}" placeholder="缺点（可选）" style="display:block;width:100%;margin-bottom:8px;">
+      <textarea class="input-field" id="editWardrobeNote" rows="2" placeholder="备注（可选：尺码、版型、洗护、搭配建议等）" style="display:block;width:100%;margin-bottom:8px;resize:vertical;">${escHtml(item.note||'')}</textarea>
       <input class="input-field" id="editWardrobeDimension" value="${escHtml(item.dimension||'')}" placeholder="维度（可选）" style="display:block;width:100%;margin-bottom:8px;">
       <select class="input-field" id="editWardrobeChannel" style="display:block;width:100%;margin-bottom:8px;">
         <option value="">购买渠道（可选）</option>
@@ -10050,8 +10048,7 @@ function saveEditWardrobeItem(id) {
   item.cat = $('editWardrobeCat').value;
   item.color = $('editWardrobeColor').value.trim();
   item.season = $('editWardrobeSeason').value;
-  item.pros = $('editWardrobePros').value.trim();
-  item.cons = $('editWardrobeCons').value.trim();
+  item.note = $('editWardrobeNote').value.trim();
   item.dimension = $('editWardrobeDimension').value.trim();
   item.channel = $('editWardrobeChannel').value;
   item.price = parseFloat($('editWardrobePrice').value) || 0;
@@ -10383,7 +10380,7 @@ function quickAddItem() {
   var brand = document.getElementById('quickItemBrand');
   if (!name || !name.value.trim()) { toast('请输入单品名'); return; }
   if (!state.closet.wardrobe) state.closet.wardrobe = [];
-  var newItem = { id:'wi'+Date.now(), name:name.value.trim(), brand:(brand && brand.value.trim())||'', cat:cat.value, color:'', season:'', pros:'', cons:'', dimension:'', channel:'' };
+  var newItem = { id:'wi'+Date.now(), name:name.value.trim(), brand:(brand && brand.value.trim())||'', cat:cat.value, color:'', season:'', note:'', dimension:'', channel:'' };
   state.closet.wardrobe.push(newItem);
   saveData(); renderPage('closet'); toast('单品已添加，请勾选');
   setTimeout(function() {
