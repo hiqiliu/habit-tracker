@@ -1128,6 +1128,9 @@ textarea.input-field { resize:vertical; min-height:60px; }
 .gym-quick-grid {
   display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:16px;
 }
+@media (max-width:640px) {
+  .gym-quick-grid { grid-template-columns:repeat(2,1fr); }
+}
 .gym-quick-card {
   display:flex; flex-direction:column; align-items:center; gap:6px;
   padding:14px 8px; border-radius:12px; background:var(--bg2);
@@ -1249,7 +1252,7 @@ textarea.input-field { resize:vertical; min-height:60px; }
   display:inline-block; font-size:11px; color:var(--accent); background:var(--accent-soft);
   border-radius:8px; padding:0 6px; line-height:16px; cursor:pointer; margin-right:4px;
 }
-.hygiene-chip:hover { background:var(--danger); color:#fff; }
+.hygiene-chip:hover { background:var(--accent); color:#fff; }
 /* ─── 快速记录 ─── */
 .qr-time { flex:0 0 88px; font-size:12px; padding:6px 4px; }
 .qr-dur { flex:0 0 110px; font-size:12px; }
@@ -1291,9 +1294,10 @@ textarea.input-field { resize:vertical; min-height:60px; }
 .dv-untimed { margin-top:12px; }
 .dv-untimed-title { font-size:12px; color:var(--muted); margin-bottom:6px; }
 .dv-untimed-chip {
-  display:inline-block; font-size:11px; color:var(--muted); background:var(--bg2);
-  border-radius:8px; padding:1px 7px; margin:0 4px 4px 0;
+  display:inline-flex; align-items:center; gap:4px; font-size:11px; color:var(--muted); background:var(--bg2);
+  border-radius:8px; padding:2px 7px; margin:0 4px 4px 0;
 }
+.dv-untimed-chip .dv-actions { margin-left:2px; }
 /* 每一类快捷输入是一张独立小卡片 */
 .flash-block {
   background:var(--bg); border:1px solid var(--rule);
@@ -1677,6 +1681,11 @@ textarea.input-field { resize:vertical; min-height:60px; }
 .journal-add-btn:hover { text-decoration:underline; }
 .journal-day-actions { display:flex; gap:4px; margin-top:6px; flex-wrap:wrap; align-items:center; }
 .journal-day-actions button { font-size:10px; padding:2px 8px; }
+.journal-day.compact .journal-day-header { border-bottom:none; padding:7px 14px; }
+.journal-day.compact .journal-day-body { padding:0 14px 7px; }
+.journal-day.compact .journal-day-empty { display:none; }
+.journal-day.compact .journal-day-actions { margin-top:0; justify-content:flex-end; }
+.journal-week-tools { display:flex; justify-content:flex-end; margin:-4px 0 10px; }
 
 @media (max-width:540px) {
   .journal-day-header { padding:8px 10px; }
@@ -2196,7 +2205,8 @@ let editingModuleId = null;
 // UTILS
 // ═══════════════════════════════════════
 function $(id) { return document.getElementById(id); }
-function today() { return new Date().toISOString().slice(0,10); }
+// 日期键统一使用设备本地日期，避免 UTC 在本地上午时段落到前一天
+function today() { return fmtDate(new Date()); }
 function now() { return new Date(); }
 function fmtDate(d) { const dt=new Date(d); return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`; }
 function fmtDateCN(d) { const dt=new Date(d); return `${dt.getFullYear()}年${dt.getMonth()+1}月${dt.getDate()}日`; }
@@ -2649,8 +2659,8 @@ function renderDashboard() {
       <section class="home-section home-time-section">
         <div class="dash-header">
           <div class="dash-time" id="liveClock">--:--:--</div>
-          <div class="dash-date">${fmtDateCN(todayStr)}</div>
-          <div class="dash-weekday">${['星期日','星期一','星期二','星期三','星期四','星期五','星期六'][new Date().getDay()]}</div>
+          <div class="dash-date" id="liveDate">${fmtDateCN(todayStr)}</div>
+          <div class="dash-weekday" id="liveWeekday">${['星期日','星期一','星期二','星期三','星期四','星期五','星期六'][new Date().getDay()]}</div>
         </div>
       </section>
       <section class="home-section home-welcome-section">
@@ -2803,7 +2813,7 @@ function homeQuickDrinkBody(prefs) {
   return html + '<div class="home-hq-water-head"><strong>💧 '+total+' ml</strong><span>/ '+WATER_GOAL+' ml · '+pct+'%</span></div>'
     + '<div class="progress-bar home-hq-progress"><div class="progress-fill" style="width:'+pct+'%;"></div></div>'
     + '<div class="home-hq-chips">'
-    + [200,300,500].map(function(ml) { return '<button class="home-hq-chip" onclick="qrQuick(\'water\','+ml+')">+'+ml+' ml</button>'; }).join('')
+    + [200,300,400,500].map(function(ml) { return '<button class="home-hq-chip" onclick="qrQuick(\'water\','+ml+')">+'+ml+' ml</button>'; }).join('')
     + '</div><div class="form-row">'
     + '<input class="input-field" id="homeQuickWaterInp" type="number" min="1" placeholder="自定义毫升" onkeydown="if(event.key===\'Enter\')homeQuickAddWater()">'
     + '<button class="btn-sm primary" onclick="homeQuickAddWater()">+ 饮水</button></div>';
@@ -3197,7 +3207,11 @@ function renderJournalDay(dateStr) {
 
   var untimedHtml = untimed.length ? '<div class="dv-untimed"><div class="dv-untimed-title">未记录时间的记录</div>'
     + untimed.map(function(e) {
-        return '<span class="dv-untimed-chip">'+e.icon+' '+escHtml(e.label)+(e.note?' · '+escHtml(e.note):'')+'</span>';
+        return '<span class="dv-untimed-chip"><span>'+e.icon+' '+escHtml(e.label)+(e.note?' · '+escHtml(e.note):'')+'</span>'
+          + (e.readonly ? '' : '<span class="dv-actions">'
+          + '<button class="dv-btn" onclick="openEventEdit(\''+e.src+'\',\''+e.id+'\')" title="编辑">✏️</button>'
+          + '<button class="dv-btn" onclick="deleteDayEvent(\''+e.src+'\',\''+e.id+'\')" title="删除">🗑️</button>'
+          + '</span>') + '</span>';
       }).join('') + '</div>' : '';
 
   return '<div class="section-title">⏱ 时间轴</div>'
@@ -3585,11 +3599,15 @@ function dashAddTodo(inp) {
 }
 
 function updateClock() {
+  const n = now();
   const el = $('liveClock');
   if (el) {
-    const n = now();
     el.textContent = `${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}:${String(n.getSeconds()).padStart(2,'0')}`;
   }
+  const dateEl = $('liveDate');
+  if (dateEl) dateEl.textContent = fmtDateCN(fmtDate(n));
+  const weekdayEl = $('liveWeekday');
+  if (weekdayEl) weekdayEl.textContent = ['星期日','星期一','星期二','星期三','星期四','星期五','星期六'][n.getDay()];
 }
 setInterval(updateClock, 1000);
 
@@ -3848,6 +3866,7 @@ let journalMonthOffset = 0;
 let journalYearOffset = 0;
 let journalFilters = null; // lazy init
 let journalReportMode = 'week'; // 'week' | 'month'
+let journalWeekOnlyActive = false;
 const JOURNAL_CATS = [
   { id:'todo',    icon:'📋', label:'待办' },
   { id:'habit',   icon:'✅', label:'习惯' },
@@ -4063,7 +4082,8 @@ function renderReview() {
       + '<span class="jnav-title">'+(journalWeekOffset===0?'本周':(journalWeekOffset<0?'往前第'+(-journalWeekOffset)+'周':'往后第'+journalWeekOffset+'周'))+' '+fmtDateShort(wkStart)+'~'+fmtDateShort(wkEnd)+'</span>'
       + '<button class="btn-sm" onclick="changeJournalWeek(1)">下周 →</button>'
       + '</div>';
-    contentHtml = renderJournalWeek(weekDates, todayStr);
+    contentHtml = '<div class="journal-week-tools"><button class="jfilter-btn'+(journalWeekOnlyActive?' active':'')+'" onclick="journalWeekOnlyActive=!journalWeekOnlyActive;renderPage(\'review\')">'+(journalWeekOnlyActive?'✓ 仅看有记录':'仅看有记录')+'</button></div>'
+      + renderJournalWeek(weekDates, todayStr);
   } else if (journalView === 'month') {
     var mi = getMonthInfo(journalMonthOffset);
     var monthTitle = mi.cy + '年' + (mi.cm + 1) + '月';
@@ -4199,6 +4219,7 @@ function renderJournalWeek(weekDates, todayStr) {
     var acts = allActs.filter(function(a) { return journalFilters[a.cat]; });
     var isToday = ds === todayStr;
     var weekdayLabels = ['周一','周二','周三','周四','周五','周六','周日'];
+    if (journalWeekOnlyActive && acts.length === 0) return '';
 
     var actsHtml = acts.length === 0
       ? '<div class="journal-day-empty">— 无记录 —</div>'
@@ -4229,7 +4250,7 @@ function renderJournalWeek(weekDates, todayStr) {
                    + '<button class="btn-sm danger" onclick="deleteReview(\''+e.id+'\')" style="font-size:10px;padding:2px 6px;">删</button>';
     });
 
-    return '<div class="journal-day'+(isToday?' today':'')+(allActs.length>0?' has-activity':'')+'">'
+    return '<div class="journal-day'+(isToday?' today':'')+(allActs.length>0?' has-activity':'')+(acts.length===0?' compact':'')+'">'
       + '<div class="journal-day-header">'
       +   '<span class="jdh-weekday">'+weekdayLabels[idx]+'</span>'
       +   '<span class="jdh-date">'+(parseInt(ds.split('-')[1]))+'/'+(parseInt(ds.split('-')[2]))+'</span>'
@@ -4245,6 +4266,7 @@ function renderJournalWeek(weekDates, todayStr) {
       + '</div>';
   }).join('');
 
+  if (!daysHtml) return '<div class="empty-state" style="padding:18px;">这一周还没有记录，关闭「仅看有记录」可添加手记</div>';
   return '<div class="journal-week">'+daysHtml+'</div>';
 }
 
@@ -4426,6 +4448,13 @@ function renderJournalReport(dateList, mode) {
     }).join('')
     + '</div>';
 
+  if (totalActs === 0) {
+    return '<div class="jr-report"><div class="empty-state" style="padding:24px;">'
+      + (mode === 'week' ? '这一周' : '这个月') + '还没有记录，先从今天留下一条吧'
+      + '<div style="margin-top:10px;"><button class="btn-sm primary" onclick="setJournalView(\'today\')">去今日记录</button></div>'
+      + '</div>' + notesHtml + '</div>';
+  }
+
   return '<div class="jr-report">'
     + '<div class="jr-summary-card">'
     +   '<div class="jr-summary-title">' + periodLabel + '概览</div>'
@@ -4433,7 +4462,7 @@ function renderJournalReport(dateList, mode) {
     +     '<div class="jr-stat-item"><div class="jr-stat-num">'+totalActs+'</div><div class="jr-stat-lbl">总记录</div></div>'
     +     '<div class="jr-stat-item"><div class="jr-stat-num">'+activeDays+'/'+dateList.length+'</div><div class="jr-stat-lbl">活跃天数</div></div>'
     +     '<div class="jr-stat-item"><div class="jr-stat-num">'+avgPerDay+'</div><div class="jr-stat-lbl">日均记录</div></div>'
-    +     '<div class="jr-stat-item"><div class="jr-stat-num">'+todoRate+'%</div><div class="jr-stat-lbl">待办完成率</div></div>'
+    +     '<div class="jr-stat-item"><div class="jr-stat-num">'+(totalTodos > 0 ? todoRate+'%' : '—')+'</div><div class="jr-stat-lbl">待办完成率</div></div>'
     +   '</div>'
     + '</div>'
     + '<div class="jr-section"><div class="jr-section-title">📊 类别分布</div>' + catBarsHtml + '</div>'
@@ -5682,8 +5711,7 @@ function renderGymOverview(mod) {
       </div>
 
       <div class="section-title">📈 本周概况</div>
-      <div class="gym-stat-row">
-        <div class="stat-card"><div class="stat-val">${weekWorkouts.length}</div><div class="stat-lbl">运动次数</div></div>
+      <div class="gym-stat-row" style="grid-template-columns:repeat(2,1fr);">
         <div class="stat-card"><div class="stat-val">${weekMinutes}</div><div class="stat-lbl">总分钟</div></div>
         <div class="stat-card"><div class="stat-val">${weekWorkouts.length>0?Math.round(weekMinutes/weekWorkouts.length):0}</div><div class="stat-lbl">平均时长</div></div>
       </div>
@@ -5820,7 +5848,8 @@ function renderWorkoutList(mod) {
         <button class="btn-sm" onclick="setGymView('overview')">← 返回</button>
         <span style="flex:1;text-align:center;font-weight:600;">🏃 运动记录</span>
       </div>
-      <div class="section-title">+ 新增记录</div>
+      <details ${allWorkouts.length===0?'open':''}>
+        <summary class="section-title" style="cursor:pointer;">+ 新增记录</summary>
       <div class="form-row">
         <select class="input-field" id="wkType" style="flex:0.7;">
           ${types.map(t => `<option>${t}</option>`).join('')}
@@ -5848,7 +5877,9 @@ function renderWorkoutList(mod) {
           + '</select>'
           + '</div>';
       })()}
-      <div class="section-title">🔍 筛选</div>
+      </details>
+      <details ${allWorkouts.length===0||wkFilterType!=='all'||wkFilterFrom||wkFilterTo?'open':''}>
+        <summary class="section-title" style="cursor:pointer;">🔍 筛选</summary>
       <div class="form-row">
         <select class="input-field" id="wkFilterTypeSel" style="flex:0.6;" onchange="wkFilterType=this.value;renderPage('gym')">
           <option value="all"${wkFilterType==='all'?' selected':''}>全部类型</option>
@@ -5859,6 +5890,7 @@ function renderWorkoutList(mod) {
         <input class="input-field" id="wkFilterToInput" type="date" value="${wkFilterTo}" placeholder="结束日期" style="flex:0.5;" onchange="wkFilterTo=this.value;renderPage('gym')">
         ${(wkFilterType!=='all'||wkFilterFrom||wkFilterTo) ? '<button class="btn-sm" onclick="wkFilterType=\'all\';wkFilterFrom=\'\';wkFilterTo=\'\';renderPage(\'gym\')" title="清除筛选">✕</button>' : ''}
       </div>
+      </details>
       <div class="section-title">📋 历史记录 (${filtered.length}${filtered.length<allWorkouts.length?'/'+allWorkouts.length:''}条 · 共${totalMin}分钟)</div>
       ${listHtml}
     </div>`;
@@ -6995,19 +7027,6 @@ function renderBarSleep() {
       </div>
       <div id="sleepDurationHint" style="font-size:12px;color:var(--accent);margin-top:-4px;margin-bottom:8px;"></div>
 
-      <div class="cal-nav">
-        <button class="btn-sm" onclick="changeSleepMonth(-1)">◀</button>
-        <span style="font-weight:600;font-size:15px;">${state.gym.sleepCalMonth.replace('-','年')}月 睡眠月历</span>
-        <button class="btn-sm" onclick="changeSleepMonth(1)">▶</button>
-      </div>
-      <div class="cal-grid-mini" id="sleepCalGrid"></div>
-      <div class="cal-legend">
-        <span class="cal-legend-item"><span class="cal-dot" style="background:#5a8a4a;"></span>早睡</span>
-        <span class="cal-legend-item"><span class="cal-dot" style="background:#b0a090;"></span>正常</span>
-        <span class="cal-legend-item"><span class="cal-dot" style="background:#c45a4a;"></span>熬夜</span>
-        <span class="cal-legend-item"><span class="cal-dot" style="background:#6a8aae;"></span>小憩</span>
-      </div>
-
       <div class="section-title">📋 近期记录 (${recentSleep.length})</div>
       ${recentSleep.length === 0 ? '<div class="empty-state">暂无睡眠记录</div>' :
         recentSleep.map(s => {
@@ -7032,6 +7051,22 @@ function renderBarSleep() {
           </div>`;
         }).join('')
       }
+
+      <details style="margin:12px 0 16px;">
+        <summary style="cursor:pointer;color:var(--muted);font-size:12px;padding:8px 0;">🗓️ 睡眠月历（点击展开）</summary>
+        <div class="cal-nav">
+          <button class="btn-sm" onclick="changeSleepMonth(-1)">◀</button>
+          <span style="font-weight:600;font-size:15px;">${state.gym.sleepCalMonth.replace('-','年')}月 睡眠月历</span>
+          <button class="btn-sm" onclick="changeSleepMonth(1)">▶</button>
+        </div>
+        <div class="cal-grid-mini" id="sleepCalGrid"></div>
+        <div class="cal-legend">
+          <span class="cal-legend-item"><span class="cal-dot" style="background:#5a8a4a;"></span>早睡</span>
+          <span class="cal-legend-item"><span class="cal-dot" style="background:#b0a090;"></span>正常</span>
+          <span class="cal-legend-item"><span class="cal-dot" style="background:#c45a4a;"></span>熬夜</span>
+          <span class="cal-legend-item"><span class="cal-dot" style="background:#6a8aae;"></span>小憩</span>
+        </div>
+      </details>
     </div>`;
 }
 
@@ -9861,6 +9896,16 @@ function renderCloset() {
     + '</div>';
 }
 function setClosetSubView(v) { closetSubView = v; renderPage('closet'); }
+function openTodayOutfit() {
+  closetSubView = 'lookbook';
+  renderPage('closet');
+  setTimeout(function() {
+    var wrap = document.getElementById('dailyOutfitFormWrap');
+    if (wrap) wrap.classList.add('open');
+    var date = document.getElementById('lookbookDate');
+    if (date) date.focus();
+  }, 60);
+}
 // 衣帽间概览：整体规模、品类分布、常穿/沉睡、最近穿搭、待补信息
 function renderClosetOverview() {
   var wardrobe = state.closet.wardrobe || [];
@@ -9938,7 +9983,7 @@ function renderClosetOverview() {
     +     (totalPrice > 0 ? '💰 衣橱总值 ¥'+totalPrice+(noPrice ? ' · '+noPrice+' 件未填价' : '') : '💰 填写单品价格后可统计衣橱总值')
     +   '</div>'
     +   '<div style="display:flex;gap:6px;margin-top:10px;">'
-    +     '<button class="btn-sm primary" onclick="setClosetSubView(\'lookbook\')">＋ 记录今日穿搭</button>'
+    +     '<button class="btn-sm primary" onclick="openTodayOutfit()">＋ 记录今日穿搭</button>'
     +     '<button class="btn-sm" onclick="openAddItemModal()">＋ 新增单品</button>'
     +   '</div>'
     + '</div>'
@@ -10974,6 +11019,7 @@ function renderBarMeals() {
       return typeOrder.indexOf(a.mealType) - typeOrder.indexOf(b.mealType);
     });
     var isToday = ds === todayStr;
+    if (!barMealsFullWeek && !isToday && dayMeals.length === 0) return '';
     var dt = new Date(ds);
     var wkNames = ['周一','周二','周三','周四','周五','周六','周日'];
     var head = '<div class="meal-day-head'+(isToday?' today':'')+'">'
@@ -11017,6 +11063,7 @@ function renderBarMeals() {
     return '<div class="meal-day-card'+(isToday?' today':'')+'">'+head+rows+'</div>';
   }).join('');
 
+  if (!listHtml) listHtml = '<div class="empty-state" style="padding:18px;">这一页没有记录，展开完整一周后可补记</div>';
   if (wDates.every(function(ds) { return (mealsByDate[ds] || []).length === 0; })) {
     listHtml = '<div class="meal-week-hint">这周还没有餐食记录，点任意一行「+ 添加」开始吧~</div>' + listHtml;
   }
@@ -11038,6 +11085,7 @@ function renderBarMeals() {
     +   '<span>🥣 三餐 <b>'+mainSlots+'</b>/21</span>'
     +   (weekWater > 0 ? '<span>💧 饮水 <b>'+weekWater+'</b> ml</span>' : '')
     + '</div>'
+    + '<div class="journal-week-tools"><button class="jfilter-btn'+(barMealsFullWeek?' active':'')+'" onclick="barMealsFullWeek=!barMealsFullWeek;renderPage(\'bar\')">'+(barMealsFullWeek?'收起空白日期':'展开完整一周')+'</button></div>'
     + listHtml
     + '<div style="display:flex;gap:6px;margin-top:10px;">'
     +   '<button class="btn-sm" onclick="openCatManager({title:\'管理餐食类型\',statePath:\'bar.mealTypes\',format:\'object\',reRender:\'bar\',refs:[{dataPath:\'bar.meals\',field:\'mealType\'}]})" style="font-size:12px;">⚙️ 管理餐类</button>'
@@ -11099,6 +11147,7 @@ function renderBarHygiene() {
       return String(a.time||'').localeCompare(String(b.time||''));
     });
     var isToday = ds === todayStr;
+    if (!barHygieneFullWeek && !isToday && dayRecs.length === 0) return '';
     var dt = new Date(ds);
     var head = '<div class="meal-day-head'+(isToday?' today':'')+'">'
       + '<span class="meal-day-name">'+wkNames[wIdx]+'</span>'
@@ -11119,7 +11168,7 @@ function renderBarHygiene() {
         + '<span class="meal-line-lb">'+t.label+'</span>'
         + '<span class="meal-line-tx">'
         +   recs.map(function(h) {
-              return '<span class="hygiene-chip" onclick="deleteHygiene(\''+h.id+'\')" title="点击删除">'+escHtml(h.time||'')+' ×</span>';
+              return '<span class="hygiene-chip" onclick="openHygieneModal(\''+h.id+'\')" title="点击编辑">'+escHtml(h.time||'未记时')+'</span>';
             }).join('')
         +   '<button class="meal-water-add" onclick="addHygiene(\''+t.id+'\',\''+ds+'\')" title="再记一次">＋</button>'
         + '</span>'
@@ -11131,12 +11180,13 @@ function renderBarHygiene() {
       rows += '<div class="meal-line">'
         + '<span class="meal-line-ic">🧼</span>'
         + '<span class="meal-line-lb">'+escHtml(hygieneLabel(h.type))+'</span>'
-        + '<span class="meal-line-tx"><span class="hygiene-chip" onclick="deleteHygiene(\''+h.id+'\')" title="点击删除">'+escHtml(h.time||'')+' ×</span></span>'
+        + '<span class="meal-line-tx"><span class="hygiene-chip" onclick="openHygieneModal(\''+h.id+'\')" title="点击编辑">'+escHtml(h.time||'未记时')+'</span></span>'
         + '</div>';
     });
     return '<div class="meal-day-card'+(isToday?' today':'')+'">'+head+rows+'</div>';
   }).join('');
 
+  if (!listHtml) listHtml = '<div class="empty-state" style="padding:18px;">这一页没有记录，展开完整一周后可补记</div>';
   if (weekLogs.length === 0) {
     listHtml = '<div class="meal-week-hint">这周还没有卫生记录，点任意一行「+ 勾选」记录吧~</div>' + listHtml;
   }
@@ -11149,6 +11199,9 @@ function renderBarHygiene() {
     var n = weekLogs.filter(function(h) { return h.type === t.id; }).length;
     return '<span>'+t.icon+' '+t.label+' <b>'+n+'</b> 次</span>';
   }).join('');
+  var undoHtml = hygieneUndo && hygieneUndo.expiresAt > Date.now()
+    ? '<div class="home-hq-undo"><span>已删除 '+escHtml(hygieneLabel(hygieneUndo.record.type))+' '+escHtml(hygieneUndo.record.time||'')+'</span><button class="btn-sm" onclick="undoHygieneDelete()">撤销</button><small>5 秒内可撤销</small></div>'
+    : '';
 
   return '<div class="meal-week-bar">'
     +   '<button class="btn-sm" onclick="mealWeekNav(-1)">◀</button>'
@@ -11161,6 +11214,8 @@ function renderBarHygiene() {
     +   '<span>📅 有记录 <b>'+daysWith+'</b>/7 天</span>'
     +   statsHtml
     + '</div>'
+    + '<div class="journal-week-tools"><button class="jfilter-btn'+(barHygieneFullWeek?' active':'')+'" onclick="barHygieneFullWeek=!barHygieneFullWeek;renderPage(\'bar\')">'+(barHygieneFullWeek?'收起空白日期':'展开完整一周')+'</button></div>'
+    + undoHtml
     + listHtml;
 }
 function addHygiene(typeId, dateStr) {
@@ -11171,11 +11226,65 @@ function addHygiene(typeId, dateStr) {
   renderPage('bar');
   toast('🧼 ' + hygieneLabel(typeId) + ' 已记录 ' + nowHM());
 }
+var hygieneUndo = null;
+var hygieneUndoTimer = null;
+function openHygieneModal(id) {
+  var h = (state.bar.hygiene || []).find(function(x) { return x.id === id; });
+  if (!h) return;
+  var old = document.getElementById('hygieneEditModal');
+  if (old) old.remove();
+  var modal = document.createElement('div');
+  modal.className = 'modal-overlay show'; modal.id = 'hygieneEditModal';
+  modal.innerHTML = '<div class="modal-box" style="max-width:380px;">'
+    + '<h3>✏️ 编辑'+escHtml(hygieneLabel(h.type))+'</h3>'
+    + '<input class="input-field" type="time" id="heTime" value="'+escHtml(h.time||'')+'" style="display:block;width:100%;margin-bottom:8px;">'
+    + '<input class="input-field" id="heNote" placeholder="备注（可选）" value="'+escHtml(h.note||'')+'" style="display:block;width:100%;margin-bottom:8px;">'
+    + '<div class="modal-actions">'
+    +   '<button class="btn-sm danger" onclick="deleteHygiene(\''+h.id+'\')">删除</button>'
+    +   '<button class="btn-sm" onclick="document.getElementById(\'hygieneEditModal\').remove()">取消</button>'
+    +   '<button class="btn-sm primary" onclick="saveHygieneModal(\''+h.id+'\')">保存</button>'
+    + '</div></div>';
+  document.body.appendChild(modal);
+  modal.addEventListener('click', function(e) { if (e.target === modal) modal.remove(); });
+}
+function saveHygieneModal(id) {
+  var h = (state.bar.hygiene || []).find(function(x) { return x.id === id; });
+  if (!h) return;
+  h.time = $('heTime').value;
+  h.note = $('heNote').value.trim();
+  saveData();
+  document.getElementById('hygieneEditModal').remove();
+  renderPage('bar');
+  toast('记录已更新');
+}
 function deleteHygiene(id) {
-  state.bar.hygiene = (state.bar.hygiene || []).filter(function(h) { return h.id !== id; });
+  var logs = state.bar.hygiene || [];
+  var idx = logs.findIndex(function(h) { return h.id === id; });
+  if (idx < 0) return;
+  hygieneUndo = { record:logs[idx], index:idx, expiresAt:Date.now()+5000 };
+  state.bar.hygiene = logs.filter(function(h) { return h.id !== id; });
+  saveData();
+  var modal = document.getElementById('hygieneEditModal');
+  if (modal) modal.remove();
+  renderPage('bar');
+  toast('已删除，可在顶部撤销');
+  if (hygieneUndoTimer) clearTimeout(hygieneUndoTimer);
+  hygieneUndoTimer = setTimeout(function() {
+    hygieneUndo = null;
+    hygieneUndoTimer = null;
+    if (currentPage === 'bar' && barSubView === 'hygiene') renderPage('bar');
+  }, 5000);
+}
+function undoHygieneDelete() {
+  if (!hygieneUndo || hygieneUndo.expiresAt <= Date.now()) { hygieneUndo = null; renderPage('bar'); return; }
+  if (!state.bar.hygiene) state.bar.hygiene = [];
+  state.bar.hygiene.splice(Math.min(hygieneUndo.index, state.bar.hygiene.length), 0, hygieneUndo.record);
+  hygieneUndo = null;
+  if (hygieneUndoTimer) clearTimeout(hygieneUndoTimer);
+  hygieneUndoTimer = null;
   saveData();
   renderPage('bar');
-  toast('已删除该条');
+  toast('已撤销删除');
 }
 // ─── 首页卫生快捷勾选：点一下即记录 ───
 function quickHygiene(typeId) {
@@ -11188,6 +11297,8 @@ function quickHygiene(typeId) {
 
 // ─── 餐食周视图辅助 ───
 let mealWeekOffset = 0;
+let barMealsFullWeek = false;
+let barHygieneFullWeek = false;
 function mealWeekDates(offset) {
   var d = new Date();
   var day = d.getDay();
