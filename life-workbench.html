@@ -8448,6 +8448,7 @@ function renderLibList(mod) {
                   ${item.progress>0 ? `<span class="lib-item-pct">${item.progress}%</span>` : ''}
                   ${(!item.tags || item.tags.length === 0) ? `<span class="lib-tag-hint">待补充标签</span>` : ''}
                   <span class="card-tag ${item.status==='done'?'done':item.status==='doing'?'wip':''}">${sl[item.status]||item.status}</span>
+                  ${item.serialStatus ? `<span class="card-tag ${item.serialStatus==='complete'?'done':'wip'}">${item.serialStatus==='complete'?'已完结':'连载中'}</span>` : ''}
                 </div>
               </div>`;
           }).join('')
@@ -8463,6 +8464,12 @@ function setLibF(type, val) {
   renderPage('library');
 }
 
+function libSupportsSerial(type) { return type === 'book' || type === 'tv'; }
+function updateLibSerialVisibility(prefix, type) {
+  var wrap = document.getElementById(prefix + 'SerialStatusWrap');
+  if (wrap) wrap.style.display = libSupportsSerial(type) ? 'flex' : 'none';
+}
+
 // ─── ADD MODAL ───
 function showAddLibItem() {
   const div = document.createElement('div'); div.className = 'modal-overlay show'; div.id = 'addLibModal';
@@ -8470,11 +8477,19 @@ function showAddLibItem() {
     <div class="modal-box" style="max-width:440px;">
       <h3>添加项目</h3>
       <div class="form-row" style="margin:4px 0 8px;" id="addLibTypeRow">
-        ${LIB_TYPES.map(t => `<span class="tag-chip lib-type-chip" data-type="${t.id}" onclick="var p=this.parentElement;p.querySelectorAll('.lib-type-chip').forEach(e=>e.classList.remove('active'));this.classList.add('active');">${t.icon} ${t.label}</span>`).join('')}
+        ${LIB_TYPES.map(t => `<span class="tag-chip lib-type-chip" data-type="${t.id}" onclick="var p=this.parentElement;p.querySelectorAll('.lib-type-chip').forEach(e=>e.classList.remove('active'));this.classList.add('active');updateLibSerialVisibility('addLib',this.dataset.type);">${t.icon} ${t.label}</span>`).join('')}
       </div>
       <input class="input-field" id="addLibTitle" placeholder="标题" style="margin-bottom:6px;">
       <input class="input-field" id="addLibSubtitle" placeholder="作者/导演/艺术家（选填）" style="margin-bottom:6px;">
       <input class="input-field" id="addLibYear" placeholder="出版/上映年份（选填）" style="margin-bottom:6px;">
+      <div class="form-row" id="addLibSerialStatusWrap" style="margin-bottom:8px;display:none;">
+        <span style="font-size:12px;color:var(--muted);white-space:nowrap;">作品状态</span>
+        <select class="input-field" id="addLibSerialStatus">
+          <option value="">未设置</option>
+          <option value="serial">连载中</option>
+          <option value="complete">已完结</option>
+        </select>
+      </div>
       ${(state.library.tags||[]).length>0 ? `
       <div class="tag-bar" style="margin-bottom:8px;" id="addLibTagSel">
         ${state.library.tags.map(t => `<span class="tag-chip" onclick="this.classList.toggle('active')">${escHtml(t)}</span>`).join('')}
@@ -8488,6 +8503,7 @@ function showAddLibItem() {
   setTimeout(() => { var e=document.getElementById('addLibTitle'); if(e)e.focus(); }, 50);
   var fc = div.querySelector('#addLibTypeRow .lib-type-chip');
   if (fc) fc.classList.add('active');
+  updateLibSerialVisibility('addLib', fc ? fc.dataset.type : 'book');
 }
 function addLibraryItem() {
   var t = document.getElementById('addLibTitle');
@@ -8496,11 +8512,12 @@ function addLibraryItem() {
   var ac = document.querySelector('#addLibModal .lib-type-chip.active');
   var type = ac ? ac.dataset.type : 'book';
   var sub = document.getElementById('addLibSubtitle'), yr = document.getElementById('addLibYear');
+  var serialStatusEl = document.getElementById('addLibSerialStatus');
   var selTags = [];
   var tc = document.querySelectorAll('#addLibTagSel .tag-chip.active');
   for (var i=0;i<tc.length;i++) selTags.push(tc[i].textContent);
   state.library.items.push({
-    id:'lib'+Date.now(), title:t.value.trim(), type:type, status:'wish', tags:selTags,
+    id:'lib'+Date.now(), title:t.value.trim(), type:type, status:'wish', serialStatus:libSupportsSerial(type)&&serialStatusEl?serialStatusEl.value:'', tags:selTags,
     rating:null, note:'', subtitle:sub?sub.value.trim():'', year:yr?yr.value.trim():'',
     link:'', startDate:'', endDate:'', progress:0, totalUnits:0, progressUnit:'page',
     excerpts:[], createdAt:today()
@@ -8524,6 +8541,7 @@ function autoSaveLibDetail() {
   item.year = gv('detYear');
   item.link = gv('detLink');
   item.status = gv('detStatus') || 'wish';
+  item.serialStatus = libSupportsSerial(item.type) ? gv('detLibSerialStatus') : '';
   var r = parseInt(gv('detRating'));
   item.rating = r>0 ? r : null;
   item.startDate = gv('detStartDate');
@@ -8574,7 +8592,7 @@ function renderLibDetail(mod) {
       <div class="section-title">📋 概览</div>
       <div class="form-row">
         <input class="input-field" id="detTitle" value="${escHtml(item.title)}" placeholder="标题">
-        <select class="input-field" id="detType" style="flex:0.5;">
+        <select class="input-field" id="detType" style="flex:0.5;" onchange="updateLibSerialVisibility('detLib',this.value)">
           ${LIB_TYPES.map(t => `<option value="${t.id}" ${item.type===t.id?'selected':''}>${t.icon} ${t.label}</option>`).join('')}
         </select>
       </div>
@@ -8588,10 +8606,19 @@ function renderLibDetail(mod) {
           <option value="wish" ${item.status==='wish'?'selected':''}>想看</option>
           <option value="doing" ${item.status==='doing'?'selected':''}>在看</option>
           <option value="done" ${item.status==='done'?'selected':''}>已看完</option>
+
         </select>
         <select class="input-field" id="detRating" style="flex:0.35;">
           <option value="0" ${!item.rating?'selected':''}>未评分</option>
           ${[1,2,3,4,5].map(r => `<option value="${r}" ${item.rating===r?'selected':''}>${'⭐'.repeat(r)}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-row" id="detLibSerialStatusWrap" style="display:${libSupportsSerial(item.type)?'flex':'none'};">
+        <span style="font-size:12px;color:var(--muted);white-space:nowrap;">作品状态</span>
+        <select class="input-field" id="detLibSerialStatus">
+          <option value="" ${!item.serialStatus?'selected':''}>未设置</option>
+          <option value="serial" ${item.serialStatus==='serial'?'selected':''}>连载中</option>
+          <option value="complete" ${item.serialStatus==='complete'?'selected':''}>已完结</option>
         </select>
       </div>
       <div class="lib-progress-row">
@@ -8798,6 +8825,8 @@ function renderLibStats(mod) {
   var totalDone = items.filter(function(i) { return i.status === 'done'; }).length;
   var totalDoing = items.filter(function(i) { return i.status === 'doing'; }).length;
   var totalWish = items.filter(function(i) { return i.status === 'wish'; }).length;
+  var totalSerial = items.filter(function(i) { return i.serialStatus === 'serial'; }).length;
+  var totalComplete = items.filter(function(i) { return i.serialStatus === 'complete'; }).length;
   var totalRated = items.filter(function(i) { return i.rating > 0; });
   var avgRating = totalRated.length > 0 ? (totalRated.reduce(function(a, i) { return a + i.rating; }, 0) / totalRated.length).toFixed(1) : '—';
   var totalExcerpts = items.reduce(function(a, i) { return a + (i.excerpts || []).length; }, 0);
@@ -8904,6 +8933,8 @@ function renderLibStats(mod) {
     +     '<div class="ls-stat-item"><div class="ls-stat-num">' + totalDone + '</div><div class="ls-stat-lbl">已看完</div></div>'
     +     '<div class="ls-stat-item"><div class="ls-stat-num">' + totalDoing + '</div><div class="ls-stat-lbl">在看</div></div>'
     +     '<div class="ls-stat-item"><div class="ls-stat-num">' + totalWish + '</div><div class="ls-stat-lbl">想看</div></div>'
+    +     '<div class="ls-stat-item"><div class="ls-stat-num">' + totalSerial + '</div><div class="ls-stat-lbl">连载中</div></div>'
+    +     '<div class="ls-stat-item"><div class="ls-stat-num">' + totalComplete + '</div><div class="ls-stat-lbl">已完结</div></div>'
     +     '<div class="ls-stat-item"><div class="ls-stat-num">' + avgRating + '</div><div class="ls-stat-lbl">平均评分</div></div>'
     +     '<div class="ls-stat-item"><div class="ls-stat-num">' + totalExcerpts + '</div><div class="ls-stat-lbl">摘录数</div></div>'
     +   '</div>'
@@ -9039,6 +9070,7 @@ function renderLibCalendar(mod) {
                     (item.progress>0?'<span class="ri-prog">📊 '+item.progress+'%</span>':'')+
                     (excerptCount>0?'<span class="ri-ex">📝 '+excerptCount+'</span>':'')+
                     '<span class="ri-status">'+({wish:'想看',doing:'在看',done:'已看'}[item.status]||'')+'</span>'+
+                    (item.serialStatus?'<span class="ri-status">'+(item.serialStatus==='complete'?'已完结':'连载中')+'</span>':'')+
                   '</div>'+
                   (item.note?'<div class="report-item-note">💬 '+escHtml(item.note)+'</div>':'')+
                 '</div>';
