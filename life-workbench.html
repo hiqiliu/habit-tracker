@@ -1153,6 +1153,26 @@ textarea.input-field { resize:vertical; min-height:60px; }
   cursor:pointer; transition:all 0.15s; text-align:center;
 }
 .gym-sub-btn:hover { border-color:var(--accent); background:var(--accent-soft); color:var(--accent); }
+.gym-segmented { display:flex; gap:6px; padding:4px; margin-bottom:14px; border-radius:10px; background:var(--bg2); }
+.gym-segmented button { flex:1; padding:7px 10px; border:0; border-radius:8px; background:transparent; color:var(--muted); font-family:inherit; font-size:13px; cursor:pointer; }
+.gym-segmented button.active { background:var(--bg); color:var(--accent); font-weight:600; box-shadow:var(--shadow); }
+.gym-summary-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:12px; }
+.gym-summary-item { padding:10px 6px; border-radius:8px; background:var(--bg2); text-align:center; }
+.gym-summary-value { font-size:18px; font-weight:700; color:var(--accent); }
+.gym-summary-label { margin-top:2px; color:var(--muted); font-size:11px; }
+.gym-project-line { display:flex; align-items:center; gap:8px; padding:9px 0; border-bottom:1px solid var(--rule); }
+.gym-project-line:last-child { border-bottom:0; }
+.gym-day-title { margin:16px 0 6px; color:var(--muted); font-size:12px; font-weight:600; }
+.gym-workout-line { display:flex; align-items:center; gap:8px; padding:9px 0; border-bottom:1px solid var(--rule); cursor:pointer; }
+.gym-workout-line:last-child { border-bottom:0; }
+.gym-workout-line:hover { color:var(--accent); }
+.gym-episode-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(42px,1fr)); gap:6px; margin-top:10px; }
+.gym-episode { padding:5px 2px; border:1px solid var(--rule); border-radius:6px; color:var(--muted); font-size:11px; text-align:center; }
+.gym-episode.done { border-color:var(--accent); background:var(--accent-soft); color:var(--accent); font-weight:600; }
+@media (max-width:640px) {
+  .gym-summary-grid { gap:6px; }
+  .gym-summary-value { font-size:16px; }
+}
 /* ─── 闪电记录面板 ─── */
 .flash-panel {
   display:flex; flex-direction:column; gap:8px;
@@ -2076,6 +2096,7 @@ const DEFAULT_DATA = {
   gym: {
     workoutTypes: ['跑步','瑜伽','力量训练','游泳','骑行','舞蹈','球类','其他'],
     workouts: [],
+    weeklyTracker: {},
     plans: [],          // { id, name, startDate, endDate, days, items:[{day, date, content, done, doneDate, syncedWorkoutId}], completed }
     bodyData: [],       // add bodyFat field
     sleepData: [],      // { id, date, type:'night'|'nap', bedtime, waketime, hours, quality, note }
@@ -2196,6 +2217,7 @@ function runMigrations() {
   if (!state.bar) state.bar = { drinks: [], meals: [], perfumes: [] };
   if (!state.bar.meals) state.bar.meals = [];
   if (!state.bar.perfumes) state.bar.perfumes = [];
+  migrateGymUnifiedTracking();
 }
 runMigrations();
 let currentPage = 'dashboard';
@@ -2722,6 +2744,15 @@ function homeQuickChip(inputId, value, label, icon, selected, prefKey) {
     + ' onclick="homeQuickChoose(this,\''+inputId+'\',\''+(prefKey || '')+'\')">'
     + (icon ? icon+' ' : '')+escHtml(label)+'</button>';
 }
+function homeQuickChooseProject(btn, key) {
+  var note = $('quickNote'), dur = $('quickDur');
+  var noteValue = note ? note.value : '', durValue = dur ? dur.value : '';
+  homeQuickChoose(btn, 'quickProject', 'lastWorkoutProject');
+  refreshHomeQuickPanel();
+  note = $('quickNote'); dur = $('quickDur');
+  if (note) note.value = noteValue;
+  if (dur) dur.value = durValue;
+}
 function homeQuickTabsHtml(group, tabs, active) {
   return '<div class="home-hq-tabs">'+tabs.map(function(tab) {
     return '<button type="button" class="home-hq-tab'+(tab.id === active ? ' active' : '')+'"'
@@ -2866,26 +2897,34 @@ function homeQuickJoyBody(prefs) {
 }
 
 function homeQuickWorkoutBody(prefs) {
-  var types = state.gym.workoutTypes || [];
-  var selected = prefs.lastWorkoutType;
-  if (types.indexOf(selected) < 0) selected = types[0] || '其他';
-  var typeChips = types.map(function(type) {
-    return homeQuickChip('quickType', type, type, workoutIcon(type), type === selected, 'lastWorkoutType');
+  var entries = gymProjectEntries();
+  if (!entries.length) {
+    return '<div class="empty-state">先创建一个运动项目，首页就能快捷记录</div>'
+      + '<button class="btn-sm primary flash-record-btn" onclick="goGymProjects();setTimeout(openAddWeeklyItemModal,50)">+ 新建运动项目</button>';
+  }
+  var selected = prefs.lastWorkoutProject;
+  if (!entries.some(function(e) { return e.key === selected; })) selected = entries[0].key;
+  var project = getGymProject(selected);
+  var isCourse = project && project.kind === 'course';
+  var projectChips = entries.map(function(e) {
+    var t = e.item;
+    return '<button type="button" class="home-hq-chip'+(e.key === selected ? ' active' : '')+'" data-value="'+escHtml(e.key)+'"'
+      + ' onclick="homeQuickChooseProject(this,\''+escHtml(e.key)+'\')">'+(t.icon || '📌')+' '+escHtml(t.name || e.key)+'</button>';
   }).join('');
   var duration = String(prefs.lastWorkoutDuration || '30');
   var durationChips = [15,30,45,60].map(function(min) {
     return homeQuickChip('quickDur', String(min), min+' 分钟', '', String(min) === duration, 'lastWorkoutDuration');
   }).join('');
-  var syncOpts = Object.keys(state.gym.weeklyTracker || {}).map(function(k) {
-    var tracker = state.gym.weeklyTracker[k];
-    return '<option value="'+escHtml(k)+'">'+(tracker.icon || '📌')+' '+escHtml(tracker.name || k)+'</option>';
-  }).join('');
-  return '<input type="hidden" id="quickType" value="'+escHtml(selected)+'">'
-    + '<div class="home-hq-label">常用运动</div><div class="home-hq-chips">'+typeChips+'</div>'
+  return '<input type="hidden" id="quickProject" value="'+escHtml(selected)+'">'
+    + '<div class="home-hq-label">我的运动项目</div><div class="home-hq-chips">'+projectChips+'</div>'
+    + '<div id="quickEpisodeWrap" style="display:'+(isCourse ? 'block' : 'none')+';">'
+    +   '<div class="home-hq-label">本次练习集数</div>'
+    +   '<input class="input-field home-hq-input" id="quickEpisode" type="number" min="1" value="'+(isCourse ? nextGymEpisode(selected) : '')+'" placeholder="第几集">'
+    +   '<div class="home-hq-label" id="quickEpisodeHint">'+escHtml(isCourse ? gymEpisodeHint(selected) : '')+'</div>'
+    + '</div>'
     + '<div class="home-hq-label">时长</div><div class="home-hq-chips">'+durationChips+'</div>'
     + '<input class="input-field home-hq-input" id="quickDur" type="number" min="1" value="'+escHtml(duration)+'" placeholder="自定义时长（分钟）" onkeydown="if(event.key===\'Enter\')quickAddWorkout()">'
     + '<input class="input-field home-hq-input" id="quickNote" placeholder="备注（可选）" onkeydown="if(event.key===\'Enter\')quickAddWorkout()">'
-    + (syncOpts ? '<details class="home-hq-details"><summary>同步到本周追踪（可选）</summary><select class="input-field home-hq-input" id="quickSync"><option value="">📅 不同步</option>'+syncOpts+'</select></details>' : '')
     + '<button class="btn-sm primary flash-record-btn" onclick="quickAddWorkout()">+ 记录这次运动</button>';
 }
 function homeQuickThinkBody(prefs) {
@@ -3134,9 +3173,8 @@ function getDayEvents(dateStr) {
   });
   (state.gym.workouts || []).forEach(function(w) {
     if (w.date !== dateStr) return;
-    evs.push({ src:'workout', id:w.id, time:w.time||'', endTime:w.endTime||'', icon:'🏃',
-      label:'运动', cat:'activity', dur:w.duration||0,
-      note:(w.type||'') + (w.note?' · '+w.note:'') });
+    evs.push({ src:'workout', id:w.id, time:w.time||'', endTime:w.endTime||'', icon:workoutDisplayIcon(w),
+      label:workoutFullLabel(w), cat:'activity', dur:w.duration||0, note:w.note||'' });
   });
   (state.gym.sleepData || []).forEach(function(s) {
     if (s.date !== dateStr) return;
@@ -3945,7 +3983,7 @@ function getDayActivities(dateStr) {
   // Workouts
   (state.gym.workouts || []).forEach(function(w) {
     if (w.date === dateStr) {
-      acts.push({ cat:'workout', icon:'🏃', text: w.type + (w.duration>0?' '+w.duration+'分钟':'') + (w.note?' · '+w.note:''), tag:'运动' });
+      acts.push({ cat:'workout', icon:workoutDisplayIcon(w), text:workoutFullLabel(w)+(w.duration>0?' '+w.duration+'分钟':'')+(w.note?' · '+w.note:''), tag:'运动' });
     }
   });
   // Sleep
@@ -5664,25 +5702,183 @@ function setGymView(v) {
   gymView = v; renderPage('gym');
 }
 
+// ─── UNIFIED WORKOUT PROJECTS & RECORDS ───
+function gymEpisodeNumber(value) {
+  var n = parseInt(value, 10);
+  return n > 0 ? n : 0;
+}
+function gymProjectEntries() {
+  var tracker = (state.gym && state.gym.weeklyTracker) || {};
+  return Object.keys(tracker).filter(function(key) { return !!tracker[key]; }).map(function(key) {
+    return { key:key, item:tracker[key] };
+  });
+}
+function getGymProject(key) {
+  return key && state.gym && state.gym.weeklyTracker ? state.gym.weeklyTracker[key] : null;
+}
+function gymWorkoutsForProject(key) {
+  return (state.gym.workouts || []).filter(function(w) { return w.projectId === key; });
+}
+function gymCourseStats(key) {
+  var records = gymWorkoutsForProject(key);
+  var episodeCounts = {}, days = {}, minutes = 0, unspecified = 0;
+  records.forEach(function(w) {
+    var episode = gymEpisodeNumber(w.episode);
+    if (episode) episodeCounts[episode] = (episodeCounts[episode] || 0) + 1;
+    else unspecified++;
+    if (w.date) days[w.date] = true;
+    minutes += parseInt(w.duration, 10) || 0;
+  });
+  return {
+    records:records,
+    totalSessions:records.length,
+    completedEpisodes:Object.keys(episodeCounts).length,
+    episodeCounts:episodeCounts,
+    unspecified:unspecified,
+    days:Object.keys(days).length,
+    minutes:minutes
+  };
+}
+function nextGymEpisode(key) {
+  var project = getGymProject(key);
+  var stats = gymCourseStats(key);
+  var total = project ? gymEpisodeNumber(project.totalEpisodes) : 0;
+  if (total > 0) {
+    for (var i = 1; i <= total; i++) if (!stats.episodeCounts[i]) return i;
+    return 1;
+  }
+  var max = 0;
+  Object.keys(stats.episodeCounts).forEach(function(ep) { max = Math.max(max, parseInt(ep, 10) || 0); });
+  return max + 1;
+}
+function gymEpisodeHint(key) {
+  var project = getGymProject(key);
+  var stats = gymCourseStats(key);
+  var total = project ? gymEpisodeNumber(project.totalEpisodes) : 0;
+  var text = total > 0 ? '已完成 '+stats.completedEpisodes+'/'+total+' 集' : '已练 '+stats.completedEpisodes+' 个不同集数';
+  return text+' · 可跳集或重复练习，进度按不同集数计算';
+}
+function goGymProjects() {
+  weeklyView = 'projects';
+  if (currentPage === 'gym') setGymView('weekly');
+  else { gymView = 'weekly'; navigate('gym'); }
+}
+function createWorkoutRecord(options) {
+  if (!state.gym.workouts) state.gym.workouts = [];
+  var project = getGymProject(options.projectId);
+  var time = options.time || '';
+  var duration = parseInt(options.duration, 10) || 0;
+  var w = {
+    id:'w'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),
+    date:options.date || today(),
+    projectId:project ? options.projectId : '',
+    type:project ? (project.name || '运动') : (options.type || '未分类运动'),
+    episode:project && project.kind === 'course' ? gymEpisodeNumber(options.episode) : 0,
+    duration:duration,
+    note:options.note || '',
+    time:time,
+    endTime:time && duration > 0 ? addMin(time, duration) : ''
+  };
+  state.gym.workouts.push(w);
+  return w;
+}
+function workoutDisplayName(w) {
+  var project = getGymProject(w.projectId);
+  return project ? (project.name || '运动') : (w.type || '未分类运动');
+}
+function workoutDisplayIcon(w) {
+  var project = getGymProject(w.projectId);
+  return project ? (project.icon || '📌') : workoutIcon(w.type);
+}
+function workoutFullLabel(w) {
+  var project = getGymProject(w.projectId);
+  var episode = gymEpisodeNumber(w.episode);
+  return workoutDisplayName(w) + (episode && (!project || project.kind === 'course') ? ' · 第'+episode+'集' : '');
+}
+function getWeekEnd() {
+  var d = new Date(getWeekStart()+'T12:00:00');
+  d.setDate(d.getDate()+6);
+  return fmtDate(d);
+}
+function migrateGymUnifiedTracking() {
+  if (!state.gym) state.gym = {};
+  if (!Array.isArray(state.gym.workouts)) state.gym.workouts = [];
+  if (!state.gym.weeklyTracker) state.gym.weeklyTracker = {};
+  var tracker = state.gym.weeklyTracker;
+  var courseKeys = { yoga:true, netcourse:true, trainer:true, live:true };
+  Object.keys(tracker).forEach(function(key) {
+    var t = tracker[key];
+    if (!t) return;
+    var isCourse = t.kind ? t.kind === 'course' : !!(courseKeys[key] || /课|普拉提|回放/.test(t.name || ''));
+    t.kind = isCourse ? 'course' : 'activity';
+    if (t.totalEpisodes === undefined || t.totalEpisodes === null || t.totalEpisodes === '') {
+      t.totalEpisodes = isCourse ? gymEpisodeNumber(t.totalTarget) : 0;
+    } else {
+      t.totalEpisodes = isCourse ? gymEpisodeNumber(t.totalEpisodes) : 0;
+    }
+    if (!Array.isArray(t.logs)) t.logs = [];
+  });
+  Object.keys(tracker).forEach(function(key) {
+    var t = tracker[key];
+    if (!t) return;
+    (t.logs || []).forEach(function(log, index) {
+      var rawNote = log.note || '';
+      var linked = rawNote.match(/_w([A-Za-z0-9_-]+)/);
+      var episodeMatch = rawNote.match(/第\s*(\d+)\s*[集节]/);
+      var cleanNote = rawNote.replace(/\s*_w[A-Za-z0-9_-]+/g, '').trim();
+      if (linked) {
+        var linkedWorkout = state.gym.workouts.find(function(w) { return String(w.id) === linked[1]; });
+        if (linkedWorkout) {
+          if (!linkedWorkout.projectId) linkedWorkout.projectId = key;
+          if (t.kind === 'course' && !gymEpisodeNumber(linkedWorkout.episode) && episodeMatch) {
+            linkedWorkout.episode = parseInt(episodeMatch[1], 10);
+          }
+          return;
+        }
+      }
+      var sourceId = key+':'+String(log.id || index);
+      var alreadyMigrated = state.gym.workouts.some(function(w) { return w.sourceWeeklyLogId === sourceId; });
+      if (alreadyMigrated) return;
+      var durationMatch = cleanNote.match(/(\d+)\s*分钟/);
+      state.gym.workouts.push({
+        id:'w_legacy_'+String(key)+'_'+String(log.id || index).replace(/[^A-Za-z0-9_-]/g,'_'),
+        date:log.date || today(),
+        projectId:key,
+        type:t.name || '运动',
+        episode:t.kind === 'course' && episodeMatch ? parseInt(episodeMatch[1], 10) : 0,
+        duration:durationMatch ? parseInt(durationMatch[1], 10) : 0,
+        note:cleanNote,
+        time:'', endTime:'', sourceWeeklyLogId:sourceId
+      });
+    });
+    t.logs = [];
+    t.weeklyLogsMigrated = true;
+  });
+  state._gymUnifiedTracking = true;
+  saveData();
+}
+
 // ─── OVERVIEW (总览) ───
 function renderGymOverview(mod) {
-  const workouts = state.gym.workouts || [];
-  const plans = state.gym.plans || [];
-  const bodyData = (state.gym.bodyData||[]).slice(-1)[0] || null;
-  const todayStr = today();
-  const todayCondition = (state.gym.conditionLogs||[]).find(l => l.date === todayStr);
-  const weekStr = getWeekStart();
-  const weekWorkouts = workouts.filter(w => w.date >= weekStr && w.date <= todayStr);
-  const weekMinutes = weekWorkouts.reduce((a,w)=>a+(w.duration||0),0);
-  const activePlan = plans.find(p => !p.completed);
-  const planProgress = activePlan ? (activePlan.items.filter(i=>i.done).length / (activePlan.totalSessions||activePlan.items.length) * 100) : 0;
-  // Weekly tracker: count this week's completions
-  const tracker = state.gym.weeklyTracker || {};
-  var weeklyDoneCount = 0;
-  Object.keys(tracker).forEach(function(k) {
-    var t = tracker[k];
-    if (t && t.logs) weeklyDoneCount += t.logs.filter(function(l) { return l.date >= weekStr && l.date <= todayStr; }).length;
-  });
+  var workouts = state.gym.workouts || [];
+  var bodyData = (state.gym.bodyData||[]).slice(-1)[0] || null;
+  var todayStr = today();
+  var todayCondition = (state.gym.conditionLogs||[]).find(function(l) { return l.date === todayStr; });
+  var weekStr = getWeekStart(), weekEnd = getWeekEnd();
+  var weekWorkouts = workouts.filter(function(w) { return w.date >= weekStr && w.date <= weekEnd; });
+  var weekMinutes = weekWorkouts.reduce(function(sum,w) { return sum+(parseInt(w.duration,10)||0); },0);
+  var weekDays = {};
+  weekWorkouts.forEach(function(w) { if (w.date) weekDays[w.date] = true; });
+  var entries = gymProjectEntries();
+  var projectSummary = entries.map(function(e) {
+    var count = weekWorkouts.filter(function(w) { return w.projectId === e.key; }).length;
+    var target = parseInt(e.item.target,10) || 0;
+    var pct = target > 0 ? Math.min(100,Math.round(count/target*100)) : 0;
+    return '<div class="gym-project-line">'
+      + '<span>'+(e.item.icon||'📌')+'</span><span style="flex:1;min-width:0;">'+escHtml(e.item.name||e.key)+'</span>'
+      + (target > 0 ? '<div class="progress-bar" style="flex:1;margin:0;"><div class="progress-fill" style="width:'+pct+'%;"></div></div>' : '')
+      + '<span style="font-size:12px;color:var(--muted);white-space:nowrap;">本周 '+count+(target>0?'/'+target:'')+' 次</span></div>';
+  }).join('');
 
   return `
     <div class="page active">
@@ -5690,73 +5886,47 @@ function renderGymOverview(mod) {
         ${mod.icon} <span class="editable-title" ondblclick="editModule('gym')">${mod.name}</span>
         <button class="edit-icon-btn" onclick="editModule('gym')" title="编辑">✏️</button>
       </div>
-
       <div class="gym-quick-grid">
-        <div class="gym-quick-card" onclick="setGymView('workout')">
-          <div class="gqc-icon">🏃</div>
-          <div class="gqc-info"><div class="gqc-num">${weekWorkouts.length}</div><div class="gqc-lbl">本周运动</div></div>
-        </div>
         <div class="gym-quick-card" onclick="setGymView('weekly')">
-          <div class="gqc-icon">📅</div>
-          <div class="gqc-info"><div class="gqc-num">${weeklyDoneCount}</div><div class="gqc-lbl">本周完成</div></div>
+          <div class="gqc-icon">🏃</div><div class="gqc-info"><div class="gqc-num">${weekWorkouts.length}</div><div class="gqc-lbl">本周运动</div></div>
+        </div>
+        <div class="gym-quick-card" onclick="goGymProjects()">
+          <div class="gqc-icon">🗂️</div><div class="gqc-info"><div class="gqc-num">${entries.length}</div><div class="gqc-lbl">运动项目</div></div>
         </div>
         <div class="gym-quick-card" onclick="setGymView('body')">
-          <div class="gqc-icon">📊</div>
-          <div class="gqc-info"><div class="gqc-num">${bodyData&&bodyData.weight?bodyData.weight:'-'}</div><div class="gqc-lbl">体重kg</div></div>
+          <div class="gqc-icon">📊</div><div class="gqc-info"><div class="gqc-num">${bodyData&&bodyData.weight?bodyData.weight:'-'}</div><div class="gqc-lbl">体重kg</div></div>
         </div>
         <div class="gym-quick-card" onclick="setGymView('condition')">
-          <div class="gqc-icon">🫀</div>
-          <div class="gqc-info"><div class="gqc-num">${todayCondition?moodEmoji(todayCondition.mood):'—'}</div><div class="gqc-lbl">今日状态</div></div>
+          <div class="gqc-icon">🫀</div><div class="gqc-info"><div class="gqc-num">${todayCondition?moodEmoji(todayCondition.mood):'—'}</div><div class="gqc-lbl">今日状态</div></div>
         </div>
       </div>
-
       <div class="section-title">📈 本周概况</div>
       <div class="gym-stat-row" style="grid-template-columns:repeat(2,1fr);">
         <div class="stat-card"><div class="stat-val">${weekMinutes}</div><div class="stat-lbl">总分钟</div></div>
-        <div class="stat-card"><div class="stat-val">${weekWorkouts.length>0?Math.round(weekMinutes/weekWorkouts.length):0}</div><div class="stat-lbl">平均时长</div></div>
+        <div class="stat-card"><div class="stat-val">${Object.keys(weekDays).length}</div><div class="stat-lbl">运动天数</div></div>
       </div>
-
-      ${(() => {
-        const tracker = state.gym.weeklyTracker || {};
-        const trackerKeys = Object.keys(tracker);
-        if (trackerKeys.length === 0) return '';
-        var items = trackerKeys.map(function(k) {
-          var t = tracker[k];
-          var weekLogs = (t.logs||[]).filter(function(l) { return l.date >= weekStr && l.date <= todayStr; });
-          var target = t.target || 0;
-          var pct = target > 0 ? Math.min(100, Math.round(weekLogs.length / target * 100)) : 0;
-          return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:12px;">'
-            + '<span style="flex:0 0 80px;">' + (t.icon||'') + ' ' + escHtml(t.name||k) + '</span>'
-            + '<div class="progress-bar" style="flex:1;margin:0;"><div class="progress-fill" style="width:' + pct + '%;"></div></div>'
-            + '<span style="flex:0 0 50px;text-align:right;color:var(--muted);">' + weekLogs.length + (target>0?'/' + target:'') + '</span>'
-            + '</div>';
-        }).join('');
-        return '<div class="section-title">📋 本周追踪</div><div class="card">' + items + '<div style="margin-top:8px;"><button class="btn-sm" onclick="setGymView(\'weekly\')">查看详情 →</button></div></div>';
-      })()}
-
+      ${projectSummary ? '<div class="section-title">📋 本周项目</div><div class="card">'+projectSummary+'<div style="margin-top:10px;"><button class="btn-sm" onclick="setGymView(\'weekly\')">查看本周概览 →</button></div></div>' : ''}
       ${workouts.length > 0 ? `
       <div class="section-title">🗓️ 最近运动</div>
-      ${workouts.slice(-5).reverse().map(w => {
+      ${workouts.slice(-5).reverse().map(function(w) {
         var preview = w.note ? (w.note.length > 20 ? w.note.substring(0,20) + '...' : w.note) : '';
         return `
-        <div class="card lib-item-card" onclick="setGymView('workout');setTimeout(function(){openWorkoutDetail('${w.id}')},50)" style="margin-bottom:6px;">
+        <div class="card lib-item-card" onclick="openWorkoutDetail('${w.id}')" style="margin-bottom:6px;">
           <div class="card-row">
-            <span style="font-size:16px;flex-shrink:0;">${workoutIcon(w.type)}</span>
+            <span style="font-size:16px;flex-shrink:0;">${workoutDisplayIcon(w)}</span>
             <span class="card-content" style="flex:1;min-width:0;">
-              <strong style="font-size:13px;">${escHtml(w.type)}</strong> <span style="font-size:11px;color:var(--muted);">${w.duration>0?w.duration+'分钟':'未记时长'}</span>${w.fromPlan?' <span style="font-size:10px;">📋</span>':''}
+              <strong style="font-size:13px;">${escHtml(workoutFullLabel(w))}</strong> <span style="font-size:11px;color:var(--muted);">${w.duration>0?w.duration+'分钟':'未记时长'}</span>${w.fromPlan?' <span style="font-size:10px;">📋</span>':''}
               ${preview ? `<div style="font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escHtml(preview)}</div>` : ''}
             </span>
-            <span style="font-size:11px;color:var(--muted);flex-shrink:0;">${w.date.substring(5)}</span>
+            <span style="font-size:11px;color:var(--muted);flex-shrink:0;">${(w.date||'').substring(5)}</span>
           </div>
         </div>`;
       }).join('')}
-      <div style="text-align:center;margin-bottom:14px;"><button class="btn-sm" onclick="setGymView('workout')">查看全部 →</button></div>
-      ` : ''}
-
+      <div style="text-align:center;margin-bottom:14px;"><button class="btn-sm" onclick="setGymView('workout')">查看全部 →</button></div>` : ''}
       <div class="section-title">🗂️ 进入子页面</div>
       <div class="gym-sub-grid">
-        <button class="gym-sub-btn" onclick="setGymView('workout')">🏃 运动记录</button>
-        <button class="gym-sub-btn" onclick="setGymView('weekly')">📅 本周追踪</button>
+        <button class="gym-sub-btn" onclick="setGymView('workout')">🏃 全部运动记录</button>
+        <button class="gym-sub-btn" onclick="setGymView('weekly')">📊 本周与项目</button>
         <button class="gym-sub-btn" onclick="setGymView('profile')">🩺 身体档案</button>
         <button class="gym-sub-btn" onclick="setGymView('body')">📊 身体数据</button>
         <button class="gym-sub-btn" onclick="setGymView('condition')">🫀 身体状况</button>
@@ -5766,32 +5936,30 @@ function renderGymOverview(mod) {
     </div>`;
 }
 function quickAddWorkout() {
-  var type = $('quickType'), dur = $('quickDur'), note = $('quickNote');
-  if (!type || !dur) return;
-  var duration = parseInt(dur.value) || 0;
+  var projectInput = $('quickProject'), dur = $('quickDur'), note = $('quickNote');
+  if (!projectInput || !dur) return;
+  var project = getGymProject(projectInput.value);
+  if (!project) { toast('请选择运动项目'); return; }
+  var duration = parseInt(dur.value,10) || 0;
   if (duration <= 0) { toast('请输入运动时长'); dur.focus(); return; }
-  if (!state.gym.workouts) state.gym.workouts = [];
-  var prefs = state.appPrefs || (state.appPrefs = {});
-  prefs.lastWorkoutType = type.value;
-  prefs.lastWorkoutDuration = String(duration);
-  var wId = 'w'+Date.now(), ds = today(), time = nowHM();
-  var noteText = note ? note.value.trim() : '';
-  state.gym.workouts.push({
-    id:wId, date:ds, type:type.value, duration:duration, note:noteText,
-    time:time, endTime:addMin(time, duration)
-  });
-  // 可选：同步到本周追踪
-  var syncSel = $('quickSync');
-  var syncedTo = '';
-  if (syncSel && syncSel.value && state.gym.weeklyTracker && state.gym.weeklyTracker[syncSel.value]) {
-    var tk = state.gym.weeklyTracker[syncSel.value];
-    if (!tk.logs) tk.logs = [];
-    tk.logs.push({ id:'wl'+Date.now(), date:ds, note:type.value+' · '+duration+'分钟'+(noteText?' · '+noteText:'')+' _w'+wId });
-    syncedTo = tk.name || '追踪';
+  var episode = 0;
+  if (project.kind === 'course') {
+    var episodeInput = $('quickEpisode');
+    episode = gymEpisodeNumber(episodeInput ? episodeInput.value : 0);
+    if (!episode) { toast('请输入本次练习集数'); if (episodeInput) episodeInput.focus(); return; }
+    var total = gymEpisodeNumber(project.totalEpisodes);
+    if (total > 0 && episode > total) { toast('集数不能超过课程总集数，请先编辑课程总集数'); return; }
   }
+  var prefs = state.appPrefs || (state.appPrefs = {});
+  prefs.lastWorkoutProject = projectInput.value;
+  prefs.lastWorkoutDuration = String(duration);
+  createWorkoutRecord({
+    projectId:projectInput.value, episode:episode, date:today(), duration:duration,
+    note:note ? note.value.trim() : '', time:nowHM()
+  });
   saveData();
   refreshHomeQuickPanel('quickDur');
-  toast(syncedTo ? '运动已记录 ✅ 已同步到' + syncedTo : '运动已记录 ✅');
+  toast('已记录 '+project.name+(episode ? ' · 第'+episode+'集' : '')+' ✅');
 }
 
 // 首页内联更新运动计数，避免整页重绘丢失输入焦点
@@ -5814,252 +5982,176 @@ function renderGymWorkout(mod) {
   return renderWorkoutList(mod);
 }
 function renderWorkoutList(mod) {
-  const allWorkouts = state.gym.workouts || [];
-  const types = state.gym.workoutTypes || [];
-  // Apply filters
+  var allWorkouts = state.gym.workouts || [];
+  var entries = gymProjectEntries();
   var filtered = allWorkouts.slice().reverse();
-  if (wkFilterType !== 'all') filtered = filtered.filter(function(w){ return w.type === wkFilterType; });
-  if (wkFilterFrom) filtered = filtered.filter(function(w){ return w.date >= wkFilterFrom; });
-  if (wkFilterTo) filtered = filtered.filter(function(w){ return w.date <= wkFilterTo; });
-  // Summary stats
-  var totalMin = filtered.reduce(function(a,w){ return a + (w.duration||0); }, 0);
-  // Compact list cards
-  var listHtml = filtered.length === 0
-    ? '<div class="empty-state">暂无运动记录</div>'
-    : filtered.map(function(w) {
-        var preview = w.note ? (w.note.length > 30 ? w.note.substring(0,30) + '...' : w.note) : '';
-        return '<div class="card lib-item-card" onclick="openWorkoutDetail(\''+w.id+'\')" style="margin-bottom:6px;">'
-          + '<div class="card-row">'
-          +   '<span style="font-size:18px;flex-shrink:0;">'+workoutIcon(w.type)+'</span>'
-          +   '<span class="card-content" style="flex:1;min-width:0;">'
-          +     '<strong>'+escHtml(w.type)+'</strong>'+(' <span style="font-size:12px;color:var(--muted);">'+(w.duration>0?w.duration+'分钟':'未记时长')+'</span>')+(w.fromPlan?' <span style="font-size:11px;" title="来自课表">📋</span>':'')
-          +     (preview ? '<div style="font-size:11px;color:var(--muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+escHtml(preview)+'</div>' : '')
-          +   '</span>'
-          +   '<span style="display:flex;align-items:center;gap:4px;flex-shrink:0;">'
-          +     '<button class="btn-sm" onclick="event.stopPropagation();syncWorkoutToWeekly(\''+w.id+'\')" style="font-size:11px;padding:2px 6px;" title="同步到本周追踪">📅</button>'
-          +     '<span style="font-size:11px;color:var(--muted);">'+w.date.substring(5)+'</span>'
-          +   '</span>'
-          + '</div>'
-          + '</div>';
-      }).join('');
-  return `
-    <div class="page active">
-      <div class="detail-header">
-        <button class="btn-sm" onclick="setGymView('overview')">← 返回</button>
-        <span style="flex:1;text-align:center;font-weight:600;">🏃 运动记录</span>
-      </div>
-      <details ${allWorkouts.length===0?'open':''}>
-        <summary class="section-title" style="cursor:pointer;">+ 新增记录</summary>
-      <div class="form-row">
-        <select class="input-field" id="wkType" style="flex:0.7;">
-          ${types.map(t => `<option>${t}</option>`).join('')}
-        </select>
-        <input class="input-field" id="wkDate" type="date" value="${today()}" style="flex:0.5;">
-        <input class="input-field" id="wkDur" placeholder="分钟" type="number" style="flex:0.4;">
-        <button class="btn-sm primary" onclick="addWorkout()">+</button>
-      </div>
-      <div class="form-row">
-        <input class="input-field" id="wkNote" placeholder="备注（如：5公里、感受等）" style="flex:1;">
-        <button class="btn-sm" onclick="openCatManager({title:'管理运动类别',statePath:'gym.workoutTypes',format:'string',reRender:'gym',refs:[{dataPath:'gym.workouts',field:'type'}]})">⚙️</button>
-      </div>
-      ${(() => {
-        var tracker = state.gym.weeklyTracker || {};
-        var keys = Object.keys(tracker);
-        if (keys.length === 0) return '';
-        var opts = keys.map(function(k) {
-          var t = tracker[k];
-          return '<option value="'+k+'">'+(t.icon||'📌')+' '+escHtml(t.name||k)+'</option>';
-        }).join('');
-        return '<div class="form-row" style="margin-bottom:12px;">'
-          + '<select class="input-field" id="wkSync" style="flex:1;font-size:12px;color:var(--muted);">'
-          +   '<option value="">📅 同步到本周追踪（可选）</option>'
-          +   opts
-          + '</select>'
-          + '</div>';
-      })()}
-      </details>
-      <details ${allWorkouts.length===0||wkFilterType!=='all'||wkFilterFrom||wkFilterTo?'open':''}>
-        <summary class="section-title" style="cursor:pointer;">🔍 筛选</summary>
-      <div class="form-row">
-        <select class="input-field" id="wkFilterTypeSel" style="flex:0.6;" onchange="wkFilterType=this.value;renderPage('gym')">
-          <option value="all"${wkFilterType==='all'?' selected':''}>全部类型</option>
-          ${types.map(t => `<option value="${escHtml(t)}"${wkFilterType===t?' selected':''}>${escHtml(t)}</option>`).join('')}
-        </select>
-        <input class="input-field" id="wkFilterFromInput" type="date" value="${wkFilterFrom}" placeholder="开始日期" style="flex:0.5;" onchange="wkFilterFrom=this.value;renderPage('gym')">
-        <span style="align-self:center;color:var(--muted);font-size:12px;">→</span>
-        <input class="input-field" id="wkFilterToInput" type="date" value="${wkFilterTo}" placeholder="结束日期" style="flex:0.5;" onchange="wkFilterTo=this.value;renderPage('gym')">
-        ${(wkFilterType!=='all'||wkFilterFrom||wkFilterTo) ? '<button class="btn-sm" onclick="wkFilterType=\'all\';wkFilterFrom=\'\';wkFilterTo=\'\';renderPage(\'gym\')" title="清除筛选">✕</button>' : ''}
-      </div>
-      </details>
-      <div class="section-title">📋 历史记录 (${filtered.length}${filtered.length<allWorkouts.length?'/'+allWorkouts.length:''}条 · 共${totalMin}分钟)</div>
-      ${listHtml}
-    </div>`;
-}
-function renderWorkoutDetail(mod) {
-  var w = (state.gym.workouts||[]).find(function(x){ return x.id === wkDetailId; });
-  if (!w) { closeWorkoutDetail(); return ''; }
-  var types = state.gym.workoutTypes || [];
-  var typeOpts = types.map(function(t) {
-    return '<option'+(w.type===t?' selected':'')+'>'+escHtml(t)+'</option>';
+  if (wkFilterType === 'unassigned') filtered = filtered.filter(function(w) { return !getGymProject(w.projectId); });
+  else if (wkFilterType !== 'all') filtered = filtered.filter(function(w) { return w.projectId === wkFilterType; });
+  if (wkFilterFrom) filtered = filtered.filter(function(w) { return w.date >= wkFilterFrom; });
+  if (wkFilterTo) filtered = filtered.filter(function(w) { return w.date <= wkFilterTo; });
+  var totalMin = filtered.reduce(function(sum,w) { return sum+(parseInt(w.duration,10)||0); },0);
+  var listHtml = filtered.length === 0 ? '<div class="empty-state">暂无符合条件的运动记录</div>' : filtered.map(function(w) {
+    var preview = w.note ? (w.note.length > 30 ? w.note.substring(0,30)+'...' : w.note) : '';
+    return '<div class="card lib-item-card" onclick="openWorkoutDetail(\''+w.id+'\')" style="margin-bottom:6px;">'
+      + '<div class="card-row">'
+      + '<span style="font-size:18px;flex-shrink:0;">'+workoutDisplayIcon(w)+'</span>'
+      + '<span class="card-content" style="flex:1;min-width:0;">'
+      + '<strong>'+escHtml(workoutFullLabel(w))+'</strong> <span style="font-size:12px;color:var(--muted);">'+(w.duration>0?w.duration+'分钟':'未记时长')+'</span>'
+      + (w.fromPlan?' <span style="font-size:11px;" title="来自旧课表">📋</span>':'')
+      + (preview?'<div style="font-size:11px;color:var(--muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+escHtml(preview)+'</div>':'')
+      + '</span><span style="font-size:11px;color:var(--muted);flex-shrink:0;">'+escHtml((w.date||'').substring(5))+'</span>'
+      + '</div></div>';
+  }).join('');
+  var filterOptions = entries.map(function(e) {
+    return '<option value="'+escHtml(e.key)+'"'+(wkFilterType===e.key?' selected':'')+'>'+(e.item.icon||'📌')+' '+escHtml(e.item.name||e.key)+'</option>';
   }).join('');
   return '<div class="page active">'
-    + '<div class="detail-header">'
-    +   '<button class="btn-sm" onclick="closeWorkoutDetail()">← 返回</button>'
-    +   '<span style="flex:1;text-align:center;font-weight:600;">'+workoutIcon(w.type)+' '+escHtml(w.type)+'</span>'
-    +   '<button class="btn-sm danger" onclick="if(confirm(\'确定删除？\')){deleteWorkout(\''+w.id+'\');closeWorkoutDetail();}">🗑</button>'
-    + '</div>'
-    // Type
-    + '<div class="section-title">🏃 运动类型</div>'
-    + '<select class="input-field" id="detWkType" style="display:block;width:100%;margin-bottom:14px;" onchange="autoSaveWorkoutDetail()">'+typeOpts+'</select>'
-    // Date
+    + '<div class="detail-header"><button class="btn-sm" onclick="setGymView(\'overview\')">← 返回</button>'
+    + '<span style="flex:1;text-align:center;font-weight:600;">🏃 全部运动记录</span>'
+    + '<button class="btn-sm primary" onclick="openAddWorkoutModal()">+ 记录</button></div>'
+    + '<details '+(allWorkouts.length===0||wkFilterType!=='all'||wkFilterFrom||wkFilterTo?'open':'')+'>'
+    + '<summary class="section-title" style="cursor:pointer;">🔍 筛选</summary><div class="form-row">'
+    + '<select class="input-field" id="wkFilterTypeSel" style="flex:0.6;" onchange="wkFilterType=this.value;renderPage(\'gym\')">'
+    + '<option value="all"'+(wkFilterType==='all'?' selected':'')+'>全部项目</option>'+filterOptions
+    + '<option value="unassigned"'+(wkFilterType==='unassigned'?' selected':'')+'>未关联项目</option></select>'
+    + '<input class="input-field" type="date" value="'+wkFilterFrom+'" style="flex:0.5;" onchange="wkFilterFrom=this.value;renderPage(\'gym\')">'
+    + '<span style="align-self:center;color:var(--muted);font-size:12px;">→</span>'
+    + '<input class="input-field" type="date" value="'+wkFilterTo+'" style="flex:0.5;" onchange="wkFilterTo=this.value;renderPage(\'gym\')">'
+    + ((wkFilterType!=='all'||wkFilterFrom||wkFilterTo)?'<button class="btn-sm" onclick="wkFilterType=\'all\';wkFilterFrom=\'\';wkFilterTo=\'\';renderPage(\'gym\')">✕</button>':'')
+    + '</div></details>'
+    + '<div class="section-title">📋 历史记录 ('+filtered.length+(filtered.length<allWorkouts.length?'/'+allWorkouts.length:'')+'条 · 共'+totalMin+'分钟)</div>'
+    + listHtml+'</div>';
+}
+function renderWorkoutDetail(mod) {
+  var w = (state.gym.workouts||[]).find(function(x) { return x.id === wkDetailId; });
+  if (!w) { closeWorkoutDetail(); return ''; }
+  var project = getGymProject(w.projectId);
+  var projectOpts = '<option value="">未关联项目</option>'+gymProjectEntries().map(function(e) {
+    return '<option value="'+escHtml(e.key)+'"'+(project&&w.projectId===e.key?' selected':'')+'>'+(e.item.icon||'📌')+' '+escHtml(e.item.name||e.key)+'</option>';
+  }).join('');
+  var isCourse = project && project.kind === 'course';
+  return '<div class="page active">'
+    + '<div class="detail-header"><button class="btn-sm" onclick="closeWorkoutDetail()">← 返回</button>'
+    + '<span style="flex:1;text-align:center;font-weight:600;">'+workoutDisplayIcon(w)+' '+escHtml(workoutFullLabel(w))+'</span>'
+    + '<button class="btn-sm danger" onclick="if(confirm(\'确定删除这条运动记录？\')){deleteWorkout(\''+w.id+'\');closeWorkoutDetail();}">🗑</button></div>'
+    + '<div class="section-title">🗂️ 运动项目</div>'
+    + '<select class="input-field" id="detWkProject" style="display:block;width:100%;margin-bottom:14px;" onchange="changeWorkoutDetailProject()">'+projectOpts+'</select>'
+    + '<div id="detWkEpisodeWrap" style="display:'+(isCourse?'block':'none')+';"><div class="section-title">🔢 本次练习集数</div>'
+    + '<input class="input-field" id="detWkEpisode" type="number" min="1" placeholder="未指定集数" value="'+(gymEpisodeNumber(w.episode)||'')+'" style="display:block;width:100%;margin-bottom:6px;" onblur="autoSaveWorkoutDetail()">'
+    + '<div style="font-size:11px;color:var(--muted);margin-bottom:14px;">'+escHtml(isCourse?gymEpisodeHint(w.projectId):'')+'；留空则不计入课程完成集数</div></div>'
     + '<div class="section-title">📅 日期</div>'
     + '<input class="input-field" id="detWkDate" type="date" value="'+escHtml(w.date||'')+'" style="display:block;width:100%;margin-bottom:14px;" onblur="autoSaveWorkoutDetail()">'
-    // Duration
     + '<div class="section-title">⏱️ 时长（分钟）</div>'
-    + '<input class="input-field" id="detWkDur" type="number" placeholder="分钟" value="'+(w.duration>0?w.duration:'')+'" style="display:block;width:100%;margin-bottom:14px;" onblur="autoSaveWorkoutDetail()" onkeydown="if(event.key===\'Enter\')this.blur()">'
-    // Note — large textarea
+    + '<input class="input-field" id="detWkDur" type="number" min="0" placeholder="分钟" value="'+(w.duration>0?w.duration:'')+'" style="display:block;width:100%;margin-bottom:14px;" onblur="autoSaveWorkoutDetail()" onkeydown="if(event.key===\'Enter\')this.blur()">'
     + '<div class="section-title">📝 备注</div>'
     + '<textarea class="input-field" id="detWkNote" placeholder="运动备注（如：5公里、配速、感受等，支持多行）..." rows="10" style="display:block;width:100%;margin-bottom:14px;font-size:14px;line-height:1.7;min-height:160px;" onblur="autoSaveWorkoutDetail()">'+escHtml(w.note||'')+'</textarea>'
-    + (w.fromPlan ? '<div style="font-size:12px;color:var(--muted);background:var(--bg2);padding:8px 12px;border-radius:8px;">📋 此记录来自课表打卡</div>' : '')
+    + (w.fromPlan?'<div style="font-size:12px;color:var(--muted);background:var(--bg2);padding:8px 12px;border-radius:8px;">📋 此记录来自旧课表打卡</div>':'')
     + '</div>';
 }
-function openWorkoutDetail(id) { wkDetailId = id; wkView = 'detail'; renderPage('gym'); }
+function openWorkoutDetail(id) { gymView = 'workout'; wkDetailId = id; wkView = 'detail'; renderPage('gym'); }
 function closeWorkoutDetail() { autoSaveWorkoutDetail(); wkDetailId = null; wkView = 'list'; renderPage('gym'); }
+function changeWorkoutDetailProject() {
+  var w = (state.gym.workouts||[]).find(function(x) { return x.id === wkDetailId; });
+  var select = $('detWkProject');
+  if (!w || !select) return;
+  var project = getGymProject(select.value);
+  if (project) {
+    w.projectId = select.value;
+    w.type = project.name || '运动';
+    w.episode = 0;
+    if (project.kind === 'course') w.episode = nextGymEpisode(select.value);
+  } else {
+    delete w.projectId;
+  }
+  saveData();
+  renderPage('gym');
+}
 function autoSaveWorkoutDetail() {
   if (wkView !== 'detail' || !wkDetailId) return;
-  var w = (state.gym.workouts||[]).find(function(x){ return x.id === wkDetailId; });
+  var w = (state.gym.workouts||[]).find(function(x) { return x.id === wkDetailId; });
   if (!w) return;
-  var typeEl = $('detWkType'), dateEl = $('detWkDate'), durEl = $('detWkDur'), noteEl = $('detWkNote');
-  if (!typeEl) return;
-  w.type = typeEl.value;
+  var projectEl = $('detWkProject'), dateEl = $('detWkDate'), durEl = $('detWkDur'), noteEl = $('detWkNote');
+  if (!projectEl || !dateEl || !durEl || !noteEl) return;
+  var project = getGymProject(projectEl.value);
+  if (project) { w.projectId = projectEl.value; w.type = project.name || '运动'; }
+  else delete w.projectId;
+  if (project && project.kind === 'course') w.episode = gymEpisodeNumber($('detWkEpisode') && $('detWkEpisode').value);
+  else if (!project) w.episode = gymEpisodeNumber($('detWkEpisode') && $('detWkEpisode').value);
+  else w.episode = 0;
   w.date = dateEl.value || today();
-  w.duration = parseInt(durEl.value) || 0;
+  w.duration = parseInt(durEl.value,10) || 0;
   w.note = noteEl.value.trim();
   saveData();
 }
 function workoutIcon(type) {
-  const m = {'跑步':'🏃','瑜伽':'🧘','力量训练':'🏋️','游泳':'🏊','骑行':'🚴','舞蹈':'💃','球类':'⚽','其他':'💪'};
+  var m = {'跑步':'🏃','瑜伽':'🧘','力量训练':'🏋️','游泳':'🏊','骑行':'🚴','舞蹈':'💃','球类':'⚽','其他':'💪'};
   return m[type] || '💪';
 }
-function addWorkout() {
-  const type = $('wkType'), date = $('wkDate'), dur = $('wkDur'), note = $('wkNote');
-  if (!dur.value) { toast('请输入时长'); return; }
-  if (!state.gym.workouts) state.gym.workouts = [];
-  var wId = 'w'+Date.now();
-  var wDate = date.value||today();
-  state.gym.workouts.push({ id:wId, date:wDate, type:type.value, duration:parseInt(dur.value), note:note.value.trim() });
-  // 自动同步到本周追踪
-  var syncSel = $('wkSync');
-  if (syncSel && syncSel.value && state.gym.weeklyTracker && state.gym.weeklyTracker[syncSel.value]) {
-    var tk = state.gym.weeklyTracker[syncSel.value];
-    if (!tk.logs) tk.logs = [];
-    tk.logs.push({ id:'wl'+Date.now(), date:wDate, note: type.value + ' · ' + dur.value + '分钟' + (note.value?' · '+note.value:'') + ' _w'+wId });
-    saveData(); dur.value=''; note.value=''; renderPage('gym'); toast('运动已记录 ✅ 已同步到'+(tk.name||'追踪'));
-  } else {
-    saveData(); dur.value=''; note.value=''; renderPage('gym'); toast('运动已记录');
+function openAddWorkoutModal(projectId, episode) {
+  var entries = gymProjectEntries();
+  if (!entries.length) {
+    goGymProjects();
+    setTimeout(openAddWeeklyItemModal,50);
+    return;
   }
-}
-function addWorkoutType() {
-  openCatManager({title:'管理运动类别',statePath:'gym.workoutTypes',format:'string',reRender:'gym',refs:[{dataPath:'gym.workouts',field:'type'}]});
-}
-function deleteWorkout(id) { state.gym.workouts = (state.gym.workouts||[]).filter(function(w){ return w.id !== id; }); saveData(); }
-
-// ─── SYNC WORKOUT TO WEEKLY TRACKER ───
-function syncWorkoutToWeekly(workoutId) {
-  var w = (state.gym.workouts||[]).find(function(x){ return x.id === workoutId; });
-  if (!w) return;
-  var tracker = state.gym.weeklyTracker || {};
-  var keys = Object.keys(tracker);
-  if (keys.length === 0) { toast('还没有追踪项目，先去添加一个吧'); return; }
-
-  // 智能匹配：按类型名关键词匹配
-  var suggestKey = null;
-  for (var i = 0; i < keys.length; i++) {
-    var k = keys[i];
-    var t = tracker[k];
-    var name = (t.name||'').toLowerCase();
-    var wtype = (w.type||'').toLowerCase();
-    if (name.indexOf(wtype) >= 0 || wtype.indexOf(name) >= 0) { suggestKey = k; break; }
-    // 常见别名匹配
-    var aliases = {
-      '瑜伽': ['瑜伽课','yoga'],
-      '每日必做': ['必做','每日','daily'],
-      '体态网课': ['网课','netcourse'],
-      '私教课': ['私教','trainer'],
-      '打网球': ['网球','tennis','球类'],
-      '直播回放': ['直播','live','回放']
-    };
-    for (var key in aliases) {
-      if (name.indexOf(key) >= 0 || (aliases[key].some(function(a){ return name.indexOf(a) >= 0; }))) {
-        if (wtype.indexOf(key) >= 0 || (aliases[key].some(function(a){ return wtype.indexOf(a) >= 0; }))) {
-          suggestKey = k; break;
-        }
-      }
-    }
-    if (suggestKey) break;
+  var selected = getGymProject(projectId) ? projectId : '';
+  if (!selected) {
+    var preferred = (state.appPrefs||{}).lastWorkoutProject;
+    selected = getGymProject(preferred) ? preferred : entries[0].key;
   }
-
-  var m = document.createElement('div');
-  m.className = 'modal-overlay show'; m.id = 'syncWorkoutModal';
-  var opts = keys.map(function(k) {
-    var t = tracker[k];
-    return '<option value="'+k+'"'+(k===suggestKey?' selected':'')+'>'
-      + (t.icon||'📌')+' '+escHtml(t.name||k)
-      + '</option>';
+  var project = getGymProject(selected);
+  var options = entries.map(function(e) {
+    return '<option value="'+escHtml(e.key)+'"'+(e.key===selected?' selected':'')+'>'+(e.item.icon||'📌')+' '+escHtml(e.item.name||e.key)+'</option>';
   }).join('');
-
-  var notePreview = w.type + (w.duration ? ' · '+w.duration+'分钟' : '') + (w.note ? ' · '+w.note : '');
-
-  m.innerHTML = '<div class="modal-box" style="max-width:420px;">'
-    + '<h3>📅 同步到本周追踪</h3>'
-    + '<div style="font-size:13px;color:var(--muted);margin-bottom:10px;padding:8px;background:var(--bg2);border-radius:6px;">'
-    +   '<div style="font-weight:500;color:var(--text);">'+workoutIcon(w.type)+' '+escHtml(w.type)+'</div>'
-    +   '<div>'+w.date+(w.duration ? ' · '+w.duration+'分钟' : '')+'</div>'
-    +   (w.note ? '<div style="margin-top:4px;">'+escHtml(w.note)+'</div>' : '')
-    + '</div>'
-    + '<div style="margin-bottom:8px;">'
-    +   '<label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px;">同步到哪个项目？</label>'
-    +   '<select class="input-field" id="syncTarget">'+opts+'</select>'
-    + '</div>'
-    + '<div style="margin-bottom:10px;">'
-    +   '<label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px;">打卡备注</label>'
-    +   '<input class="input-field" id="syncNote" value="'+escHtml(notePreview)+'">'
-    + '</div>'
-    + '<div class="modal-actions">'
-    +   '<button class="btn-sm" onclick="document.getElementById(\'syncWorkoutModal\').remove()">取消</button>'
-    +   '<button class="btn-sm primary" onclick="doSyncWorkout(\''+workoutId+'\')">同步打卡</button>'
-    + '</div></div>';
+  var isCourse = project.kind === 'course';
+  var m = document.createElement('div');
+  m.className = 'modal-overlay show'; m.id = 'addWorkoutModal';
+  m.innerHTML = '<div class="modal-box" style="max-width:460px;"><h3>🏃 记录这次运动</h3>'
+    + '<label style="font-size:12px;color:var(--muted);display:block;margin:10px 0 4px;">运动项目</label>'
+    + '<select class="input-field" id="wkProject" onchange="workoutModalProjectChange()">'+options+'</select>'
+    + '<div id="wkEpisodeWrap" style="display:'+(isCourse?'block':'none')+';"><label style="font-size:12px;color:var(--muted);display:block;margin:10px 0 4px;">本次练习集数</label>'
+    + '<input class="input-field" id="wkEpisode" type="number" min="1" value="'+(isCourse?(gymEpisodeNumber(episode)||nextGymEpisode(selected)):'')+'">'
+    + '<div id="wkEpisodeHint" style="font-size:11px;color:var(--muted);margin-top:4px;">'+escHtml(isCourse?gymEpisodeHint(selected):'')+'</div></div>'
+    + '<div class="form-row" style="margin-top:10px;"><input class="input-field" id="wkDate" type="date" value="'+today()+'" style="flex:1;">'
+    + '<input class="input-field" id="wkDur" type="number" min="1" placeholder="时长（分钟）" value="'+escHtml((state.appPrefs||{}).lastWorkoutDuration||'30')+'" style="flex:1;"></div>'
+    + '<textarea class="input-field" id="wkNote" rows="3" placeholder="备注（可选）" style="margin-top:8px;"></textarea>'
+    + '<div class="modal-actions"><button class="btn-sm" onclick="document.getElementById(\'addWorkoutModal\').remove()">取消</button>'
+    + '<button class="btn-sm primary" onclick="addWorkout()">保存记录</button></div></div>';
   document.body.appendChild(m);
-  m.addEventListener('click', function(e) { if (e.target === m) m.remove(); });
+  m.addEventListener('click',function(e) { if (e.target === m) m.remove(); });
 }
-
-function doSyncWorkout(workoutId) {
-  var targetKey = $('syncTarget').value;
-  var note = $('syncNote').value.trim();
-  if (!targetKey || !state.gym.weeklyTracker || !state.gym.weeklyTracker[targetKey]) {
-    toast('请选择项目'); return;
+function workoutModalProjectChange() {
+  var select = $('wkProject'), wrap = $('wkEpisodeWrap'), input = $('wkEpisode'), hint = $('wkEpisodeHint');
+  var project = select ? getGymProject(select.value) : null;
+  if (!project || !wrap || !input) return;
+  var isCourse = project.kind === 'course';
+  wrap.style.display = isCourse ? 'block' : 'none';
+  input.value = isCourse ? nextGymEpisode(select.value) : '';
+  if (hint) hint.textContent = isCourse ? gymEpisodeHint(select.value) : '';
+}
+function addWorkout() {
+  var select = $('wkProject'), date = $('wkDate'), dur = $('wkDur'), note = $('wkNote');
+  var project = select ? getGymProject(select.value) : null;
+  if (!project) { toast('请选择运动项目'); return; }
+  var duration = parseInt(dur.value,10) || 0;
+  if (duration <= 0) { toast('请输入运动时长'); dur.focus(); return; }
+  var episode = 0;
+  if (project.kind === 'course') {
+    episode = gymEpisodeNumber($('wkEpisode').value);
+    if (!episode) { toast('请输入本次练习集数'); $('wkEpisode').focus(); return; }
+    var total = gymEpisodeNumber(project.totalEpisodes);
+    if (total > 0 && episode > total) { toast('集数不能超过课程总集数，请先编辑课程总集数'); return; }
   }
-  var w = (state.gym.workouts||[]).find(function(x){ return x.id === workoutId; });
-  if (!w) return;
-  if (!state.gym.weeklyTracker[targetKey].logs) state.gym.weeklyTracker[targetKey].logs = [];
-  // 检查当天是否已同步过同一条运动记录
-  var alreadySynced = (state.gym.weeklyTracker[targetKey].logs||[]).some(function(l){
-    return l.note && l.note.indexOf('_w'+workoutId) >= 0;
-  });
-  if (alreadySynced) {
-    if (!confirm('这条运动记录今天已经同步过一次了，还要再同步吗？')) return;
-  }
-  state.gym.weeklyTracker[targetKey].logs.push({
-    id: 'wl'+Date.now(),
-    date: w.date,
-    note: note + ' _w'+workoutId
-  });
+  createWorkoutRecord({ projectId:select.value, episode:episode, date:date.value||today(), duration:duration, note:note.value.trim() });
+  var prefs = state.appPrefs || (state.appPrefs = {});
+  prefs.lastWorkoutProject = select.value;
+  prefs.lastWorkoutDuration = String(duration);
   saveData();
-  var modal = document.getElementById('syncWorkoutModal');
-  if (modal) modal.remove();
-  renderPage('gym');
-  toast('已同步到本周追踪 ✅');
+  var modal = $('addWorkoutModal'); if (modal) modal.remove();
+  if (currentPage === 'gym') renderPage('gym');
+  toast('运动已记录 ✅');
 }
+function deleteWorkout(id) { state.gym.workouts = (state.gym.workouts||[]).filter(function(w) { return w.id !== id; }); saveData(); }
 
 // ─── PROFILE (身体档案) ───
 function renderGymProfile(mod) {
@@ -6164,213 +6256,188 @@ function getWeekStart() {
   d.setDate(d.getDate() + diff);
   return fmtDate(d);
 }
+let weeklyView = 'summary';
+function setWeeklyView(view) { weeklyView = view; renderPage('gym'); }
 function renderGymWeekly(mod) {
-  var tracker = state.gym.weeklyTracker || {};
-  var keys = Object.keys(tracker);
-  var weekStart = getWeekStart();
-  var todayStr = today();
-  var weekEnd = today();
-  var endD = new Date(weekStart);
-  endD.setDate(endD.getDate() + 6);
-  weekEnd = fmtDate(endD);
-
-  var cards = keys.map(function(k) {
-    var t = tracker[k];
-    var logs = t.logs || [];
-    var weekLogs = logs.filter(function(l) { return l.date >= weekStart && l.date <= weekEnd; });
-    var totalLogs = logs.length;
-    var target = t.target || 0;
-    var totalTarget = t.totalTarget || 0;
-    var pct = target > 0 ? Math.min(100, Math.round(weekLogs.length / target * 100)) : 0;
-    var totalPct = totalTarget > 0 ? Math.min(100, Math.round(totalLogs / totalTarget * 100)) : 0;
-    var recentLogs = logs.slice(-5).reverse();
-
-    var weekBar = target > 0
-      ? '<div class="progress-bar" style="margin:4px 0;"><div class="progress-fill" style="width:' + pct + '%;"></div></div>'
-      : '';
-    var totalBar = totalTarget > 0
-      ? '<div style="margin-top:6px;"><div style="font-size:11px;color:var(--muted);margin-bottom:2px;">总进度 ' + totalLogs + '/' + totalTarget + '</div><div class="progress-bar" style="margin:0;"><div class="progress-fill" style="width:' + totalPct + '%;"></div></div></div>'
-      : '';
-
-    var logsHtml = recentLogs.length > 0
-      ? recentLogs.map(function(l) {
-          return '<div style="font-size:11px;color:var(--muted);padding:2px 0;border-bottom:1px solid var(--border);">'
-            + '<span style="color:var(--text);">' + l.date.substring(5) + '</span>'
-            + (l.note ? ' · ' + escHtml(l.note) : '')
-            + ' <button class="btn-sm danger" style="font-size:10px;padding:1px 4px;margin-left:4px;" onclick="removeWeeklyLog(\'' + k + '\',\'' + l.id + '\')">✕</button>'
-            + '</div>';
-          }).join('')
-      : '<div style="font-size:11px;color:var(--muted);">暂无记录</div>';
-
-    return '<div class="card" style="margin-bottom:12px;">'
-      + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">'
-      +   '<span style="font-size:20px;">' + (t.icon||'📋') + '</span>'
-      +   '<div style="flex:1;min-width:0;">'
-      +     '<div style="font-weight:600;font-size:14px;">' + escHtml(t.name||k) + '</div>'
-      +     '<div style="font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + (t.desc||'') + '</div>'
-      +   '</div>'
-      +   '<div style="text-align:right;font-size:12px;color:var(--muted);">' + weekLogs.length + (target>0?'/' + target:'') + ' 本周</div>'
-      +   '<button class="btn-sm" onclick="openEditWeeklyItemModal(\'' + k + '\')" style="font-size:11px;padding:2px 6px;" title="编辑">✏️</button>'
-      + '</div>'
-      + weekBar
-      + totalBar
-      + '<div style="display:flex;gap:6px;margin-top:8px;">'
-      +   '<input class="input-field" id="wklog_' + k + '" placeholder="备注（可选）" style="flex:1;font-size:12px;" onkeydown="if(event.key===\'Enter\')addWeeklyLog(\'' + k + '\')">'
-      +   '<button class="btn-sm primary" onclick="addWeeklyLog(\'' + k + '\')" style="font-size:12px;">+ 打卡</button>'
-      + '</div>'
-      + '<div style="margin-top:8px;border-top:1px solid var(--border);padding-top:6px;">'
-      +   '<div style="font-size:11px;color:var(--muted);margin-bottom:4px;">最近记录</div>'
-      +   logsHtml
-      + '</div>'
-      + '</div>';
-  }).join('');
-
   return '<div class="page active">'
-    + '<div class="detail-header">'
-    +   '<button class="btn-sm" onclick="setGymView(\'overview\')">← 返回</button>'
-    +   '<span style="flex:1;text-align:center;font-weight:600;">📅 本周追踪</span>'
-    + '</div>'
-    + '<div style="font-size:12px;color:var(--muted);background:var(--bg2);padding:8px 12px;border-radius:8px;margin-bottom:14px;text-align:center;">'
-    +   '本周：' + weekStart.substring(5) + ' ~ ' + weekEnd.substring(5)
-    + '</div>'
-    + (cards || '<div class="empty-state">暂无追踪项目<br><br><button class="btn-sm primary" onclick="openAddWeeklyItemModal()">+ 添加第一个项目</button></div>')
-    + '<div style="text-align:center;padding:8px 0 16px;">'
-    +   '<button class="btn-sm" onclick="openAddWeeklyItemModal()">+ 添加追踪项目</button>'
-    + '</div>'
-    + '</div>';
+    + '<div class="detail-header"><button class="btn-sm" onclick="setGymView(\'overview\')">← 返回</button>'
+    + '<span style="flex:1;text-align:center;font-weight:600;">📊 本周与项目</span>'
+    + '<button class="btn-sm primary" onclick="openAddWorkoutModal()">+ 记录</button></div>'
+    + '<div class="gym-segmented"><button class="'+(weeklyView==='summary'?'active':'')+'" onclick="setWeeklyView(\'summary\')">本周概览</button>'
+    + '<button class="'+(weeklyView==='projects'?'active':'')+'" onclick="setWeeklyView(\'projects\')">我的项目</button></div>'
+    + (weeklyView==='projects'?renderGymProjectManager():renderGymWeekSummary())+'</div>';
 }
-function addWeeklyLog(key) {
-  var input = $('wklog_' + key);
-  var note = input ? input.value.trim() : '';
-  if (!state.gym.weeklyTracker) state.gym.weeklyTracker = {};
-  if (!state.gym.weeklyTracker[key]) state.gym.weeklyTracker[key] = { logs: [] };
-  if (!state.gym.weeklyTracker[key].logs) state.gym.weeklyTracker[key].logs = [];
-  state.gym.weeklyTracker[key].logs.push({ id: 'wl'+Date.now(), date: today(), note: note });
-  saveData(); renderPage('gym'); toast('已打卡');
+function renderGymWeekSummary() {
+  var weekStart = getWeekStart(), weekEnd = getWeekEnd();
+  var records = (state.gym.workouts||[]).filter(function(w) { return w.date >= weekStart && w.date <= weekEnd; });
+  var days = {}, minutes = 0;
+  records.forEach(function(w) { if (w.date) days[w.date] = true; minutes += parseInt(w.duration,10)||0; });
+  var projectLines = gymProjectEntries().map(function(e) {
+    var count = records.filter(function(w) { return w.projectId === e.key; }).length;
+    var target = parseInt(e.item.target,10)||0;
+    var pct = target>0?Math.min(100,Math.round(count/target*100)):0;
+    return '<div class="gym-project-line"><span>'+(e.item.icon||'📌')+'</span>'
+      + '<div style="flex:1;min-width:0;"><div style="font-size:13px;">'+escHtml(e.item.name||e.key)+'</div>'
+      + (target>0?'<div class="progress-bar" style="margin:4px 0 0;"><div class="progress-fill" style="width:'+pct+'%;"></div></div>':'')+'</div>'
+      + '<span style="font-size:12px;color:var(--muted);white-space:nowrap;">'+count+(target>0?'/'+target:'')+' 次</span>'
+      + '<button class="btn-sm" onclick="openAddWorkoutModal(\''+e.key+'\')">+ 记录</button></div>';
+  }).join('');
+  var unassignedCount = records.filter(function(w) { return !getGymProject(w.projectId); }).length;
+  if (unassignedCount) projectLines += '<div class="gym-project-line"><span>💪</span><span style="flex:1;">未关联项目</span><span style="font-size:12px;color:var(--muted);">'+unassignedCount+' 次</span></div>';
+  var sorted = records.slice().sort(function(a,b) {
+    return (b.date||'').localeCompare(a.date||'') || (b.time||'').localeCompare(a.time||'');
+  });
+  var dailyHtml = '', lastDate = '';
+  sorted.forEach(function(w) {
+    if (w.date !== lastDate) {
+      lastDate = w.date;
+      var weekday = ['周日','周一','周二','周三','周四','周五','周六'][new Date(w.date+'T12:00:00').getDay()];
+      dailyHtml += '<div class="gym-day-title">'+escHtml(w.date)+' · '+weekday+'</div>';
+    }
+    dailyHtml += '<div class="gym-workout-line" onclick="openWorkoutDetail(\''+w.id+'\')">'
+      + '<span>'+workoutDisplayIcon(w)+'</span><div style="flex:1;min-width:0;">'
+      + '<div style="font-size:13px;">'+escHtml(workoutFullLabel(w))+'</div>'
+      + (w.note?'<div style="font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+escHtml(w.note)+'</div>':'')
+      + '</div><span style="font-size:11px;color:var(--muted);white-space:nowrap;">'+(w.duration>0?w.duration+'分钟':'未记时长')+'</span></div>';
+  });
+  return '<div style="font-size:12px;color:var(--muted);background:var(--bg2);padding:8px 12px;border-radius:8px;margin-bottom:12px;text-align:center;">本周：'+weekStart.substring(5)+' ~ '+weekEnd.substring(5)+'（周一起算）</div>'
+    + '<div class="gym-summary-grid"><div class="gym-summary-item"><div class="gym-summary-value">'+records.length+'</div><div class="gym-summary-label">运动次数</div></div>'
+    + '<div class="gym-summary-item"><div class="gym-summary-value">'+Object.keys(days).length+'</div><div class="gym-summary-label">运动天数</div></div>'
+    + '<div class="gym-summary-item"><div class="gym-summary-value">'+minutes+'</div><div class="gym-summary-label">总分钟</div></div></div>'
+    + '<div class="section-title">🗂️ 各项目本周次数</div><div class="card">'
+    + (projectLines||'<div class="empty-state">还没有运动项目</div>')+'</div>'
+    + '<div class="section-title">🗓️ 每天练了什么</div><div class="card">'
+    + (dailyHtml||'<div class="empty-state">本周还没有运动记录</div>')+'</div>';
 }
-function removeWeeklyLog(key, logId) {
-  if (!state.gym.weeklyTracker || !state.gym.weeklyTracker[key]) return;
-  state.gym.weeklyTracker[key].logs = (state.gym.weeklyTracker[key].logs||[]).filter(function(l) { return l.id !== logId; });
-  saveData(); renderPage('gym'); toast('已删除');
+function renderGymProjectManager() {
+  var entries = gymProjectEntries();
+  var cards = entries.map(function(e) {
+    var key = e.key, t = e.item, stats = gymCourseStats(key);
+    var content = '';
+    if (t.kind === 'course') {
+      var total = gymEpisodeNumber(t.totalEpisodes);
+      var pct = total>0?Math.min(100,Math.round(stats.completedEpisodes/total*100)):0;
+      content = '<div style="font-size:12px;color:var(--muted);margin-top:6px;">课程进度 '+stats.completedEpisodes+(total>0?'/'+total:'')+' 集 · 实际练习 '+stats.totalSessions+' 次</div>'
+        + (total>0?'<div class="progress-bar" style="margin:6px 0;"><div class="progress-fill" style="width:'+pct+'%;"></div></div>':'')
+        + (stats.unspecified?'<div style="font-size:11px;color:var(--danger);margin-top:6px;">'+stats.unspecified+' 条记录未指定集数，不计入完成集数；可在记录详情中补充。</div>':'');
+      var episodes = [];
+      if (total>0) for (var i=1;i<=total;i++) episodes.push(i);
+      else episodes = Object.keys(stats.episodeCounts).map(Number).sort(function(a,b){return a-b;});
+      if (episodes.length) {
+        content += '<div class="gym-episode-grid">'+episodes.map(function(ep) {
+          var count = stats.episodeCounts[ep]||0;
+          return '<button class="gym-episode'+(count?' done':'')+'" title="第'+ep+'集 · 已练'+count+'次；点击再记录一次" onclick="openAddWorkoutModal(\''+key+'\','+ep+')">'+ep+(count>1?'×'+count:'')+'</button>';
+        }).join('')+'</div><div style="font-size:11px;color:var(--muted);margin-top:6px;">点击集数可跳集或重复练习；重复练习不重复增加完成集数。</div>';
+      }
+    } else {
+      content = '<div style="font-size:12px;color:var(--muted);margin-top:6px;">单项活动 · 累计 '+stats.totalSessions+' 次 · '+stats.days+' 天 · '+stats.minutes+' 分钟</div>';
+    }
+    return '<div class="card" style="margin-bottom:12px;"><div style="display:flex;align-items:center;gap:8px;">'
+      + '<span style="font-size:22px;">'+(t.icon||'📌')+'</span><div style="flex:1;min-width:0;">'
+      + '<div style="font-weight:600;">'+escHtml(t.name||key)+' <span style="font-size:10px;color:var(--muted);font-weight:400;">'+(t.kind==='course'?'多集课程':'单项活动')+'</span></div>'
+      + (t.desc?'<div style="font-size:11px;color:var(--muted);">'+escHtml(t.desc)+'</div>':'')+'</div>'
+      + '<button class="btn-sm" onclick="openEditWeeklyItemModal(\''+key+'\')">✏️</button></div>'+content
+      + '<div style="margin-top:10px;"><button class="btn-sm primary" onclick="openAddWorkoutModal(\''+key+'\')">+ 记录这个项目</button></div></div>';
+  }).join('');
+  return (cards||'<div class="empty-state">还没有运动项目</div>')
+    + '<div style="text-align:center;padding:8px 0 16px;"><button class="btn-sm primary" onclick="openAddWeeklyItemModal()">+ 新建运动项目</button></div>';
 }
 
+function toggleWeeklyKindFields(prefix) {
+  var kind = $(prefix+'Kind'), wrap = $(prefix+'TotalWrap');
+  if (kind && wrap) wrap.style.display = kind.value === 'course' ? 'block' : 'none';
+}
 function openAddWeeklyItemModal() {
   var m = document.createElement('div');
   m.className = 'modal-overlay show'; m.id = 'addWeeklyItemModal';
-  m.innerHTML = '<div class="modal-box" style="max-width:460px;">'
-    + '<h3>➕ 添加追踪项目</h3>'
-    + '<div style="margin-bottom:8px;">'
-    +   '<label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px;">项目名称</label>'
-    +   '<input class="input-field" id="awiName" placeholder="如：每日必做、瑜伽课">'
-    + '</div>'
-    + '<div class="form-row" style="margin-bottom:8px;">'
-    +   '<div style="flex:0 0 80px;">'
-    +     '<label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px;">图标</label>'
-    +     '<input class="input-field" id="awiIcon" placeholder="📌" value="📌" style="text-align:center;">'
-    +   '</div>'
-    +   '<div style="flex:1;">'
-    +     '<label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px;">每周目标次数（0=不设限）</label>'
-    +     '<input class="input-field" id="awiTarget" type="number" value="3" min="0">'
-    +   '</div>'
-    +   '<div style="flex:1;">'
-    +     '<label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px;">总目标次数（0=不设限）</label>'
-    +     '<input class="input-field" id="awiTotal" type="number" value="0" min="0">'
-    +   '</div>'
-    + '</div>'
-    + '<div style="margin-bottom:10px;">'
-    +   '<label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px;">描述（可选）</label>'
-    +   '<textarea class="input-field" id="awiDesc" rows="2" placeholder="简单描述一下这个项目"></textarea>'
-    + '</div>'
-    + '<div class="modal-actions">'
-    +   '<button class="btn-sm" onclick="document.getElementById(\'addWeeklyItemModal\').remove()">取消</button>'
-    +   '<button class="btn-sm primary" onclick="addWeeklyItem()">添加</button>'
-    + '</div></div>';
+  m.innerHTML = '<div class="modal-box" style="max-width:460px;"><h3>➕ 新建运动项目</h3>'
+    + '<label style="font-size:12px;color:var(--muted);display:block;margin:10px 0 4px;">项目名称</label>'
+    + '<input class="input-field" id="awiName" placeholder="如：瑜伽课、网球、游泳">'
+    + '<div class="form-row" style="margin-top:8px;"><div style="flex:0 0 80px;"><label style="font-size:12px;color:var(--muted);">图标</label>'
+    + '<input class="input-field" id="awiIcon" value="📌" style="text-align:center;"></div>'
+    + '<div style="flex:1;"><label style="font-size:12px;color:var(--muted);">项目类型</label>'
+    + '<select class="input-field" id="awiKind" onchange="toggleWeeklyKindFields(\'awi\')"><option value="course">多集课程</option><option value="activity">单项活动</option></select></div></div>'
+    + '<div class="form-row" style="margin-top:8px;"><div style="flex:1;"><label style="font-size:12px;color:var(--muted);">每周目标次数（0=不设目标）</label>'
+    + '<input class="input-field" id="awiTarget" type="number" value="0" min="0"></div>'
+    + '<div style="flex:1;" id="awiTotalWrap"><label style="font-size:12px;color:var(--muted);">课程总集数（0=未知）</label>'
+    + '<input class="input-field" id="awiTotal" type="number" value="0" min="0"></div></div>'
+    + '<label style="font-size:12px;color:var(--muted);display:block;margin:10px 0 4px;">描述（可选）</label>'
+    + '<textarea class="input-field" id="awiDesc" rows="2" placeholder="简单描述一下这个项目"></textarea>'
+    + '<div class="modal-actions"><button class="btn-sm" onclick="document.getElementById(\'addWeeklyItemModal\').remove()">取消</button>'
+    + '<button class="btn-sm primary" onclick="addWeeklyItem()">添加</button></div></div>';
   document.body.appendChild(m);
-  m.addEventListener('click', function(e) { if (e.target === m) m.remove(); });
+  m.addEventListener('click',function(e) { if (e.target === m) m.remove(); });
 }
-
 function addWeeklyItem() {
   var name = $('awiName').value.trim();
   if (!name) { toast('请输入项目名称'); return; }
   if (!state.gym.weeklyTracker) state.gym.weeklyTracker = {};
-  var id = 'wi_' + Date.now();
+  var id = 'wi_'+Date.now(), kind = $('awiKind').value === 'activity' ? 'activity' : 'course';
   state.gym.weeklyTracker[id] = {
-    name: name,
-    icon: $('awiIcon').value.trim() || '📌',
-    target: parseInt($('awiTarget').value) || 0,
-    totalTarget: parseInt($('awiTotal').value) || 0,
-    desc: $('awiDesc').value.trim(),
-    logs: []
+    name:name, icon:$('awiIcon').value.trim()||'📌', kind:kind,
+    target:parseInt($('awiTarget').value,10)||0,
+    totalEpisodes:kind==='course'?(parseInt($('awiTotal').value,10)||0):0,
+    desc:$('awiDesc').value.trim(), logs:[], weeklyLogsMigrated:true
   };
   saveData();
-  document.getElementById('addWeeklyItemModal').remove();
-  renderPage('gym'); toast('已添加');
+  $('addWeeklyItemModal').remove();
+  weeklyView = 'projects';
+  if (currentPage === 'gym') renderPage('gym');
+  toast('已添加，首页快捷记录已同步');
 }
 
 function openEditWeeklyItemModal(key) {
-  var t = state.gym.weeklyTracker && state.gym.weeklyTracker[key];
+  var t = getGymProject(key);
   if (!t) return;
   var m = document.createElement('div');
   m.className = 'modal-overlay show'; m.id = 'editWeeklyItemModal';
-  m.innerHTML = '<div class="modal-box" style="max-width:460px;">'
-    + '<h3>✏️ 编辑项目</h3>'
-    + '<div style="margin-bottom:8px;">'
-    +   '<label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px;">项目名称</label>'
-    +   '<input class="input-field" id="ewiName" value="' + escHtml(t.name||'') + '">'
-    + '</div>'
-    + '<div class="form-row" style="margin-bottom:8px;">'
-    +   '<div style="flex:0 0 80px;">'
-    +     '<label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px;">图标</label>'
-    +     '<input class="input-field" id="ewiIcon" value="' + escHtml(t.icon||'📌') + '" style="text-align:center;">'
-    +   '</div>'
-    +   '<div style="flex:1;">'
-    +     '<label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px;">每周目标</label>'
-    +     '<input class="input-field" id="ewiTarget" type="number" value="' + (t.target||0) + '" min="0">'
-    +   '</div>'
-    +   '<div style="flex:1;">'
-    +     '<label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px;">总目标</label>'
-    +     '<input class="input-field" id="ewiTotal" type="number" value="' + (t.totalTarget||0) + '" min="0">'
-    +   '</div>'
-    + '</div>'
-    + '<div style="margin-bottom:10px;">'
-    +   '<label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px;">描述</label>'
-    +   '<textarea class="input-field" id="ewiDesc" rows="2">' + escHtml(t.desc||'') + '</textarea>'
-    + '</div>'
-    + '<div style="font-size:11px;color:var(--muted);margin-bottom:10px;padding:6px 8px;background:var(--bg2);border-radius:6px;">'
-    +   '已打卡 ' + (t.logs||[]).length + ' 次'
-    + '</div>'
-    + '<div class="modal-actions">'
-    +   '<button class="btn-sm danger" onclick="deleteWeeklyItem(\'' + key + '\')">删除项目</button>'
-    +   '<button class="btn-sm" onclick="document.getElementById(\'editWeeklyItemModal\').remove()">取消</button>'
-    +   '<button class="btn-sm primary" onclick="saveWeeklyItem(\'' + key + '\')">保存</button>'
-    + '</div></div>';
+  m.innerHTML = '<div class="modal-box" style="max-width:460px;"><h3>✏️ 编辑运动项目</h3>'
+    + '<label style="font-size:12px;color:var(--muted);display:block;margin:10px 0 4px;">项目名称</label>'
+    + '<input class="input-field" id="ewiName" value="'+escHtml(t.name||'')+'">'
+    + '<div class="form-row" style="margin-top:8px;"><div style="flex:0 0 80px;"><label style="font-size:12px;color:var(--muted);">图标</label>'
+    + '<input class="input-field" id="ewiIcon" value="'+escHtml(t.icon||'📌')+'" style="text-align:center;"></div>'
+    + '<div style="flex:1;"><label style="font-size:12px;color:var(--muted);">项目类型</label>'
+    + '<select class="input-field" id="ewiKind" onchange="toggleWeeklyKindFields(\'ewi\')"><option value="course"'+(t.kind==='course'?' selected':'')+'>多集课程</option><option value="activity"'+(t.kind!=='course'?' selected':'')+'>单项活动</option></select></div></div>'
+    + '<div class="form-row" style="margin-top:8px;"><div style="flex:1;"><label style="font-size:12px;color:var(--muted);">每周目标次数</label>'
+    + '<input class="input-field" id="ewiTarget" type="number" value="'+(t.target||0)+'" min="0"></div>'
+    + '<div style="flex:1;display:'+(t.kind==='course'?'block':'none')+';" id="ewiTotalWrap"><label style="font-size:12px;color:var(--muted);">课程总集数</label>'
+    + '<input class="input-field" id="ewiTotal" type="number" value="'+(gymEpisodeNumber(t.totalEpisodes)||0)+'" min="0"></div></div>'
+    + '<label style="font-size:12px;color:var(--muted);display:block;margin:10px 0 4px;">描述</label>'
+    + '<textarea class="input-field" id="ewiDesc" rows="2">'+escHtml(t.desc||'')+'</textarea>'
+    + '<div style="font-size:11px;color:var(--muted);margin:10px 0;padding:6px 8px;background:var(--bg2);border-radius:6px;">共有 '+gymWorkoutsForProject(key).length+' 条实际运动记录</div>'
+    + '<div class="modal-actions"><button class="btn-sm danger" onclick="deleteWeeklyItem(\''+key+'\')">删除项目</button>'
+    + '<button class="btn-sm" onclick="document.getElementById(\'editWeeklyItemModal\').remove()">取消</button>'
+    + '<button class="btn-sm primary" onclick="saveWeeklyItem(\''+key+'\')">保存</button></div></div>';
   document.body.appendChild(m);
-  m.addEventListener('click', function(e) { if (e.target === m) m.remove(); });
+  m.addEventListener('click',function(e) { if (e.target === m) m.remove(); });
 }
-
 function saveWeeklyItem(key) {
-  var t = state.gym.weeklyTracker && state.gym.weeklyTracker[key];
+  var t = getGymProject(key);
   if (!t) return;
   var name = $('ewiName').value.trim();
   if (!name) { toast('请输入项目名称'); return; }
   t.name = name;
-  t.icon = $('ewiIcon').value.trim() || '📌';
-  t.target = parseInt($('ewiTarget').value) || 0;
-  t.totalTarget = parseInt($('ewiTotal').value) || 0;
+  t.icon = $('ewiIcon').value.trim()||'📌';
+  t.kind = $('ewiKind').value === 'activity' ? 'activity' : 'course';
+  t.target = parseInt($('ewiTarget').value,10)||0;
+  t.totalEpisodes = t.kind==='course'?(parseInt($('ewiTotal').value,10)||0):0;
   t.desc = $('ewiDesc').value.trim();
   saveData();
-  document.getElementById('editWeeklyItemModal').remove();
-  renderPage('gym'); toast('已保存');
+  $('editWeeklyItemModal').remove();
+  renderPage('gym');
+  toast('已保存，首页项目已同步');
 }
-
 function deleteWeeklyItem(key) {
-  if (!confirm('确定删除这个追踪项目？所有打卡记录也会被删除。')) return;
-  if (!state.gym.weeklyTracker) return;
+  var project = getGymProject(key);
+  if (!project || !confirm('确定删除这个项目？历史运动会保留，并变为未关联项目。')) return;
+  (state.gym.workouts||[]).forEach(function(w) {
+    if (w.projectId === key) { w.type = project.name || w.type || '运动'; delete w.projectId; }
+  });
   delete state.gym.weeklyTracker[key];
   saveData();
-  var modal = document.getElementById('editWeeklyItemModal');
-  if (modal) modal.remove();
-  renderPage('gym'); toast('已删除');
+  var modal = $('editWeeklyItemModal'); if (modal) modal.remove();
+  renderPage('gym');
+  toast('项目已删除，历史运动已保留');
 }
 
 // ─── SCHEDULE (运动课表) ───
@@ -13730,6 +13797,7 @@ function importFinanceBooks() {
   importFinanceStudyPlan();
   importTennisStretchPlan();
   importNetClassPlan();
+  migrateGymUnifiedTracking();
   importFinanceBooks();
   initWisdomCards();
   // Migrate old resources: add category and createdAt
