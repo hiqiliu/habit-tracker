@@ -10133,6 +10133,7 @@ function renderClosetItems() {
           +     (item.pros || item.cons ? '<div class="item-pros-cons" style="margin-bottom:8px;">'+(item.pros?'<span class="item-pros">✓ '+escHtml(item.pros)+'</span>':'')+(item.cons?'<span class="item-cons">✗ '+escHtml(item.cons)+'</span>':'')+'</div>' : '')
           +     '<div>'
           +       '<button class="btn-sm" onclick="editWardrobeItem(\''+item.id+'\')">✏️ 编辑</button>'
+          +       '<button class="btn-sm" onclick="openAddItemModal(\''+item.id+'\')" title="以此单品为模板新增">复制</button>'
           +       '<button class="btn-sm danger" onclick="deleteWardrobeItem(\''+item.id+'\')">删</button>'
           +     '</div>'
           +   '</div>'
@@ -10245,41 +10246,43 @@ function addWardrobeItem() {
   document.getElementById('addItemModal').remove();
   renderPage('closet'); toast('单品已添加');
 }
-function openAddItemModal() {
+function openAddItemModal(sourceId) {
+  var source = sourceId ? (state.closet.wardrobe || []).find(function(w) { return w.id === sourceId; }) : null;
   var m = document.createElement('div');
   m.className = 'modal-overlay show'; m.id = 'addItemModal';
   m.innerHTML = '<div class="modal-box" style="max-width:400px;">'
-    + '<h3>+ 新增单品</h3>'
+    + '<h3>'+(source ? '复制单品' : '+ 新增单品')+'</h3>'
+    + (source ? '<div style="font-size:12px;color:var(--muted);margin-bottom:10px;">已带入原单品信息，修改差别项后保存为新单品。</div>' : '')
     + '<div class="form-row" style="margin-bottom:6px;">'
-    +   '<input class="input-field" id="addItemName" placeholder="单品名" style="flex:1;">'
-    +   '<input class="input-field" id="addItemBrand" placeholder="品牌（可选）" style="flex:0.7;">'
+    +   '<input class="input-field" id="addItemName" value="'+(source ? escHtml(source.name||'') : '')+'" placeholder="单品名" style="flex:1;">'
+    +   '<input class="input-field" id="addItemBrand" value="'+(source ? escHtml(source.brand||'') : '')+'" placeholder="品牌（可选）" style="flex:0.7;">'
     + '</div>'
     + '<div class="form-row" style="margin-bottom:6px;">'
     +   '<select class="input-field" id="addItemCat" style="flex:0.7;">'
-    +   CLOSET_CATS.map(function(c) { return '<option>'+c+'</option>'; }).join('')
+    +   CLOSET_CATS.map(function(c) { return '<option'+(source && source.cat===c ? ' selected' : '')+'>'+c+'</option>'; }).join('')
     +   '</select>'
-    +   '<input class="input-field" id="addItemColor" placeholder="颜色" style="flex:0.5;">'
+    +   '<input class="input-field" id="addItemColor" value="'+(source ? escHtml(source.color||'') : '')+'" placeholder="颜色" style="flex:0.5;">'
     +   '<select class="input-field" id="addItemSeason" style="flex:0.5;">'
-    +   '<option value="">季节</option><option value="春">春</option><option value="夏">夏</option><option value="秋">秋</option><option value="冬">冬</option><option value="全季">全季</option>'
+    +   '<option value="">季节</option>'+['春','夏','秋','冬','全季'].map(function(s) { return '<option'+(source && source.season===s ? ' selected' : '')+'>'+s+'</option>'; }).join('')
     +   '</select>'
     + '</div>'
     + '<div class="form-row" style="margin-bottom:6px;">'
-    +   '<textarea class="input-field" id="addItemNote" rows="2" placeholder="备注（可选：尺码、版型、洗护、搭配建议等）" style="flex:1;resize:vertical;"></textarea>'
+    +   '<textarea class="input-field" id="addItemNote" rows="2" placeholder="备注（可选：尺码、版型、洗护、搭配建议等）" style="flex:1;resize:vertical;">'+(source ? escHtml(source.note||'') : '')+'</textarea>'
     + '</div>'
     + '<div class="form-row" style="margin-bottom:8px;">'
-    +   '<input class="input-field" id="addItemDimension" placeholder="维度（可选）" style="flex:1;">'
+    +   '<input class="input-field" id="addItemDimension" value="'+(source ? escHtml(source.dimension||'') : '')+'" placeholder="维度（可选）" style="flex:1;">'
     +   '<select class="input-field" id="addItemChannel" style="flex:0.5;">'
-    +   '<option value="">购买渠道</option><option value="线上">线上</option><option value="线下">线下</option>'
+    +   '<option value="">购买渠道</option><option value="线上"'+(source && source.channel==='线上' ? ' selected' : '')+'>线上</option><option value="线下"'+(source && source.channel==='线下' ? ' selected' : '')+'>线下</option>'
     +   '</select>'
-    +   '<input class="input-field" id="addItemPrice" type="number" min="0" step="0.01" placeholder="购入价 ¥" style="flex:0.5;">'
+    +   '<input class="input-field" id="addItemPrice" type="number" min="0" step="0.01" value="'+(source ? source.price||'' : '')+'" placeholder="购入价 ¥" style="flex:0.5;">'
     + '</div>'
     + '<div class="modal-actions">'
     + '<button class="btn-sm" onclick="document.getElementById(\'addItemModal\').remove()">取消</button>'
-    + '<button class="btn-sm primary" onclick="addWardrobeItem()">保存</button>'
+    + '<button class="btn-sm primary" onclick="addWardrobeItem()">'+(source ? '保存为新单品' : '保存')+'</button>'
     + '</div></div>';
   document.body.appendChild(m);
   m.addEventListener('click', function(e) { if (e.target === m) m.remove(); });
-  setTimeout(function() { var inp = document.getElementById('addItemName'); if (inp) inp.focus(); }, 50);
+  setTimeout(function() { var inp = document.getElementById(source ? 'addItemColor' : 'addItemName'); if (inp) { inp.focus(); if (source) inp.select(); } }, 50);
 }
 // 移出衣帽间：可直接勾选记入记账本「流通罐 · 断舍离」，避免二次录入
 function deleteWardrobeItem(id) {
