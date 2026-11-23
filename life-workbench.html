@@ -6402,11 +6402,14 @@ function renderGymOverview(mod) {
       </div>
       <div class="section-title" style="display:flex;align-items:center;justify-content:space-between;"><span>✅ 今日待办</span><button class="btn-sm" onclick="goGymTodos()">未来一周排期 →</button></div>
       <div class="card" style="margin-bottom:16px;">
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
           <span style="font-size:12px;color:var(--muted);">今日及逾期 ${duePendingCount} 项待完成</span>
-          <button class="btn-sm primary" onclick="openGymTodoModal(today(),'')">+ 安排任务</button>
+          <div style="display:flex;gap:6px;">
+            <button class="btn-sm primary" onclick="openGymTodoModal(today(),'')">+ 今日任务</button>
+            <button class="btn-sm" onclick="openGymTodoModal(addDays(today(),1),'')">+ 明日任务</button>
+          </div>
         </div>
-        ${dueTodos.length ? renderGymTodoRows(dueTodos, 'overview') : '<div class="empty-state">今天还没有运动待办，点击“+ 安排任务”开始</div>'}
+        ${dueTodos.length ? renderGymTodoRows(dueTodos, 'overview') : '<div class="empty-state">今天还没有运动待办，可直接安排今天或明天</div>'}
       </div>
       <div class="section-title" style="display:flex;align-items:center;justify-content:space-between;"><span>📈 本周概览</span><button class="btn-sm" onclick="setGymView('weekly')">本周详情 →</button></div>
       <div class="card" style="margin-bottom:16px;">
