@@ -1180,6 +1180,23 @@ textarea.input-field { resize:vertical; min-height:60px; }
 .gym-segmented { display:flex; gap:6px; padding:4px; margin-bottom:14px; border-radius:10px; background:var(--bg2); }
 .gym-segmented button { flex:1; padding:7px 10px; border:0; border-radius:8px; background:transparent; color:var(--muted); font-family:inherit; font-size:13px; cursor:pointer; }
 .gym-segmented button.active { background:var(--bg); color:var(--accent); font-weight:600; box-shadow:var(--shadow); }
+.gym-todo-list { display:flex; flex-direction:column; gap:8px; }
+.gym-todo-item { display:flex; align-items:center; gap:10px; padding:10px; border:1px solid var(--rule); border-radius:10px; background:var(--bg); }
+.gym-todo-item.done { background:var(--accent-soft); border-color:var(--accent); }
+.gym-todo-status { width:24px; height:24px; flex-shrink:0; display:flex; align-items:center; justify-content:center; border:1px solid var(--rule); border-radius:50%; color:#fff; font-size:13px; }
+.gym-todo-item.done .gym-todo-status { background:var(--accent); border-color:var(--accent); }
+.gym-todo-content { flex:1; min-width:0; }
+.gym-todo-name { font-size:13px; font-weight:600; line-height:1.5; overflow-wrap:anywhere; }
+.gym-todo-item.done .gym-todo-name { color:var(--muted); text-decoration:line-through; }
+.gym-todo-meta, .gym-todo-note { margin-top:3px; color:var(--muted); font-size:11px; line-height:1.5; overflow-wrap:anywhere; }
+.gym-todo-overdue { color:var(--danger); font-weight:600; }
+.gym-todo-actions { flex-shrink:0; display:flex; align-items:center; justify-content:flex-end; gap:6px; flex-wrap:wrap; }
+.gym-todo-actions .btn-sm { white-space:nowrap; }
+@media (max-width:640px) {
+  .gym-todo-item { align-items:flex-start; flex-wrap:wrap; }
+  .gym-todo-content { min-width:calc(100% - 40px); }
+  .gym-todo-actions { width:100%; padding-left:34px; }
+}
 .gym-summary-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:12px; }
 .gym-activity-stats { grid-template-columns:repeat(4,1fr); }
 @media (max-width:640px) { .gym-activity-stats { grid-template-columns:repeat(2,1fr); } }
@@ -2154,6 +2171,7 @@ const DEFAULT_DATA = {
   gym: {
     workoutTypes: ['跑步','瑜伽','力量训练','游泳','骑行','舞蹈','球类','其他'],
     workouts: [],
+    todos: [],          // { id, date, projectId, episode, duration, note, done, doneDate, syncedWorkoutId, createdAt }
     weeklyTracker: {},
     plans: [],          // { id, name, startDate, endDate, days, items:[{day, date, content, done, doneDate, syncedWorkoutId}], completed }
     bodyData: [],       // add bodyFat field
@@ -2239,6 +2257,7 @@ function runMigrations() {
     state._navOrderV3 = true;
     saveData();
   }
+  if (state.gym && !Array.isArray(state.gym.todos)) state.gym.todos = [];
   // Migrate old gym plans: convert from day-based to session-based
   if (state.gym && state.gym.plans) {
     state.gym.plans.forEach(p => {
@@ -3668,6 +3687,17 @@ function renderTodayTodos(todayStr, todayPlans, donePlans, checkedHabits, totalH
         + (rp ? '<span class="tt-tag">' + rp + '</span>' : '')
         + '</div>';
     });
+  }
+
+  var gymTodos = gymTodoDueItems();
+  var gymDone = gymTodos.filter(function(t) { return t.done; }).length;
+  html += '<div class="tt-sub-title" style="display:flex;align-items:center;gap:6px;">'
+    + '<span>运动待办</span><span class="tt-count">' + gymDone + '/' + gymTodos.length + '</span>'
+    + '<span class="tt-more" style="margin-left:auto;" onclick="goGymTodos()">排期 →</span></div>';
+  if (gymTodos.length) {
+    html += renderGymTodoRows(gymTodos, 'home');
+  } else {
+    html += '<div class="tt-empty">今天还没有运动安排，点击“排期”提前分配任务</div>';
   }
 
   if (habits.length > 0) {
@@ -6077,11 +6107,13 @@ function renderFinancePlan(mod, switcher) {
 // ═══════════════════════════════════════
 // 4. GYM (健身房)
 // ═══════════════════════════════════════
-let gymView = 'overview';  // overview | workout | weekly | projects | activities | profile | body | resource | assessment
+let gymView = 'overview';  // overview | todos | workout | weekly | projects | activities | profile | body | resource | assessment
+let gymTodoRange = 3;
 let finView = 'overview'; // overview | jar | wish | declutter
 function renderGym() {
   const mod = state.modules.find(m => m.id === 'gym');
   switch (gymView) {
+    case 'todos': return renderGymTodos(mod);
     case 'workout': return renderGymWorkout(mod);
     case 'weekly': return renderGymWeekly(mod);
     case 'projects': return renderGymProjects(mod);
@@ -6360,12 +6392,22 @@ function renderGymOverview(mod) {
   var activityWeekMinutes = activityWeekRecords.reduce(function(sum, w) {
     return sum + (parseInt(w.duration, 10) || 0);
   }, 0);
+  var dueTodos = gymTodoDueItems();
+  var duePendingCount = dueTodos.filter(function(t) { return !t.done; }).length;
 
   return `
     <div class="page active">
       <div class="module-title">
         ${mod.icon} <span class="editable-title" ondblclick="editModule('gym')">${mod.name}</span>
         <button class="edit-icon-btn" onclick="editModule('gym')" title="编辑">✏️</button>
+      </div>
+      <div class="section-title" style="display:flex;align-items:center;justify-content:space-between;"><span>✅ 今日待办</span><button class="btn-sm" onclick="goGymTodos()">3 天 / 7 天排期 →</button></div>
+      <div class="card" style="margin-bottom:16px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;">
+          <span style="font-size:12px;color:var(--muted);">今日及逾期 ${duePendingCount} 项待完成</span>
+          <button class="btn-sm primary" onclick="openGymTodoModal(today(),'')">+ 安排任务</button>
+        </div>
+        ${dueTodos.length ? renderGymTodoRows(dueTodos, 'overview') : '<div class="empty-state">今天还没有运动待办，点击“+ 安排任务”开始</div>'}
       </div>
       <div class="section-title" style="display:flex;align-items:center;justify-content:space-between;"><span>📈 本周概览</span><button class="btn-sm" onclick="setGymView('weekly')">本周详情 →</button></div>
       <div class="card" style="margin-bottom:16px;">
@@ -6443,6 +6485,264 @@ function quickAddWorkout() {
   saveData();
   refreshHomeQuickPanel('quickDur');
   toast('已记录 '+project.name+(episode ? ' · 第'+episode+'集' : '')+' ✅');
+}
+
+// ─── GYM TODOS (日期待办与一键打卡) ───
+function gymTodoItems() {
+  return state.gym && Array.isArray(state.gym.todos) ? state.gym.todos : [];
+}
+function getGymTodo(id) {
+  return gymTodoItems().find(function(t) { return t.id === id; }) || null;
+}
+function gymTodoSort(a, b) {
+  if (!!a.done !== !!b.done) return a.done ? 1 : -1;
+  var byDate = (a.date || '').localeCompare(b.date || '');
+  if (byDate) return byDate;
+  return (a.createdAt || '').localeCompare(b.createdAt || '');
+}
+function gymTodoDueItems() {
+  var ds = today();
+  return gymTodoItems().filter(function(t) {
+    return (!t.done && t.date && t.date <= ds) || (t.done && t.doneDate === ds);
+  }).sort(gymTodoSort);
+}
+function nextGymTodoEpisode(projectId, excludeId) {
+  var project = getGymProject(projectId);
+  if (!project || project.kind !== 'course') return 0;
+  var stats = gymCourseStats(projectId);
+  var used = {};
+  Object.keys(stats.episodeCounts).forEach(function(ep) { used[ep] = true; });
+  gymTodoItems().forEach(function(t) {
+    var ep = gymEpisodeNumber(t.episode);
+    if (!t.done && t.id !== excludeId && t.projectId === projectId && ep) used[ep] = true;
+  });
+  var total = gymEpisodeNumber(project.totalEpisodes);
+  if (total > 0) {
+    for (var i = 1; i <= total; i++) if (!used[i]) return i;
+    return 1;
+  }
+  var max = 0;
+  Object.keys(used).forEach(function(ep) { max = Math.max(max, parseInt(ep, 10) || 0); });
+  return max + 1;
+}
+function goGymTodos() {
+  if (currentPage === 'gym') setGymView('todos');
+  else { gymView = 'todos'; navigate('gym'); }
+}
+function completeGymTodo(id) {
+  var t = getGymTodo(id);
+  if (!t || t.done) return;
+  var project = getGymProject(t.projectId);
+  if (!project) { toast('关联项目已不存在，请重新安排'); return; }
+  var duration = parseInt(t.duration, 10) || 0;
+  if (duration <= 0) { toast('请先编辑待办并填写时长'); return; }
+  var episode = project.kind === 'course' ? gymEpisodeNumber(t.episode) : 0;
+  if (project.kind === 'course' && !episode) { toast('请先编辑待办并填写课程集数'); return; }
+  var total = gymEpisodeNumber(project.totalEpisodes);
+  if (episode && total > 0 && episode > total) { toast('集数超过课程总集数，请先编辑待办'); return; }
+  var w = createWorkoutRecord({
+    projectId:t.projectId,
+    episode:episode,
+    date:today(),
+    duration:duration,
+    note:t.note || '',
+    time:nowHM()
+  });
+  t.done = true;
+  t.doneDate = today();
+  t.syncedWorkoutId = w.id;
+  saveData();
+  renderPage(currentPage);
+  toast('已完成 '+project.name+(episode ? ' · 第'+episode+'集' : '')+' ✅');
+}
+function undoGymTodo(id) {
+  var t = getGymTodo(id);
+  if (!t || !t.done) return;
+  if (t.syncedWorkoutId) {
+    state.gym.workouts = (state.gym.workouts || []).filter(function(w) { return w.id !== t.syncedWorkoutId; });
+  }
+  t.done = false;
+  t.doneDate = '';
+  t.syncedWorkoutId = '';
+  saveData();
+  renderPage(currentPage);
+  toast('已撤销打卡');
+}
+function openGymTodoWorkout(id) {
+  var t = getGymTodo(id);
+  if (!t || !t.syncedWorkoutId) return;
+  var w = (state.gym.workouts || []).find(function(item) { return item.id === t.syncedWorkoutId; });
+  if (!w) { toast('关联运动记录不存在'); return; }
+  if (currentPage === 'gym') openWorkoutDetail(w.id);
+  else {
+    gymView = 'workout';
+    wkDetailId = w.id;
+    wkView = 'detail';
+    navigate('gym');
+  }
+}
+function deleteGymTodo(id) {
+  var t = getGymTodo(id);
+  if (!t) return;
+  var message = t.done ? '删除这项待办？已完成的运动记录会保留。' : '确定删除这项运动待办？';
+  if (!confirm(message)) return;
+  state.gym.todos = gymTodoItems().filter(function(item) { return item.id !== id; });
+  saveData();
+  renderPage(currentPage);
+  toast(t.done ? '待办已删除，运动记录已保留' : '待办已删除');
+}
+function renderGymTodoRows(items, mode) {
+  var ds = today();
+  var html = items.map(function(t) {
+    var project = getGymProject(t.projectId);
+    var isCourse = project && project.kind === 'course';
+    var episode = gymEpisodeNumber(t.episode);
+    var name = project ? (project.name || '运动项目') : '未关联项目';
+    var icon = project ? (project.icon || '📌') : '📌';
+    var overdue = !t.done && t.date && t.date < ds;
+    var overdueDays = overdue ? Math.max(1, Math.round((new Date(ds+'T12:00:00') - new Date(t.date+'T12:00:00')) / 86400000)) : 0;
+    var meta = [];
+    if (isCourse && episode) meta.push('第'+episode+'集');
+    meta.push((parseInt(t.duration, 10) || 0)+' 分钟');
+    if (mode !== 'schedule' && !t.done && t.date && t.date !== ds) meta.push('原计划 '+t.date.substring(5));
+    if (t.done && t.doneDate) meta.push('完成于 '+t.doneDate.substring(5));
+    var actions = '';
+    if (t.done) {
+      actions = '<button class="btn-sm" onclick="openGymTodoWorkout(\''+t.id+'\')">详情</button>'
+        + '<button class="btn-sm" onclick="undoGymTodo(\''+t.id+'\')">撤销</button>';
+    } else {
+      actions = '<button class="btn-sm primary" onclick="completeGymTodo(\''+t.id+'\')">✓ 完成</button>';
+      if (mode === 'schedule') {
+        actions += '<button class="btn-sm" onclick="openGymTodoModal(\''+t.date+'\',\''+t.id+'\')">编辑</button>'
+          + '<button class="btn-sm danger" onclick="deleteGymTodo(\''+t.id+'\')">删除</button>';
+      }
+    }
+    return '<div class="gym-todo-item'+(t.done ? ' done' : '')+'">'
+      + '<span class="gym-todo-status">'+(t.done ? '✓' : '')+'</span>'
+      + '<div class="gym-todo-content"><div class="gym-todo-name">'+icon+' '+escHtml(name)
+      + (overdue ? ' <span class="gym-todo-overdue">逾期 '+overdueDays+' 天</span>' : '')+'</div>'
+      + '<div class="gym-todo-meta">'+escHtml(meta.join(' · '))+'</div>'
+      + (t.note ? '<div class="gym-todo-note">'+escHtml(t.note)+'</div>' : '')+'</div>'
+      + '<div class="gym-todo-actions">'+actions+'</div></div>';
+  }).join('');
+  return '<div class="gym-todo-list">'+html+'</div>';
+}
+function setGymTodoRange(days) {
+  gymTodoRange = days === 7 ? 7 : 3;
+  renderPage('gym');
+}
+function renderGymTodos(mod) {
+  var ds = today();
+  var all = gymTodoItems();
+  var overdue = all.filter(function(t) { return !t.done && t.date && t.date < ds; }).sort(gymTodoSort);
+  var html = '<div class="page active"><div class="detail-header">'
+    + '<button class="btn-sm" onclick="setGymView(\'overview\')">← 返回</button>'
+    + '<span style="flex:1;text-align:center;font-weight:600;">📅 运动待办排期</span>'
+    + '<button class="btn-sm primary" onclick="openGymTodoModal(today(),\'\')">+ 安排</button></div>'
+    + '<div class="gym-segmented"><button class="'+(gymTodoRange === 3 ? 'active' : '')+'" onclick="setGymTodoRange(3)">未来三天</button>'
+    + '<button class="'+(gymTodoRange === 7 ? 'active' : '')+'" onclick="setGymTodoRange(7)">未来一周</button></div>'
+    + '<div style="font-size:11px;color:var(--muted);margin:-4px 0 14px;line-height:1.6;">提前安排课程或单次活动；完成时按计划时长和集数一键打卡，实际记录日期为打卡当天。</div>';
+  if (overdue.length) {
+    html += '<div class="section-title">⏰ 逾期未完成任务</div><div class="card" style="margin-bottom:14px;">'
+      + renderGymTodoRows(overdue, 'schedule')+'</div>';
+  }
+  for (var i = 0; i < gymTodoRange; i++) {
+    var date = addDays(ds, i);
+    var label = i === 0 ? '今天' : (i === 1 ? '明天' : formatWeekday(date));
+    var items = all.filter(function(t) { return t.date === date; }).sort(gymTodoSort);
+    html += '<div class="section-title" style="display:flex;align-items:center;justify-content:space-between;"><span>'
+      + formatDateShort(date)+' · '+label+'</span><button class="btn-sm" onclick="openGymTodoModal(\''+date+'\',\'\')">+ 安排</button></div>'
+      + '<div class="card" style="margin-bottom:14px;">'
+      + (items.length ? renderGymTodoRows(items, 'schedule') : '<div class="empty-state">这一天还没有运动安排</div>')+'</div>';
+  }
+  return html+'</div>';
+}
+function openGymTodoModal(defaultDate, todoId) {
+  todoId = todoId || '';
+  var editing = todoId ? getGymTodo(todoId) : null;
+  if (editing && editing.done) { toast('已完成待办请在运动记录中修改'); return; }
+  var entries = gymProjectEntries();
+  if (!entries.length) {
+    goGymProjects();
+    setTimeout(function() { openAddWeeklyItemModal(); }, 50);
+    return;
+  }
+  var selected = editing && getGymProject(editing.projectId) ? editing.projectId : '';
+  if (!selected) {
+    var preferred = (state.appPrefs || {}).lastWorkoutProject;
+    if (entries.some(function(e) { return e.key === preferred; })) selected = preferred;
+  }
+  if (!selected) selected = entries[0].key;
+  var project = getGymProject(selected);
+  var isCourse = project.kind === 'course';
+  var date = editing ? editing.date : (defaultDate || today());
+  var duration = editing ? editing.duration : ((state.appPrefs || {}).lastWorkoutDuration || 30);
+  var episode = isCourse ? (editing ? gymEpisodeNumber(editing.episode) : nextGymTodoEpisode(selected, todoId)) : 0;
+  var m = document.createElement('div');
+  m.className = 'modal-overlay show';
+  m.id = 'gymTodoModal';
+  m.innerHTML = '<div class="modal-box" style="max-width:460px;"><h3>'+(editing ? '✏️ 编辑运动待办' : '📅 安排运动待办')+'</h3>'
+    + '<label style="font-size:12px;color:var(--muted);display:block;margin:10px 0 4px;">选择项目 / 单次活动</label>'
+    + '<select class="input-field" id="gtProject" onchange="gymTodoModalProjectChange(\''+todoId+'\')">'+gymProjectOptions(selected)+'</select>'
+    + '<label style="font-size:12px;color:var(--muted);display:block;margin:10px 0 4px;">计划日期</label>'
+    + '<input class="input-field" id="gtDate" type="date" value="'+escHtml(date || today())+'">'
+    + '<div id="gtEpisodeWrap" style="display:'+(isCourse ? 'block' : 'none')+';"><label style="font-size:12px;color:var(--muted);display:block;margin:10px 0 4px;">本次练习集数</label>'
+    + '<input class="input-field" id="gtEpisode" type="number" min="1" value="'+(episode || '')+'">'
+    + '<div id="gtEpisodeHint" style="font-size:11px;color:var(--muted);margin-top:4px;">'+escHtml(isCourse ? gymEpisodeHint(selected) : '')+'</div></div>'
+    + '<label style="font-size:12px;color:var(--muted);display:block;margin:10px 0 4px;">计划时长（分钟）</label>'
+    + '<input class="input-field" id="gtDuration" type="number" min="1" value="'+escHtml(duration)+'">'
+    + '<label style="font-size:12px;color:var(--muted);display:block;margin:10px 0 4px;">备注（可选）</label>'
+    + '<textarea class="input-field" id="gtNote" rows="3" placeholder="如：5 公里、跟练重点、身体感受">'+escHtml(editing ? (editing.note || '') : '')+'</textarea>'
+    + '<div class="modal-actions"><button class="btn-sm" onclick="document.getElementById(\'gymTodoModal\').remove()">取消</button>'
+    + '<button class="btn-sm primary" onclick="saveGymTodo(\''+todoId+'\')">'+(editing ? '保存修改' : '加入待办')+'</button></div></div>';
+  document.body.appendChild(m);
+  m.addEventListener('click', function(e) { if (e.target === m) m.remove(); });
+}
+function gymTodoModalProjectChange(excludeId) {
+  var select = $('gtProject'), wrap = $('gtEpisodeWrap'), input = $('gtEpisode'), hint = $('gtEpisodeHint');
+  var project = select ? getGymProject(select.value) : null;
+  if (!project || !wrap || !input) return;
+  var isCourse = project.kind === 'course';
+  wrap.style.display = isCourse ? 'block' : 'none';
+  input.value = isCourse ? nextGymTodoEpisode(select.value, excludeId || '') : '';
+  if (hint) hint.textContent = isCourse ? gymEpisodeHint(select.value) : '';
+}
+function saveGymTodo(todoId) {
+  var select = $('gtProject'), dateEl = $('gtDate'), durationEl = $('gtDuration'), noteEl = $('gtNote');
+  var project = select ? getGymProject(select.value) : null;
+  if (!project) { toast('请选择运动项目'); return; }
+  var date = dateEl ? dateEl.value : '';
+  if (!date) { toast('请选择计划日期'); return; }
+  var duration = parseInt(durationEl && durationEl.value, 10) || 0;
+  if (duration <= 0) { toast('请输入计划时长'); if (durationEl) durationEl.focus(); return; }
+  var episode = 0;
+  if (project.kind === 'course') {
+    episode = gymEpisodeNumber($('gtEpisode') && $('gtEpisode').value);
+    if (!episode) { toast('请输入本次练习集数'); return; }
+    var total = gymEpisodeNumber(project.totalEpisodes);
+    if (total > 0 && episode > total) { toast('集数不能超过课程总集数'); return; }
+  }
+  var editing = todoId ? getGymTodo(todoId) : null;
+  if (editing && editing.done) { toast('已完成待办不能直接改期'); return; }
+  if (!editing) {
+    editing = {
+      id:'gt'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),
+      done:false,
+      doneDate:'',
+      syncedWorkoutId:'',
+      createdAt:new Date().toISOString()
+    };
+    state.gym.todos.push(editing);
+  }
+  editing.date = date;
+  editing.projectId = select.value;
+  editing.episode = episode;
+  editing.duration = duration;
+  editing.note = noteEl ? noteEl.value.trim() : '';
+  saveData();
+  var modal = $('gymTodoModal'); if (modal) modal.remove();
+  renderPage(currentPage);
+  toast(todoId ? '运动待办已更新' : '已加入运动待办');
 }
 
 // 首页内联更新运动计数，避免整页重绘丢失输入焦点
@@ -6636,7 +6936,17 @@ function addWorkout() {
   if (currentPage === 'gym') renderPage('gym');
   toast('运动已记录 ✅');
 }
-function deleteWorkout(id) { state.gym.workouts = (state.gym.workouts||[]).filter(function(w) { return w.id !== id; }); saveData(); }
+function deleteWorkout(id) {
+  state.gym.workouts = (state.gym.workouts||[]).filter(function(w) { return w.id !== id; });
+  gymTodoItems().forEach(function(t) {
+    if (t.syncedWorkoutId === id) {
+      t.done = false;
+      t.doneDate = '';
+      t.syncedWorkoutId = '';
+    }
+  });
+  saveData();
+}
 
 // ─── PROFILE (身体档案) ───
 function renderGymProfile(mod) {
@@ -7014,10 +7324,14 @@ function saveWeeklyItem(key) {
 }
 function deleteWeeklyItem(key) {
   var project = getGymProject(key);
-  if (!project || !confirm('确定删除这个项目？历史运动会保留，并变为未关联项目。')) return;
+  var linkedTodoCount = gymTodoItems().filter(function(t) { return t.projectId === key; }).length;
+  var message = '确定删除这个项目？历史运动会保留，并变为未关联项目。';
+  if (linkedTodoCount) message += '\n同时会删除 '+linkedTodoCount+' 条相关运动待办，已完成运动记录不受影响。';
+  if (!project || !confirm(message)) return;
   (state.gym.workouts||[]).forEach(function(w) {
     if (w.projectId === key) { w.type = project.name || w.type || '运动'; delete w.projectId; }
   });
+  state.gym.todos = gymTodoItems().filter(function(t) { return t.projectId !== key; });
   delete state.gym.weeklyTracker[key];
   saveData();
   var modal = $('editWeeklyItemModal'); if (modal) modal.remove();
