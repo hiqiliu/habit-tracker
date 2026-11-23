@@ -6108,7 +6108,6 @@ function renderFinancePlan(mod, switcher) {
 // 4. GYM (健身房)
 // ═══════════════════════════════════════
 let gymView = 'overview';  // overview | todos | workout | weekly | projects | activities | profile | body | resource | assessment
-let gymTodoRange = 3;
 let finView = 'overview'; // overview | jar | wish | declutter
 function renderGym() {
   const mod = state.modules.find(m => m.id === 'gym');
@@ -6401,7 +6400,7 @@ function renderGymOverview(mod) {
         ${mod.icon} <span class="editable-title" ondblclick="editModule('gym')">${mod.name}</span>
         <button class="edit-icon-btn" onclick="editModule('gym')" title="编辑">✏️</button>
       </div>
-      <div class="section-title" style="display:flex;align-items:center;justify-content:space-between;"><span>✅ 今日待办</span><button class="btn-sm" onclick="goGymTodos()">3 天 / 7 天排期 →</button></div>
+      <div class="section-title" style="display:flex;align-items:center;justify-content:space-between;"><span>✅ 今日待办</span><button class="btn-sm" onclick="goGymTodos()">未来一周排期 →</button></div>
       <div class="card" style="margin-bottom:16px;">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;">
           <span style="font-size:12px;color:var(--muted);">今日及逾期 ${duePendingCount} 项待完成</span>
@@ -6627,26 +6626,20 @@ function renderGymTodoRows(items, mode) {
   }).join('');
   return '<div class="gym-todo-list">'+html+'</div>';
 }
-function setGymTodoRange(days) {
-  gymTodoRange = days === 7 ? 7 : 3;
-  renderPage('gym');
-}
 function renderGymTodos(mod) {
   var ds = today();
   var all = gymTodoItems();
   var overdue = all.filter(function(t) { return !t.done && t.date && t.date < ds; }).sort(gymTodoSort);
   var html = '<div class="page active"><div class="detail-header">'
     + '<button class="btn-sm" onclick="setGymView(\'overview\')">← 返回</button>'
-    + '<span style="flex:1;text-align:center;font-weight:600;">📅 运动待办排期</span>'
+    + '<span style="flex:1;text-align:center;font-weight:600;">📅 未来一周排期</span>'
     + '<button class="btn-sm primary" onclick="openGymTodoModal(today(),\'\')">+ 安排</button></div>'
-    + '<div class="gym-segmented"><button class="'+(gymTodoRange === 3 ? 'active' : '')+'" onclick="setGymTodoRange(3)">未来三天</button>'
-    + '<button class="'+(gymTodoRange === 7 ? 'active' : '')+'" onclick="setGymTodoRange(7)">未来一周</button></div>'
-    + '<div style="font-size:11px;color:var(--muted);margin:-4px 0 14px;line-height:1.6;">提前安排课程或单次活动；完成时按计划时长和集数一键打卡，实际记录日期为打卡当天。</div>';
+    + '<div style="font-size:11px;color:var(--muted);margin:0 0 14px;line-height:1.6;">提前安排课程或单次活动；完成时按计划时长和集数一键打卡，实际记录日期为打卡当天。</div>';
   if (overdue.length) {
     html += '<div class="section-title">⏰ 逾期未完成任务</div><div class="card" style="margin-bottom:14px;">'
       + renderGymTodoRows(overdue, 'schedule')+'</div>';
   }
-  for (var i = 0; i < gymTodoRange; i++) {
+  for (var i = 0; i < 7; i++) {
     var date = addDays(ds, i);
     var label = i === 0 ? '今天' : (i === 1 ? '明天' : formatWeekday(date));
     var items = all.filter(function(t) { return t.date === date; }).sort(gymTodoSort);
