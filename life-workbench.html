@@ -555,13 +555,14 @@ textarea.input-field { resize:vertical; min-height:60px; }
 /* perfume */
 .perfume-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
 }
 .perfume-card {
   background: var(--bg);
   border-radius: 12px;
   padding: 12px;
+  min-width: 0;
   cursor: pointer;
   transition: all 0.15s;
   border-left: 4px solid #bbb;
@@ -589,6 +590,9 @@ textarea.input-field { resize:vertical; min-height:60px; }
 .perfume-card-brand {
   font-size: 12px;
   color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .perfume-card-rating {
   font-size: 12px;
@@ -597,8 +601,19 @@ textarea.input-field { resize:vertical; min-height:60px; }
 .perfume-card-scent {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 6px;
   margin-bottom: 6px;
+}
+.perfume-scent-more {
+  display: none;
+  font-size: 10px;
+  color: var(--muted);
+}
+.perfume-card-channel {
+  font-size: 11px;
+  color: var(--muted);
+  margin-left: auto;
 }
 .perfume-scent-tag {
   display: inline-block;
@@ -790,8 +805,33 @@ textarea.input-field { resize:vertical; min-height:60px; }
 
 @media (max-width:540px) {
   .perfume-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
   }
+  .perfume-card { padding: 10px; }
+  .perfume-card-top { display: block; margin-bottom: 6px; }
+  .perfume-card-name {
+    font-size: 13px;
+    line-height: 1.4;
+    min-height: 36px;
+    white-space: normal;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+  .perfume-card-top .perfume-rating-label { margin-top: 6px; }
+  .perfume-card-scent { flex-wrap: nowrap; gap: 4px; }
+  .perfume-card-scent .perfume-scent-tag { display: none; }
+  .perfume-card-scent .perfume-scent-tag:first-child {
+    display: inline-block;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .perfume-card-scent .perfume-scent-more { display: inline-block; flex-shrink: 0; }
+  .perfume-card-channel { display: none; }
+  .perfume-card-notes { font-size: 11px; }
   .perfume-notes-row {
     grid-template-columns: 1fr;
     gap: 8px;
@@ -1125,22 +1165,6 @@ textarea.input-field { resize:vertical; min-height:60px; }
 }
 
 /* ─── Gym Subpage Styles ─── */
-.gym-quick-grid {
-  display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:16px;
-}
-@media (max-width:640px) {
-  .gym-quick-grid { grid-template-columns:repeat(2,1fr); }
-}
-.gym-quick-card {
-  display:flex; flex-direction:column; align-items:center; gap:6px;
-  padding:14px 8px; border-radius:12px; background:var(--bg2);
-  border:1px solid var(--rule); cursor:pointer; transition:all 0.15s; text-align:center;
-}
-.gym-quick-card:hover { border-color:var(--accent); background:var(--accent-soft); }
-.gqc-icon { font-size:24px; }
-.gqc-info { text-align:center; }
-.gqc-num { font-size:20px; font-weight:700; color:var(--accent); line-height:1.2; }
-.gqc-lbl { font-size:11px; color:var(--muted); margin-top:2px; }
 .gym-stat-row {
   display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:16px;
 }
@@ -1157,6 +1181,8 @@ textarea.input-field { resize:vertical; min-height:60px; }
 .gym-segmented button { flex:1; padding:7px 10px; border:0; border-radius:8px; background:transparent; color:var(--muted); font-family:inherit; font-size:13px; cursor:pointer; }
 .gym-segmented button.active { background:var(--bg); color:var(--accent); font-weight:600; box-shadow:var(--shadow); }
 .gym-summary-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:12px; }
+.gym-activity-stats { grid-template-columns:repeat(4,1fr); }
+@media (max-width:640px) { .gym-activity-stats { grid-template-columns:repeat(2,1fr); } }
 .gym-summary-item { padding:10px 6px; border-radius:8px; background:var(--bg2); text-align:center; }
 .gym-summary-value { font-size:18px; font-weight:700; color:var(--accent); }
 .gym-summary-label { margin-top:2px; color:var(--muted); font-size:11px; }
@@ -1357,8 +1383,35 @@ textarea.input-field { resize:vertical; min-height:60px; }
 .tt-tag { font-size:10px; color:var(--muted); border:1px solid var(--rule); border-radius:8px; padding:1px 6px; }
 .tt-sub-title { font-size:12px; font-weight:600; color:var(--muted); margin:10px 0 6px; }
 .tt-empty { font-size:12px; color:var(--muted); padding:6px 2px 2px; }
-/* ─── 手账本 6 页签 ─── */
-.jvt-6 .jvt-btn { padding:5px 10px; }
+/* ─── 手账本页签 ─── */
+.jvt-6 .jvt-btn, .jvt-7 .jvt-btn { padding:5px 10px; }
+.journal-view-toggle .jvt-btn { flex-shrink:0; white-space:nowrap; }
+.recap-tools { margin-bottom:12px; }
+.recap-tools .input-field { width:100%; }
+.recap-type-filters { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+.recap-count { margin-bottom:8px; color:var(--muted); font-size:12px; text-align:right; }
+.recap-day-card { margin-bottom:12px; overflow:hidden; border:1px solid var(--rule); border-radius:12px; background:var(--bg); }
+.recap-day-header { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 14px; background:var(--bg2); border-bottom:1px solid var(--rule); }
+.recap-day-header strong { font-size:15px; }
+.recap-day-header strong + span { margin-left:8px; color:var(--muted); font-size:12px; }
+.recap-section { padding:10px 14px; border-bottom:1px dashed var(--rule); }
+.recap-section:last-child { border-bottom:0; }
+.recap-section-head { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:6px; font-size:13px; font-weight:600; }
+.recap-section-head .btn-sm { padding:1px 7px; font-size:10px; }
+.recap-line { display:flex; align-items:flex-start; gap:8px; margin:4px 0; font-size:13px; line-height:1.7; }
+.recap-line-icon { flex-shrink:0; }
+.recap-line-label { color:var(--muted); }
+.recap-line div { min-width:0; white-space:pre-wrap; word-break:break-word; }
+.recap-note-row { display:flex; align-items:flex-start; gap:8px; padding:5px 0; font-size:13px; }
+.recap-note-time { flex:0 0 58px; color:var(--muted); font-size:11px; }
+.recap-note-content { flex:1; min-width:0; white-space:pre-wrap; word-break:break-word; }
+.recap-note-row .btn-sm { padding:1px 6px; font-size:10px; }
+.recap-legacy { color:var(--muted); font-size:10px; white-space:nowrap; }
+@media (max-width:540px) {
+  .recap-day-header { padding:8px 10px; }
+  .recap-section { padding:8px 10px; }
+  .recap-day-header .btn-sm { font-size:10px; padding:3px 6px; }
+}
 /* ─── 学习计划切换 ─── */
 .study-plan-bar { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:10px; }
 .study-plan-chip {
@@ -1568,7 +1621,6 @@ textarea.input-field { resize:vertical; min-height:60px; }
 }
 
 @media (max-width:540px) {
-  .gym-quick-grid { grid-template-columns:repeat(2,1fr); }
   .gym-sub-grid { grid-template-columns:1fr; }
   .plan-days-grid { grid-template-columns:repeat(auto-fill,minmax(70px,1fr)); }
   .plan-row-num { width:40px; }
@@ -1675,6 +1727,12 @@ textarea.input-field { resize:vertical; min-height:60px; }
 .journal-act:last-child { border-bottom:none; }
 .journal-act .ja-icon { flex-shrink:0; font-size:15px; line-height:1.6; width:20px; text-align:center; }
 .journal-act .ja-text { flex:1; min-width:0; word-break:break-word; }
+.journal-act.ja-preview { cursor:pointer; }
+.journal-act.ja-preview:hover .ja-text { color:var(--accent); }
+.journal-act.ja-preview .ja-text {
+  display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:3;
+  overflow:hidden; white-space:pre-wrap;
+}
 .journal-act .ja-water-head { display:flex; justify-content:space-between; gap:8px; font-size:11px; color:var(--muted); margin-bottom:3px; }
 .journal-act .ja-water-pct { font-variant-numeric:tabular-nums; }
 .journal-act .ja-water-bar { display:block; height:5px; border-radius:3px; background:var(--bg2); overflow:hidden; }
@@ -1716,7 +1774,7 @@ textarea.input-field { resize:vertical; min-height:60px; }
 }
 
 /* Journal view toggle */
-.journal-view-toggle { display:flex; justify-content:center; gap:0; margin-bottom:14px; border-radius:10px; overflow:hidden; border:1px solid var(--rule); width:fit-content; margin-left:auto; margin-right:auto; }
+.journal-view-toggle { display:flex; justify-content:flex-start; gap:0; margin-bottom:14px; border-radius:10px; overflow-x:auto; overflow-y:hidden; border:1px solid var(--rule); width:fit-content; max-width:100%; margin-left:auto; margin-right:auto; }
 .jvt-btn { padding:5px 18px; font-size:13px; border:none; background:var(--bg); color:var(--muted); cursor:pointer; transition:all 0.15s; }
 .jvt-btn.active { background:var(--accent); color:#fff; font-weight:600; }
 
@@ -2906,17 +2964,23 @@ function homeQuickWorkoutBody(prefs) {
   if (!entries.some(function(e) { return e.key === selected; })) selected = entries[0].key;
   var project = getGymProject(selected);
   var isCourse = project && project.kind === 'course';
-  var projectChips = entries.map(function(e) {
-    var t = e.item;
-    return '<button type="button" class="home-hq-chip'+(e.key === selected ? ' active' : '')+'" data-value="'+escHtml(e.key)+'"'
-      + ' onclick="homeQuickChooseProject(this,\''+escHtml(e.key)+'\')">'+(t.icon || '📌')+' '+escHtml(t.name || e.key)+'</button>';
-  }).join('');
+  var projectChipHtml = function(list) {
+    return list.map(function(e) {
+      var t = e.item;
+      return '<button type="button" class="home-hq-chip'+(e.key === selected ? ' active' : '')+'" data-value="'+escHtml(e.key)+'"'
+        + ' onclick="homeQuickChooseProject(this,\''+escHtml(e.key)+'\')">'+(t.icon || '📌')+' '+escHtml(t.name || e.key)+'</button>';
+    }).join('');
+  };
+  var courseChips = projectChipHtml(gymProjectEntries('course'));
+  var activityChips = projectChipHtml(gymProjectEntries('activity'));
+  var projectGroups = (courseChips ? '<div class="home-hq-label">我的项目（课程）</div><div class="home-hq-chips">'+courseChips+'</div>' : '')
+    + (activityChips ? '<div class="home-hq-label">单次活动</div><div class="home-hq-chips">'+activityChips+'</div>' : '');
   var duration = String(prefs.lastWorkoutDuration || '30');
   var durationChips = [15,30,45,60].map(function(min) {
     return homeQuickChip('quickDur', String(min), min+' 分钟', '', String(min) === duration, 'lastWorkoutDuration');
   }).join('');
   return '<input type="hidden" id="quickProject" value="'+escHtml(selected)+'">'
-    + '<div class="home-hq-label">我的运动项目</div><div class="home-hq-chips">'+projectChips+'</div>'
+    + projectGroups
     + '<div id="quickEpisodeWrap" style="display:'+(isCourse ? 'block' : 'none')+';">'
     +   '<div class="home-hq-label">本次练习集数</div>'
     +   '<input class="input-field home-hq-input" id="quickEpisode" type="number" min="1" value="'+(isCourse ? nextGymEpisode(selected) : '')+'" placeholder="第几集">'
@@ -3883,7 +3947,11 @@ function saveEditAnniversary(id) {
 // 2. JOURNAL (手账本) - weeks周历视图
 // ═══════════════════════════════════════
 let journalWeekOffset = 0;
-let journalView = 'today'; // 'today' | 'week' | 'month' | 'year' | 'habit' | 'report'
+let journalView = 'today'; // 'today' | 'week' | 'month' | 'year' | 'recap' | 'habit' | 'report'
+let journalRecapQuery = '';
+let journalRecapType = 'all';
+let journalRecapLimit = 30;
+var _journalRecapSearchTimer = null;
 let dayViewOffset = 0; // 日视图偏移（0 = 今天）
 function dayViewDate() {
   var d = new Date();
@@ -3892,13 +3960,18 @@ function dayViewDate() {
 }
 function shiftDayView(delta) { dayViewOffset += delta; renderPage('review'); }
 function resetDayView() { dayViewOffset = 0; renderPage('review'); }
-function pickDayView(val) {
-  if (!val) return;
-  var d = new Date(val + 'T00:00:00');
+function openJournalDay(dateStr) {
+  if (!dateStr) return;
+  var d = new Date(dateStr + 'T00:00:00');
   if (isNaN(d.getTime())) return;
   var t = new Date(); t.setHours(0, 0, 0, 0);
   dayViewOffset = Math.round((d - t) / 86400000);
+  journalView = 'today';
+  diaryView = 'list';
   renderPage('review');
+}
+function pickDayView(val) {
+  openJournalDay(val);
 }
 let journalMonthOffset = 0;
 let journalYearOffset = 0;
@@ -3971,6 +4044,98 @@ var JOURNAL_CAT_COLORS = {
   anniv: '#e65100',
   note: '#455a64'
 };
+
+// 按日期汇集日记、随手记、手记和身体状态，供周预览与连续回顾共用
+function buildDiaryReviewIndex() {
+  var byDate = {}, noteKeys = {};
+  function ensureDay(date) {
+    if (!date) return null;
+    if (!byDate[date]) byDate[date] = { date:date, diaries:[], notes:[], journals:[], conditions:[] };
+    return byDate[date];
+  }
+  function addNote(date, note) {
+    var d = ensureDay(date);
+    if (!d || !note.content) return;
+    var key = date + '|' + (note.id ? 'id:' + note.id : 'text:' + note.time + ':' + note.content);
+    if (noteKeys[key]) return;
+    noteKeys[key] = true;
+    d.notes.push(note);
+  }
+  (state.gratitude.entries || []).forEach(function(e) {
+    var d = ensureDay(e.date);
+    if (d) d.diaries.push(e);
+  });
+  (state.timeline || []).forEach(function(t) {
+    if (t.cat !== 'note' && t.type !== 'note') return;
+    addNote(t.date, { id:t.id, date:t.date, time:t.time||'', content:t.note||t.content||'', legacy:false });
+  });
+  (state.gratitude.entries || []).forEach(function(e) {
+    (e.timeline || []).forEach(function(t) {
+      addNote(e.date, { id:t.id, date:e.date, time:t.time||'', content:t.content||'', legacy:true });
+    });
+  });
+  (state.review.entries || []).forEach(function(e) {
+    var d = ensureDay(e.date);
+    if (d) d.journals.push(e);
+  });
+  (state.gym.conditionLogs || []).forEach(function(c) {
+    var d = ensureDay(c.date);
+    if (d) d.conditions.push(c);
+  });
+  Object.keys(byDate).forEach(function(date) {
+    byDate[date].notes.sort(function(a, b) {
+      if (!a.time && !b.time) return 0;
+      if (!a.time) return 1;
+      if (!b.time) return -1;
+      return a.time.localeCompare(b.time);
+    });
+  });
+  return byDate;
+}
+function diaryReviewDiaryText(e) {
+  var parts = [];
+  if (e.mood) parts.push('心情：' + e.mood);
+  if (e.body) parts.push('身体：' + e.body);
+  if (e.joys) parts.push('小确幸：' + e.joys);
+  if (e.improve) parts.push('做更好：' + e.improve);
+  if (e.content) parts.push(e.content);
+  return parts.join(' · ');
+}
+function diaryReviewConditionText(c) {
+  var parts = [];
+  if (c.energy) parts.push('精力' + energyLabel(c.energy));
+  if (c.soreness) parts.push('酸痛' + sorenessLabel(c.soreness));
+  if (c.mood) parts.push('身体感受' + moodLabel(c.mood));
+  if (c.painAreas && c.painAreas.length) parts.push('不适部位：' + c.painAreas.join('、'));
+  if (c.note) parts.push(c.note);
+  return parts.join(' · ');
+}
+function getJournalWeekActivities(dateStr, reviewDay) {
+  var acts = getDayActivities(dateStr).filter(function(a) { return a.cat !== 'gratitude' && a.cat !== 'note'; });
+  var day = reviewDay || buildDiaryReviewIndex()[dateStr];
+  if (!day) return acts;
+  day.diaries.forEach(function(e) {
+    var text = diaryReviewDiaryText(e);
+    if (text) acts.push({ cat:'gratitude', icon:MOOD_EMOJIS[e.level]||'📝', text:text, tag:'日记', preview:true, action:"openDiaryDetail('"+dateStr+"')" });
+  });
+  day.conditions.forEach(function(c) {
+    var text = diaryReviewConditionText(c);
+    if (text) acts.push({ cat:'gratitude', icon:'🫀', text:text, tag:'身体', preview:true, action:"openDiaryDetail('"+dateStr+"')" });
+  });
+  day.notes.forEach(function(n) {
+    acts.push({ cat:'note', icon:'💬', text:(n.time ? n.time+' · ' : '')+n.content, tag:n.legacy?'旧随手记':'随手记', preview:true, action:"openJournalDay('"+dateStr+"')" });
+  });
+  day.journals.forEach(function(e) {
+    [
+      { key:'events', icon:'📋', tag:'事件' },
+      { key:'feelings', icon:'💭', tag:'感受' },
+      { key:'achievements', icon:'🏆', tag:'成就' }
+    ].forEach(function(meta) {
+      if (e[meta.key]) acts.push({ cat:'note', icon:meta.icon, text:e[meta.key], tag:meta.tag, preview:true, action:"editReview('"+e.id+"')" });
+    });
+  });
+  return acts;
+}
 
 function getDayActivities(dateStr) {
   var acts = [];
@@ -4089,18 +4254,22 @@ function renderReview() {
   }).join('');
 
   // View toggle
-  var viewToggleHtml = '<div class="journal-view-toggle jvt-6">'
+  var viewToggleHtml = '<div class="journal-view-toggle jvt-7">'
     + '<button class="jvt-btn'+(journalView==='today'?' active':'')+'" onclick="setJournalView(\'today\')">日</button>'
     + '<button class="jvt-btn'+(journalView==='week'?' active':'')+'" onclick="setJournalView(\'week\')">周</button>'
     + '<button class="jvt-btn'+(journalView==='month'?' active':'')+'" onclick="setJournalView(\'month\')">月</button>'
     + '<button class="jvt-btn'+(journalView==='year'?' active':'')+'" onclick="setJournalView(\'year\')">年</button>'
+    + '<button class="jvt-btn'+(journalView==='recap'?' active':'')+'" onclick="setJournalView(\'recap\')">回顾</button>'
     + '<button class="jvt-btn'+(journalView==='habit'?' active':'')+'" onclick="setJournalView(\'habit\')">习惯</button>'
     + '<button class="jvt-btn'+(journalView==='report'?' active':'')+'" onclick="setJournalView(\'report\')">报告</button>'
     + '</div>';
 
   var navHtml, contentHtml;
 
-  if (journalView === 'today') {
+  if (journalView === 'recap') {
+    navHtml = '';
+    contentHtml = renderJournalRecap();
+  } else if (journalView === 'today') {
     var dv = dayViewDate();
     navHtml = '<div class="journal-nav dv-nav">'
       + '<input class="input-field dv-date-input" type="date" id="dayPick" value="' + dv + '" onchange="pickDayView(this.value)">'
@@ -4204,7 +4373,7 @@ function renderReview() {
     + '</div>'
     + viewToggleHtml
     + navHtml
-    + (journalView !== 'report' && journalView !== 'today' && journalView !== 'habit' ? '<div class="journal-filters">'+filtersHtml+'</div>' : '')
+    + (['report','today','habit','recap'].indexOf(journalView) < 0 ? '<div class="journal-filters">'+filtersHtml+'</div>' : '')
     + legendHtml
     + contentHtml
     + '</div>';
@@ -4212,21 +4381,26 @@ function renderReview() {
 
 function renderTodayDiary(todayStr) {
   var entry = (state.gratitude.entries || []).find(function(e) { return e.date === todayStr; });
+  var condition = ((state.gym && state.gym.conditionLogs) || []).find(function(c) { return c.date === todayStr; });
+  var conditionText = condition ? diaryReviewConditionText(condition) : '';
   var timeline = entry && entry.timeline ? entry.timeline.slice().sort(function(a, b) { return a.time.localeCompare(b.time); }) : [];
-  var hasContent = entry && (entry.mood || entry.body || entry.joys || entry.improve || timeline.length > 0);
+  var hasContent = !!((entry && (entry.mood || entry.body || entry.joys || entry.improve || timeline.length > 0)) || conditionText);
   var html = '<div class="section-title">📝 今日日记</div>';
   if (hasContent) {
     html += '<div class="card" style="padding:12px 14px;cursor:pointer;" onclick="openDiaryDetail(\'' + todayStr + '\')">';
-    if (entry.mood) {
+    if (entry && entry.mood) {
       html += '<div style="font-size:13px;color:var(--ink);margin-bottom:4px;">😊 ' + escHtml(entry.mood) + '</div>';
     }
-    if (entry.body) {
+    if (entry && entry.body) {
       html += '<div style="font-size:13px;color:var(--ink);margin-bottom:4px;">💪 ' + escHtml(entry.body) + '</div>';
     }
-    if (entry.joys) {
+    if (conditionText) {
+      html += '<div style="font-size:13px;color:var(--ink);margin-bottom:4px;">🫀 ' + escHtml(conditionText.length > 100 ? conditionText.slice(0, 100) + '…' : conditionText) + '</div>';
+    }
+    if (entry && entry.joys) {
       html += '<div style="font-size:13px;color:var(--ink);margin-bottom:6px;">✨ ' + escHtml(entry.joys.length > 80 ? entry.joys.slice(0, 80) + '…' : entry.joys) + '</div>';
     }
-    if (entry.improve) {
+    if (entry && entry.improve) {
       html += '<div style="font-size:13px;color:var(--muted);margin-bottom:6px;">🌱 ' + escHtml(entry.improve.length > 80 ? entry.improve.slice(0, 80) + '…' : entry.improve) + '</div>';
     }
     if (timeline.length > 0) {
@@ -4241,6 +4415,153 @@ function renderTodayDiary(todayStr) {
   return html;
 }
 
+var JOURNAL_RECAP_TYPES = [
+  { id:'all', label:'全部' },
+  { id:'diary', label:'日记' },
+  { id:'note', label:'随手记' },
+  { id:'journal', label:'手记' },
+  { id:'condition', label:'身体' }
+];
+function diaryReviewDayHasType(day, type) {
+  if (!day) return false;
+  var checkDiary = type === 'all' || type === 'diary';
+  var checkNote = type === 'all' || type === 'note';
+  var checkJournal = type === 'all' || type === 'journal';
+  var checkCondition = type === 'all' || type === 'condition';
+  return (checkDiary && day.diaries.some(function(e) { return !!diaryReviewDiaryText(e); }))
+    || (checkCondition && day.conditions.some(function(c) { return !!diaryReviewConditionText(c); }))
+    || (checkNote && day.notes.length > 0)
+    || (checkJournal && day.journals.some(function(e) { return !!(e.events || e.feelings || e.achievements); }));
+}
+function diaryReviewDaySearchText(day, type) {
+  var parts = [];
+  if (type === 'all' || type === 'diary') {
+    day.diaries.forEach(function(e) { parts.push(diaryReviewDiaryText(e)); });
+  }
+  if (type === 'all' || type === 'condition') {
+    day.conditions.forEach(function(c) { parts.push(diaryReviewConditionText(c)); });
+  }
+  if (type === 'all' || type === 'note') {
+    day.notes.forEach(function(n) { parts.push(n.content); });
+  }
+  if (type === 'all' || type === 'journal') {
+    day.journals.forEach(function(e) { parts.push(e.events || '', e.feelings || '', e.achievements || ''); });
+  }
+  return parts.join('\n').toLowerCase();
+}
+function renderJournalRecap() {
+  var filters = JOURNAL_RECAP_TYPES.map(function(t) {
+    return '<button class="jfilter-btn'+(journalRecapType===t.id?' active':'')+'" onclick="setJournalRecapType(\''+t.id+'\')">'+t.label+'</button>';
+  }).join('');
+  return '<div class="recap-tools">'
+    + '<input class="input-field" id="journalRecapSearch" type="search" placeholder="搜索日记、感受、随手记或身体反应…" value="'+escHtml(journalRecapQuery)+'" oninput="debounceJournalRecapSearch(this.value)">'
+    + '<div class="recap-type-filters">'+filters+'</div>'
+    + '</div>'
+    + '<div id="journalRecapResults">'+renderJournalRecapList()+'</div>';
+}
+function debounceJournalRecapSearch(value) {
+  journalRecapQuery = value;
+  journalRecapLimit = 30;
+  if (_journalRecapSearchTimer) clearTimeout(_journalRecapSearchTimer);
+  _journalRecapSearchTimer = setTimeout(function() {
+    var results = $('journalRecapResults');
+    if (results) results.innerHTML = renderJournalRecapList();
+  }, 300);
+}
+function setJournalRecapType(type) {
+  if (!JOURNAL_RECAP_TYPES.some(function(t) { return t.id === type; })) return;
+  journalRecapType = type;
+  journalRecapLimit = 30;
+  renderPage('review');
+}
+function showMoreJournalRecap() {
+  journalRecapLimit += 30;
+  renderPage('review');
+}
+function clearJournalRecapFilters() {
+  journalRecapQuery = '';
+  journalRecapType = 'all';
+  journalRecapLimit = 30;
+  if (_journalRecapSearchTimer) clearTimeout(_journalRecapSearchTimer);
+  renderPage('review');
+}
+function renderJournalRecapList() {
+  var index = buildDiaryReviewIndex();
+  var allDays = Object.keys(index).map(function(date) { return index[date]; })
+    .filter(function(day) { return diaryReviewDayHasType(day, 'all'); });
+  var query = journalRecapQuery.trim().toLowerCase();
+  var days = allDays.filter(function(day) {
+    if (!diaryReviewDayHasType(day, journalRecapType)) return false;
+    return !query || diaryReviewDaySearchText(day, journalRecapType).indexOf(query) !== -1;
+  }).sort(function(a, b) { return b.date.localeCompare(a.date); });
+  if (!days.length) {
+    if (!allDays.length) return '<div class="empty-state">还没有可回顾的内容，从今日日记或首页随手记开始吧</div>';
+    return '<div class="empty-state">没有匹配的记录<div style="margin-top:10px;"><button class="btn-sm" onclick="clearJournalRecapFilters()">清除关键词与筛选</button></div></div>';
+  }
+  var visible = days.slice(0, journalRecapLimit);
+  var html = '<div class="recap-count">共 '+days.length+' 天记录 · 显示 '+visible.length+' 天</div>';
+  html += visible.map(renderJournalRecapDay).join('');
+  if (visible.length < days.length) {
+    html += '<div style="text-align:center;margin:12px 0;"><button class="btn-sm" onclick="showMoreJournalRecap()">显示更多（还有 '+(days.length-visible.length)+' 天）</button></div>';
+  }
+  return html;
+}
+function recapTextLine(icon, label, text) {
+  if (!text) return '';
+  return '<div class="recap-line"><span class="recap-line-icon">'+icon+'</span><div><span class="recap-line-label">'+escHtml(label)+'</span>'+escHtml(text)+'</div></div>';
+}
+function renderJournalRecapDay(day) {
+  var showAll = journalRecapType === 'all';
+  var weekdays = ['星期日','星期一','星期二','星期三','星期四','星期五','星期六'];
+  var weekday = weekdays[new Date(day.date+'T12:00:00').getDay()];
+  var html = '<div class="recap-day-card">'
+    + '<div class="recap-day-header"><div><strong>'+escHtml(day.date)+'</strong><span>'+weekday+'</span></div>'
+    + '<button class="btn-sm" onclick="openJournalDay(\''+day.date+'\')">当天时间轴 →</button></div>';
+  if (showAll || journalRecapType === 'diary') {
+    day.diaries.forEach(function(e) {
+      if (!diaryReviewDiaryText(e)) return;
+      html += '<div class="recap-section"><div class="recap-section-head"><span>📝 每日日记</span><button class="btn-sm" onclick="openDiaryDetail(\''+day.date+'\')">编辑</button></div>'
+        + recapTextLine('😊', '心情：', e.mood)
+        + recapTextLine('💪', '身体：', e.body)
+        + recapTextLine('✨', '小确幸：', e.joys)
+        + recapTextLine('🌱', '做更好：', e.improve)
+        + recapTextLine('📔', '', e.content)
+        + '</div>';
+    });
+  }
+  if (showAll || journalRecapType === 'condition') {
+    day.conditions.forEach(function(c) {
+      var summary = diaryReviewConditionText(c);
+      if (!summary) return;
+      html += '<div class="recap-section"><div class="recap-section-head"><span>🫀 身体状态</span><button class="btn-sm" onclick="openDiaryDetail(\''+day.date+'\')">编辑</button></div>'
+        + recapTextLine('🫀', '', summary)
+        + '</div>';
+    });
+  }
+  if (showAll || journalRecapType === 'note') {
+    if (day.notes.length) {
+      html += '<div class="recap-section"><div class="recap-section-head"><span>💬 随手记</span></div>';
+      day.notes.forEach(function(n) {
+        html += '<div class="recap-note-row"><span class="recap-note-time">'+escHtml(n.time || '未记时间')+'</span><div class="recap-note-content">'+escHtml(n.content)+'</div>'
+          + (n.legacy ? '<span class="recap-legacy">旧版</span>' : '<button class="btn-sm" onclick="openEventEdit(\'timeline\',\''+n.id+'\')">✏️</button>')
+          + '</div>';
+      });
+      html += '</div>';
+    }
+  }
+  if (showAll || journalRecapType === 'journal') {
+    day.journals.forEach(function(e) {
+      if (!(e.events || e.feelings || e.achievements)) return;
+      html += '<div class="recap-section"><div class="recap-section-head"><span>📋 手记</span><button class="btn-sm" onclick="editReview(\''+e.id+'\')">编辑</button></div>'
+        + recapTextLine('📋', '事件：', e.events)
+        + recapTextLine('💭', '感受：', e.feelings)
+        + recapTextLine('🏆', '成就：', e.achievements)
+        + '</div>';
+    });
+  }
+  return html + '</div>';
+}
+
 function renderDiaryShell(mod) {
   return '<div class="page active">'
     + '<div class="module-title">'
@@ -4252,8 +4573,9 @@ function renderDiaryShell(mod) {
 }
 
 function renderJournalWeek(weekDates, todayStr) {
+  var reviewIndex = buildDiaryReviewIndex();
   var daysHtml = weekDates.map(function(ds, idx) {
-    var allActs = getDayActivities(ds);
+    var allActs = getJournalWeekActivities(ds, reviewIndex[ds]);
     var acts = allActs.filter(function(a) { return journalFilters[a.cat]; });
     var isToday = ds === todayStr;
     var weekdayLabels = ['周一','周二','周三','周四','周五','周六','周日'];
@@ -4273,7 +4595,7 @@ function renderJournalWeek(weekDates, todayStr) {
               + '<span class="ja-tag">'+a.tag+'</span>'
               + '</div>';
           }
-          return '<div class="journal-act cat-'+a.cat+'">'
+          return '<div class="journal-act cat-'+a.cat+(a.preview?' ja-preview':'')+'"'+(a.action?' onclick="'+a.action+'"':'')+'>'
             + '<span class="ja-icon">'+a.icon+'</span>'
             + '<span class="ja-text">'+escHtml(a.text)+'</span>'
             + '<span class="ja-tag">'+a.tag+'</span>'
@@ -5114,6 +5436,8 @@ function renderDiaryDetail() {
   var d = new Date(dateStr);
   var weekday = weekdayNames[d.getDay()];
   var isToday = dateStr === today();
+  var condition = ((state.gym && state.gym.conditionLogs) || []).find(function(c) { return c.date === dateStr; });
+  var selectedAreas = condition && Array.isArray(condition.painAreas) ? condition.painAreas : [];
 
   // Build timeline HTML
   var timelineHtml = '';
@@ -5148,7 +5472,36 @@ function renderDiaryDetail() {
     +   '</div>'
     +   '<div style="margin-bottom:14px;">'
     +     '<label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;color:var(--text);">💪 身体</label>'
-    +     '<input class="input-field" id="detailBody" placeholder="身体状态、精力如何..." style="width:100%;" value="'+escHtml(entry ? (entry.body||'') : '')+'">'
+    +     '<textarea class="input-field" id="detailBody" placeholder="记录身体状态、特别反应或恢复情况..." rows="3" style="width:100%;resize:vertical;line-height:1.8;min-height:90px;">'+escHtml(entry ? (entry.body||'') : '')+'</textarea>'
+    +   '</div>'
+    +   '<div style="margin-bottom:14px;padding:12px;border:1px solid var(--rule);border-radius:var(--radius-sm);background:var(--bg);">'
+    +     '<div style="font-size:13px;font-weight:600;margin-bottom:10px;">🫀 身体状态与感受</div>'
+    +     '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-bottom:10px;">'
+    +       '<label style="font-size:12px;color:var(--muted);">精力<select class="input-field" id="detailCondEnergy" style="width:100%;margin-top:4px;">'
+    +         '<option value=""'+(!condition||!condition.energy?' selected':'')+'>未记录</option>'
+    +         '<option value="high"'+(condition&&condition.energy==='high'?' selected':'')+'>⚡ 充沛</option>'
+    +         '<option value="normal"'+(condition&&condition.energy==='normal'?' selected':'')+'>🙂 正常</option>'
+    +         '<option value="low"'+(condition&&condition.energy==='low'?' selected':'')+'>😪 疲惫</option>'
+    +       '</select></label>'
+    +       '<label style="font-size:12px;color:var(--muted);">肌肉酸痛<select class="input-field" id="detailCondSoreness" style="width:100%;margin-top:4px;">'
+    +         '<option value=""'+(!condition||!condition.soreness?' selected':'')+'>未记录</option>'
+    +         '<option value="none"'+(condition&&condition.soreness==='none'?' selected':'')+'>无</option>'
+    +         '<option value="mild"'+(condition&&condition.soreness==='mild'?' selected':'')+'>轻微</option>'
+    +         '<option value="moderate"'+(condition&&condition.soreness==='moderate'?' selected':'')+'>中等</option>'
+    +         '<option value="severe"'+(condition&&condition.soreness==='severe'?' selected':'')+'>严重</option>'
+    +       '</select></label>'
+    +       '<label style="font-size:12px;color:var(--muted);">身体感受<select class="input-field" id="detailCondMood" style="width:100%;margin-top:4px;">'
+    +         '<option value=""'+(!condition||!condition.mood?' selected':'')+'>未记录</option>'
+    +         '<option value="good"'+(condition&&condition.mood==='good'?' selected':'')+'>😊 好</option>'
+    +         '<option value="ok"'+(condition&&condition.mood==='ok'?' selected':'')+'>😐 一般</option>'
+    +         '<option value="bad"'+(condition&&condition.mood==='bad'?' selected':'')+'>😣 差</option>'
+    +       '</select></label>'
+    +     '</div>'
+    +     '<div style="font-size:12px;color:var(--muted);margin-bottom:6px;">疼痛 / 不适部位</div>'
+    +     '<div id="diaryConditionAreas" style="display:flex;flex-wrap:wrap;gap:6px;">'
+    +       PAIN_AREAS.map(function(a) { return '<span class="tag-chip'+(selectedAreas.indexOf(a)!==-1?' active':'')+'" data-area="'+a+'" onclick="toggleDiaryConditionArea(\''+a+'\')">'+a+'</span>'; }).join('')
+    +     '</div>'
+    +     (condition&&condition.note ? '<div style="margin-top:10px;font-size:12px;color:var(--muted);">旧身体备注（只读保留）</div><div style="margin-top:4px;font-size:13px;line-height:1.7;white-space:pre-wrap;">'+escHtml(condition.note)+'</div>' : '')
     +   '</div>'
     +   '<div style="margin-bottom:14px;">'
     +     '<label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;color:var(--text);">✨ 小确幸</label>'
@@ -5181,7 +5534,13 @@ function getCurrentTime() {
   return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
 }
 
-function saveDiaryDetail() {
+function toggleDiaryConditionArea(tag) {
+  document.querySelectorAll('#diaryConditionAreas [data-area]').forEach(function(el) {
+    if (el.getAttribute('data-area') === tag) el.classList.toggle('active');
+  });
+}
+
+function saveDiaryDetail(silent) {
   var dateStr = diaryDetailDate;
   var moodInp = $('detailMood');
   var bodyInp = $('detailBody');
@@ -5192,14 +5551,14 @@ function saveDiaryDetail() {
   var joys = joysInp ? joysInp.value.trim() : '';
   var improve = improveInp ? improveInp.value.trim() : '';
   if (!state.gratitude.entries) state.gratitude.entries = [];
-  var existing = state.gratitude.entries.find(function(e) { return e.date === dateStr; });
-  if (existing) {
-    existing.mood = mood;
-    existing.body = body;
-    existing.joys = joys;
-    existing.improve = improve;
+  var entry = state.gratitude.entries.find(function(e) { return e.date === dateStr; });
+  if (entry) {
+    entry.mood = mood;
+    entry.body = body;
+    entry.joys = joys;
+    entry.improve = improve;
   } else {
-    state.gratitude.entries.push({
+    entry = {
       id: 'd'+Date.now(),
       date: dateStr,
       mood: mood,
@@ -5207,28 +5566,64 @@ function saveDiaryDetail() {
       joys: joys,
       improve: improve,
       timeline: []
-    });
+    };
+    state.gratitude.entries.push(entry);
   }
+
+  if (!state.gym) state.gym = {};
+  if (!state.gym.conditionLogs) state.gym.conditionLogs = [];
+  var conditionLogs = state.gym.conditionLogs;
+  var conditionIndex = conditionLogs.findIndex(function(c) { return c.date === dateStr; });
+  var condition = conditionIndex !== -1 ? conditionLogs[conditionIndex] : null;
+  var energyInp = $('detailCondEnergy');
+  var sorenessInp = $('detailCondSoreness');
+  var conditionMoodInp = $('detailCondMood');
+  var energy = energyInp ? energyInp.value : '';
+  var soreness = sorenessInp ? sorenessInp.value : '';
+  var conditionMood = conditionMoodInp ? conditionMoodInp.value : '';
+  var painAreas = [];
+  document.querySelectorAll('#diaryConditionAreas .tag-chip.active').forEach(function(el) {
+    painAreas.push(el.getAttribute('data-area'));
+  });
+  var hasCondition = !!(energy || soreness || conditionMood || painAreas.length);
+  if (hasCondition) {
+    if (condition) {
+      condition.energy = energy;
+      condition.soreness = soreness;
+      condition.mood = conditionMood;
+      condition.painAreas = painAreas;
+    } else {
+      conditionLogs.push({
+        id: 'c'+Date.now(), date: dateStr,
+        energy: energy, soreness: soreness, mood: conditionMood,
+        painAreas: painAreas, note: ''
+      });
+    }
+  } else if (condition) {
+    condition.energy = '';
+    condition.soreness = '';
+    condition.mood = '';
+    condition.painAreas = [];
+    if (!condition.note) conditionLogs.splice(conditionIndex, 1);
+  }
+
   saveData();
-  toast('日记已保存 📝');
+  if (!silent) toast('日记已保存 📝');
+  return entry;
 }
 
 function addTimelineItem() {
   var timeInp = $('tlTimeInput');
   var contentInp = $('tlContentInput');
   if (!contentInp || !contentInp.value.trim()) { toast('请输入内容'); return; }
-  var dateStr = diaryDetailDate;
-  if (!state.gratitude.entries) state.gratitude.entries = [];
-  var entry = state.gratitude.entries.find(function(e) { return e.date === dateStr; });
-  if (!entry) {
-    entry = { id: 'd'+Date.now(), date: dateStr, joys: '', improve: '', timeline: [] };
-    state.gratitude.entries.push(entry);
-  }
+  var time = timeInp ? timeInp.value : getCurrentTime();
+  var content = contentInp.value.trim();
+  var entry = saveDiaryDetail(true);
   if (!entry.timeline) entry.timeline = [];
   entry.timeline.push({
     id: 'tl'+Date.now(),
-    time: timeInp ? timeInp.value : getCurrentTime(),
-    content: contentInp.value.trim()
+    time: time,
+    content: content
   });
   contentInp.value = '';
   saveData();
@@ -5682,16 +6077,17 @@ function renderFinancePlan(mod, switcher) {
 // ═══════════════════════════════════════
 // 4. GYM (健身房)
 // ═══════════════════════════════════════
-let gymView = 'overview';  // overview | workout | schedule | body | condition | resource | assessment
+let gymView = 'overview';  // overview | workout | weekly | projects | activities | profile | body | resource | assessment
 let finView = 'overview'; // overview | jar | wish | declutter
 function renderGym() {
   const mod = state.modules.find(m => m.id === 'gym');
   switch (gymView) {
     case 'workout': return renderGymWorkout(mod);
     case 'weekly': return renderGymWeekly(mod);
+    case 'projects': return renderGymProjects(mod);
+    case 'activities': return renderGymActivities(mod);
     case 'profile': return renderGymProfile(mod);
     case 'body': return renderGymBody(mod);
-    case 'condition': return renderGymCondition(mod);
     case 'resource': return renderGymResource(mod);
     case 'assessment': return renderGymAssessment(mod);
     default: return renderGymOverview(mod);
@@ -5707,11 +6103,28 @@ function gymEpisodeNumber(value) {
   var n = parseInt(value, 10);
   return n > 0 ? n : 0;
 }
-function gymProjectEntries() {
+function gymProjectEntries(kind) {
   var tracker = (state.gym && state.gym.weeklyTracker) || {};
-  return Object.keys(tracker).filter(function(key) { return !!tracker[key]; }).map(function(key) {
+  return Object.keys(tracker).filter(function(key) {
+    var item = tracker[key];
+    if (!item) return false;
+    if (kind === 'course') return item.kind === 'course';
+    if (kind === 'activity') return item.kind !== 'course';
+    return true;
+  }).map(function(key) {
     return { key:key, item:tracker[key] };
   });
+}
+function gymProjectOptions(selectedKey) {
+  var html = '';
+  [['course','我的项目'],['activity','单次活动']].forEach(function(group) {
+    var options = gymProjectEntries(group[0]).map(function(e) {
+      return '<option value="'+escHtml(e.key)+'"'+(e.key===selectedKey?' selected':'')+'>'
+        +(e.item.icon||'📌')+' '+escHtml(e.item.name||e.key)+'</option>';
+    }).join('');
+    if (options) html += '<optgroup label="'+group[1]+'">'+options+'</optgroup>';
+  });
+  return html;
 }
 function getGymProject(key) {
   return key && state.gym && state.gym.weeklyTracker ? state.gym.weeklyTracker[key] : null;
@@ -5758,10 +6171,27 @@ function gymEpisodeHint(key) {
   var text = total > 0 ? '已完成 '+stats.completedEpisodes+'/'+total+' 集' : '已练 '+stats.completedEpisodes+' 个不同集数';
   return text+' · 可跳集或重复练习，进度按不同集数计算';
 }
+function gymProjectLastDate(key) {
+  var latest = '';
+  gymWorkoutsForProject(key).forEach(function(w) {
+    if ((w.date || '') > latest) latest = w.date;
+  });
+  return latest;
+}
 function goGymProjects() {
-  weeklyView = 'projects';
-  if (currentPage === 'gym') setGymView('weekly');
-  else { gymView = 'weekly'; navigate('gym'); }
+  if (currentPage === 'gym') setGymView('projects');
+  else { gymView = 'projects'; navigate('gym'); }
+}
+function goGymActivities() {
+  if (currentPage === 'gym') setGymView('activities');
+  else { gymView = 'activities'; navigate('gym'); }
+}
+function goGymWorkoutProject(key) {
+  wkFilterType = key;
+  wkFilterFrom = '';
+  wkFilterTo = '';
+  wkView = 'list';
+  setGymView('workout');
 }
 function createWorkoutRecord(options) {
   if (!state.gym.workouts) state.gym.workouts = [];
@@ -5858,27 +6288,78 @@ function migrateGymUnifiedTracking() {
   saveData();
 }
 
+function getGymWeekData() {
+  var start = getWeekStart(), end = getWeekEnd();
+  var records = (state.gym.workouts || []).filter(function(w) {
+    return w.date >= start && w.date <= end;
+  });
+  var days = {}, minutes = 0;
+  records.forEach(function(w) {
+    if (w.date) days[w.date] = true;
+    minutes += parseInt(w.duration, 10) || 0;
+  });
+  return { start:start, end:end, records:records, days:Object.keys(days).length, minutes:minutes };
+}
+function renderGymWeekProjectLines(records, entries, showRecordButton) {
+  var html = entries.map(function(e) {
+    var count = records.filter(function(w) { return w.projectId === e.key; }).length;
+    var target = parseInt(e.item.target, 10) || 0;
+    var pct = target > 0 ? Math.min(100, Math.round(count / target * 100)) : 0;
+    return '<div class="gym-project-line"><span>'+(e.item.icon||'📌')+'</span>'
+      + '<div style="flex:1;min-width:0;"><div style="font-size:13px;">'+escHtml(e.item.name||e.key)+'</div>'
+      + (target > 0 ? '<div class="progress-bar" style="margin:4px 0 0;"><div class="progress-fill" style="width:'+pct+'%;"></div></div>' : '')+'</div>'
+      + '<span style="font-size:12px;color:var(--muted);white-space:nowrap;">本周 '+count+(target>0?'/'+target:'')+' 次</span>'
+      + (showRecordButton ? '<button class="btn-sm" onclick="openAddWorkoutModal(\''+e.key+'\')">+ 记录</button>' : '')
+      + '</div>';
+  }).join('');
+  var unassignedCount = records.filter(function(w) { return !getGymProject(w.projectId); }).length;
+  if (unassignedCount) {
+    html += '<div class="gym-project-line"><span>💪</span><span style="flex:1;">未关联项目</span>'
+      + '<span style="font-size:12px;color:var(--muted);">'+unassignedCount+' 次</span></div>';
+  }
+  return html;
+}
+
 // ─── OVERVIEW (总览) ───
 function renderGymOverview(mod) {
   var workouts = state.gym.workouts || [];
   var bodyData = (state.gym.bodyData||[]).slice(-1)[0] || null;
-  var todayStr = today();
-  var todayCondition = (state.gym.conditionLogs||[]).find(function(l) { return l.date === todayStr; });
-  var weekStr = getWeekStart(), weekEnd = getWeekEnd();
-  var weekWorkouts = workouts.filter(function(w) { return w.date >= weekStr && w.date <= weekEnd; });
-  var weekMinutes = weekWorkouts.reduce(function(sum,w) { return sum+(parseInt(w.duration,10)||0); },0);
-  var weekDays = {};
-  weekWorkouts.forEach(function(w) { if (w.date) weekDays[w.date] = true; });
+  var week = getGymWeekData();
   var entries = gymProjectEntries();
-  var projectSummary = entries.map(function(e) {
-    var count = weekWorkouts.filter(function(w) { return w.projectId === e.key; }).length;
-    var target = parseInt(e.item.target,10) || 0;
-    var pct = target > 0 ? Math.min(100,Math.round(count/target*100)) : 0;
-    return '<div class="gym-project-line">'
-      + '<span>'+(e.item.icon||'📌')+'</span><span style="flex:1;min-width:0;">'+escHtml(e.item.name||e.key)+'</span>'
-      + (target > 0 ? '<div class="progress-bar" style="flex:1;margin:0;"><div class="progress-fill" style="width:'+pct+'%;"></div></div>' : '')
-      + '<span style="font-size:12px;color:var(--muted);white-space:nowrap;">本周 '+count+(target>0?'/'+target:'')+' 次</span></div>';
+  var courses = gymProjectEntries('course');
+  var activities = gymProjectEntries('activity');
+  var byRecent = function(a, b) {
+    return gymProjectLastDate(b.key).localeCompare(gymProjectLastDate(a.key));
+  };
+  var weekEntries = entries.slice().sort(byRecent);
+  var projectSummary = renderGymWeekProjectLines(week.records, weekEntries.slice(0, 4), false);
+  var courseSummary = courses.slice().sort(byRecent).slice(0, 3).map(function(e) {
+    var stats = gymCourseStats(e.key), total = gymEpisodeNumber(e.item.totalEpisodes);
+    var pct = total > 0 ? Math.min(100, Math.round(stats.completedEpisodes/total*100)) : 0;
+    var meta = total > 0
+      ? '课程 '+stats.completedEpisodes+'/'+total+' 集 · '+(stats.completedEpisodes >= total ? '已完成' : '下一集 '+nextGymEpisode(e.key))
+      : '已练 '+stats.completedEpisodes+' 个不同集数 · 实际 '+stats.totalSessions+' 次';
+    return '<div class="gym-project-line"><span>'+(e.item.icon||'📌')+'</span>'
+      + '<div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:600;">'+escHtml(e.item.name||e.key)+'</div>'
+      + '<div style="font-size:11px;color:var(--muted);">'+meta+'</div>'
+      + (total>0?'<div class="progress-bar" style="margin:4px 0 0;"><div class="progress-fill" style="width:'+pct+'%;"></div></div>':'')+'</div></div>';
   }).join('');
+  var activitySummary = activities.slice().sort(byRecent).slice(0, 3).map(function(e) {
+    var stats = gymCourseStats(e.key);
+    var weekCount = week.records.filter(function(w) { return w.projectId === e.key; }).length;
+    var latest = gymProjectLastDate(e.key);
+    return '<div class="gym-project-line"><span>'+(e.item.icon||'📌')+'</span>'
+      + '<div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:600;">'+escHtml(e.item.name||e.key)+'</div>'
+      + '<div style="font-size:11px;color:var(--muted);">本周 '+weekCount+' 次 · 累计 '+stats.totalSessions+' 次'
+      + (latest?' · 最近 '+latest.substring(5):'')+'</div></div></div>';
+  }).join('');
+  var activityWeekRecords = week.records.filter(function(w) {
+    var project = getGymProject(w.projectId);
+    return project && project.kind !== 'course';
+  });
+  var activityWeekMinutes = activityWeekRecords.reduce(function(sum, w) {
+    return sum + (parseInt(w.duration, 10) || 0);
+  }, 0);
 
   return `
     <div class="page active">
@@ -5886,28 +6367,31 @@ function renderGymOverview(mod) {
         ${mod.icon} <span class="editable-title" ondblclick="editModule('gym')">${mod.name}</span>
         <button class="edit-icon-btn" onclick="editModule('gym')" title="编辑">✏️</button>
       </div>
-      <div class="gym-quick-grid">
-        <div class="gym-quick-card" onclick="setGymView('weekly')">
-          <div class="gqc-icon">🏃</div><div class="gqc-info"><div class="gqc-num">${weekWorkouts.length}</div><div class="gqc-lbl">本周运动</div></div>
+      <div class="section-title" style="display:flex;align-items:center;justify-content:space-between;"><span>📈 本周概览</span><button class="btn-sm" onclick="setGymView('weekly')">本周详情 →</button></div>
+      <div class="card" style="margin-bottom:16px;">
+        <div style="font-size:11px;color:var(--muted);text-align:center;margin-bottom:8px;">${week.start.substring(5)} ~ ${week.end.substring(5)}</div>
+        <div class="gym-summary-grid">
+          <div class="gym-summary-item"><div class="gym-summary-value">${week.records.length}</div><div class="gym-summary-label">运动次数</div></div>
+          <div class="gym-summary-item"><div class="gym-summary-value">${week.days}</div><div class="gym-summary-label">运动天数</div></div>
+          <div class="gym-summary-item"><div class="gym-summary-value">${week.minutes}</div><div class="gym-summary-label">总分钟</div></div>
         </div>
-        <div class="gym-quick-card" onclick="goGymProjects()">
-          <div class="gqc-icon">🗂️</div><div class="gqc-info"><div class="gqc-num">${entries.length}</div><div class="gqc-lbl">运动项目</div></div>
-        </div>
-        <div class="gym-quick-card" onclick="setGymView('body')">
-          <div class="gqc-icon">📊</div><div class="gqc-info"><div class="gqc-num">${bodyData&&bodyData.weight?bodyData.weight:'-'}</div><div class="gqc-lbl">体重kg</div></div>
-        </div>
-        <div class="gym-quick-card" onclick="setGymView('condition')">
-          <div class="gqc-icon">🫀</div><div class="gqc-info"><div class="gqc-num">${todayCondition?moodEmoji(todayCondition.mood):'—'}</div><div class="gqc-lbl">今日状态</div></div>
-        </div>
+        <div style="font-size:12px;font-weight:600;color:var(--muted);margin:4px 0;">本周项目</div>
+        ${projectSummary || '<div class="empty-state">本周还没有项目记录</div>'}
+        ${weekEntries.length > 4 ? '<div style="font-size:11px;color:var(--muted);text-align:center;margin-top:8px;">另有 '+(weekEntries.length-4)+' 个项目，请进入本周详情查看</div>' : ''}
       </div>
-      <div class="section-title">📈 本周概况</div>
-      <div class="gym-stat-row" style="grid-template-columns:repeat(2,1fr);">
-        <div class="stat-card"><div class="stat-val">${weekMinutes}</div><div class="stat-lbl">总分钟</div></div>
-        <div class="stat-card"><div class="stat-val">${Object.keys(weekDays).length}</div><div class="stat-lbl">运动天数</div></div>
+      <div class="section-title" style="display:flex;align-items:center;justify-content:space-between;"><span>🗂️ 我的项目</span><button class="btn-sm" onclick="goGymProjects()">进入我的项目 →</button></div>
+      <div class="card" style="margin-bottom:16px;">
+        ${courseSummary || '<div class="empty-state">还没有课程项目</div><div style="text-align:center;"><button class="btn-sm primary" onclick="openAddWeeklyItemModal(\'course\')">+ 新建课程</button></div>'}
+        ${courses.length > 3 ? '<div style="font-size:11px;color:var(--muted);text-align:center;margin-top:8px;">共 '+courses.length+' 个课程，进入后查看全部</div>' : ''}
       </div>
-      ${projectSummary ? '<div class="section-title">📋 本周项目</div><div class="card">'+projectSummary+'<div style="margin-top:10px;"><button class="btn-sm" onclick="setGymView(\'weekly\')">查看本周概览 →</button></div></div>' : ''}
+      <div class="section-title" style="display:flex;align-items:center;justify-content:space-between;"><span>🏃 单次活动</span><button class="btn-sm" onclick="goGymActivities()">总结与分析 →</button></div>
+      <div class="card" style="margin-bottom:16px;">
+        <div style="font-size:12px;color:var(--muted);margin-bottom:6px;">本周 ${activityWeekRecords.length} 次 · ${activityWeekMinutes} 分钟 · 共 ${activities.length} 项活动</div>
+        ${activitySummary || '<div class="empty-state">还没有单次活动</div><div style="text-align:center;"><button class="btn-sm primary" onclick="openAddWeeklyItemModal(\'activity\')">+ 新建单次活动</button></div>'}
+        ${activities.length > 3 ? '<div style="font-size:11px;color:var(--muted);text-align:center;margin-top:8px;">共 '+activities.length+' 项活动，进入后查看全部</div>' : ''}
+      </div>
       ${workouts.length > 0 ? `
-      <div class="section-title">🗓️ 最近运动</div>
+      <div class="section-title" style="display:flex;align-items:center;justify-content:space-between;"><span>🗓️ 最近运动</span><button class="btn-sm" onclick="setGymView('workout')">查看全部 →</button></div>
       ${workouts.slice(-5).reverse().map(function(w) {
         var preview = w.note ? (w.note.length > 20 ? w.note.substring(0,20) + '...' : w.note) : '';
         return `
@@ -5921,18 +6405,17 @@ function renderGymOverview(mod) {
             <span style="font-size:11px;color:var(--muted);flex-shrink:0;">${(w.date||'').substring(5)}</span>
           </div>
         </div>`;
-      }).join('')}
-      <div style="text-align:center;margin-bottom:14px;"><button class="btn-sm" onclick="setGymView('workout')">查看全部 →</button></div>` : ''}
-      <div class="section-title">🗂️ 进入子页面</div>
-      <div class="gym-sub-grid">
-        <button class="gym-sub-btn" onclick="setGymView('workout')">🏃 全部运动记录</button>
-        <button class="gym-sub-btn" onclick="setGymView('weekly')">📊 本周与项目</button>
-        <button class="gym-sub-btn" onclick="setGymView('profile')">🩺 身体档案</button>
-        <button class="gym-sub-btn" onclick="setGymView('body')">📊 身体数据</button>
-        <button class="gym-sub-btn" onclick="setGymView('condition')">🫀 身体状况</button>
-        <button class="gym-sub-btn" onclick="setGymView('resource')">💡 运动资源</button>
-        <button class="gym-sub-btn" onclick="setGymView('assessment')">🩺 体态评估</button>
-      </div>
+      }).join('')}` : ''}
+      <div class="section-title">⚙️ 更多功能</div>
+      <details class="card" style="margin-bottom:14px;">
+        <summary style="cursor:pointer;font-size:13px;display:flex;justify-content:space-between;align-items:center;"><span>身体、资源与评估</span><span style="font-size:11px;color:var(--muted);">${bodyData&&bodyData.weight?'最新体重 '+bodyData.weight+' kg':''}</span></summary>
+        <div class="gym-sub-grid" style="margin:12px 0 0;">
+          <button class="gym-sub-btn" onclick="setGymView('profile')">🩺 身体档案</button>
+          <button class="gym-sub-btn" onclick="setGymView('body')">📊 身体数据</button>
+          <button class="gym-sub-btn" onclick="setGymView('resource')">💡 运动资源</button>
+          <button class="gym-sub-btn" onclick="setGymView('assessment')">🩺 体态评估</button>
+        </div>
+      </details>
     </div>`;
 }
 function quickAddWorkout() {
@@ -5983,7 +6466,6 @@ function renderGymWorkout(mod) {
 }
 function renderWorkoutList(mod) {
   var allWorkouts = state.gym.workouts || [];
-  var entries = gymProjectEntries();
   var filtered = allWorkouts.slice().reverse();
   if (wkFilterType === 'unassigned') filtered = filtered.filter(function(w) { return !getGymProject(w.projectId); });
   else if (wkFilterType !== 'all') filtered = filtered.filter(function(w) { return w.projectId === wkFilterType; });
@@ -6002,9 +6484,7 @@ function renderWorkoutList(mod) {
       + '</span><span style="font-size:11px;color:var(--muted);flex-shrink:0;">'+escHtml((w.date||'').substring(5))+'</span>'
       + '</div></div>';
   }).join('');
-  var filterOptions = entries.map(function(e) {
-    return '<option value="'+escHtml(e.key)+'"'+(wkFilterType===e.key?' selected':'')+'>'+(e.item.icon||'📌')+' '+escHtml(e.item.name||e.key)+'</option>';
-  }).join('');
+  var filterOptions = gymProjectOptions(wkFilterType);
   return '<div class="page active">'
     + '<div class="detail-header"><button class="btn-sm" onclick="setGymView(\'overview\')">← 返回</button>'
     + '<span style="flex:1;text-align:center;font-weight:600;">🏃 全部运动记录</span>'
@@ -6026,9 +6506,7 @@ function renderWorkoutDetail(mod) {
   var w = (state.gym.workouts||[]).find(function(x) { return x.id === wkDetailId; });
   if (!w) { closeWorkoutDetail(); return ''; }
   var project = getGymProject(w.projectId);
-  var projectOpts = '<option value="">未关联项目</option>'+gymProjectEntries().map(function(e) {
-    return '<option value="'+escHtml(e.key)+'"'+(project&&w.projectId===e.key?' selected':'')+'>'+(e.item.icon||'📌')+' '+escHtml(e.item.name||e.key)+'</option>';
-  }).join('');
+  var projectOpts = '<option value="">未关联项目</option>'+gymProjectOptions(project && w.projectId);
   var isCourse = project && project.kind === 'course';
   return '<div class="page active">'
     + '<div class="detail-header"><button class="btn-sm" onclick="closeWorkoutDetail()">← 返回</button>'
@@ -6087,22 +6565,29 @@ function workoutIcon(type) {
   var m = {'跑步':'🏃','瑜伽':'🧘','力量训练':'🏋️','游泳':'🏊','骑行':'🚴','舞蹈':'💃','球类':'⚽','其他':'💪'};
   return m[type] || '💪';
 }
-function openAddWorkoutModal(projectId, episode) {
+function openAddWorkoutModal(projectId, episode, defaultKind) {
   var entries = gymProjectEntries();
   if (!entries.length) {
-    goGymProjects();
-    setTimeout(openAddWeeklyItemModal,50);
+    if (defaultKind === 'activity') goGymActivities();
+    else goGymProjects();
+    setTimeout(function() { openAddWeeklyItemModal(defaultKind); },50);
+    return;
+  }
+  var allowedEntries = defaultKind ? gymProjectEntries(defaultKind) : entries;
+  if (!allowedEntries.length) {
+    if (defaultKind === 'activity') goGymActivities();
+    else goGymProjects();
+    setTimeout(function() { openAddWeeklyItemModal(defaultKind); },50);
     return;
   }
   var selected = getGymProject(projectId) ? projectId : '';
   if (!selected) {
     var preferred = (state.appPrefs||{}).lastWorkoutProject;
-    selected = getGymProject(preferred) ? preferred : entries[0].key;
+    if (allowedEntries.some(function(e) { return e.key === preferred; })) selected = preferred;
   }
+  if (!selected) selected = allowedEntries[0].key;
   var project = getGymProject(selected);
-  var options = entries.map(function(e) {
-    return '<option value="'+escHtml(e.key)+'"'+(e.key===selected?' selected':'')+'>'+(e.item.icon||'📌')+' '+escHtml(e.item.name||e.key)+'</option>';
-  }).join('');
+  var options = gymProjectOptions(selected);
   var isCourse = project.kind === 'course';
   var m = document.createElement('div');
   m.className = 'modal-overlay show'; m.id = 'addWorkoutModal';
@@ -6256,35 +6741,31 @@ function getWeekStart() {
   d.setDate(d.getDate() + diff);
   return fmtDate(d);
 }
-let weeklyView = 'summary';
-function setWeeklyView(view) { weeklyView = view; renderPage('gym'); }
 function renderGymWeekly(mod) {
   return '<div class="page active">'
     + '<div class="detail-header"><button class="btn-sm" onclick="setGymView(\'overview\')">← 返回</button>'
-    + '<span style="flex:1;text-align:center;font-weight:600;">📊 本周与项目</span>'
+    + '<span style="flex:1;text-align:center;font-weight:600;">📊 本周概览</span>'
     + '<button class="btn-sm primary" onclick="openAddWorkoutModal()">+ 记录</button></div>'
-    + '<div class="gym-segmented"><button class="'+(weeklyView==='summary'?'active':'')+'" onclick="setWeeklyView(\'summary\')">本周概览</button>'
-    + '<button class="'+(weeklyView==='projects'?'active':'')+'" onclick="setWeeklyView(\'projects\')">我的项目</button></div>'
-    + (weeklyView==='projects'?renderGymProjectManager():renderGymWeekSummary())+'</div>';
+    + renderGymWeekSummary()+'</div>';
+}
+function renderGymProjects(mod) {
+  return '<div class="page active">'
+    + '<div class="detail-header"><button class="btn-sm" onclick="setGymView(\'overview\')">← 返回</button>'
+    + '<span style="flex:1;text-align:center;font-weight:600;">🗂️ 我的项目</span>'
+    + '<button class="btn-sm primary" onclick="openAddWorkoutModal(\'\',0,\'course\')">+ 记录</button></div>'
+    + renderGymProjectManager()+'</div>';
+}
+function renderGymActivities(mod) {
+  return '<div class="page active">'
+    + '<div class="detail-header"><button class="btn-sm" onclick="setGymView(\'overview\')">← 返回</button>'
+    + '<span style="flex:1;text-align:center;font-weight:600;">🏃 单次活动</span>'
+    + '<button class="btn-sm primary" onclick="openAddWorkoutModal(\'\',0,\'activity\')">+ 记录</button></div>'
+    + renderGymActivityManager()+'</div>';
 }
 function renderGymWeekSummary() {
-  var weekStart = getWeekStart(), weekEnd = getWeekEnd();
-  var records = (state.gym.workouts||[]).filter(function(w) { return w.date >= weekStart && w.date <= weekEnd; });
-  var days = {}, minutes = 0;
-  records.forEach(function(w) { if (w.date) days[w.date] = true; minutes += parseInt(w.duration,10)||0; });
-  var projectLines = gymProjectEntries().map(function(e) {
-    var count = records.filter(function(w) { return w.projectId === e.key; }).length;
-    var target = parseInt(e.item.target,10)||0;
-    var pct = target>0?Math.min(100,Math.round(count/target*100)):0;
-    return '<div class="gym-project-line"><span>'+(e.item.icon||'📌')+'</span>'
-      + '<div style="flex:1;min-width:0;"><div style="font-size:13px;">'+escHtml(e.item.name||e.key)+'</div>'
-      + (target>0?'<div class="progress-bar" style="margin:4px 0 0;"><div class="progress-fill" style="width:'+pct+'%;"></div></div>':'')+'</div>'
-      + '<span style="font-size:12px;color:var(--muted);white-space:nowrap;">'+count+(target>0?'/'+target:'')+' 次</span>'
-      + '<button class="btn-sm" onclick="openAddWorkoutModal(\''+e.key+'\')">+ 记录</button></div>';
-  }).join('');
-  var unassignedCount = records.filter(function(w) { return !getGymProject(w.projectId); }).length;
-  if (unassignedCount) projectLines += '<div class="gym-project-line"><span>💪</span><span style="flex:1;">未关联项目</span><span style="font-size:12px;color:var(--muted);">'+unassignedCount+' 次</span></div>';
-  var sorted = records.slice().sort(function(a,b) {
+  var week = getGymWeekData();
+  var projectLines = renderGymWeekProjectLines(week.records, gymProjectEntries(), true);
+  var sorted = week.records.slice().sort(function(a,b) {
     return (b.date||'').localeCompare(a.date||'') || (b.time||'').localeCompare(a.time||'');
   });
   var dailyHtml = '', lastDate = '';
@@ -6300,63 +6781,166 @@ function renderGymWeekSummary() {
       + (w.note?'<div style="font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+escHtml(w.note)+'</div>':'')
       + '</div><span style="font-size:11px;color:var(--muted);white-space:nowrap;">'+(w.duration>0?w.duration+'分钟':'未记时长')+'</span></div>';
   });
-  return '<div style="font-size:12px;color:var(--muted);background:var(--bg2);padding:8px 12px;border-radius:8px;margin-bottom:12px;text-align:center;">本周：'+weekStart.substring(5)+' ~ '+weekEnd.substring(5)+'（周一起算）</div>'
-    + '<div class="gym-summary-grid"><div class="gym-summary-item"><div class="gym-summary-value">'+records.length+'</div><div class="gym-summary-label">运动次数</div></div>'
-    + '<div class="gym-summary-item"><div class="gym-summary-value">'+Object.keys(days).length+'</div><div class="gym-summary-label">运动天数</div></div>'
-    + '<div class="gym-summary-item"><div class="gym-summary-value">'+minutes+'</div><div class="gym-summary-label">总分钟</div></div></div>'
-    + '<div class="section-title">🗂️ 各项目本周次数</div><div class="card">'
+  return '<div style="font-size:12px;color:var(--muted);background:var(--bg2);padding:8px 12px;border-radius:8px;margin-bottom:12px;text-align:center;">本周：'+week.start.substring(5)+' ~ '+week.end.substring(5)+'（周一起算）</div>'
+    + '<div class="gym-summary-grid"><div class="gym-summary-item"><div class="gym-summary-value">'+week.records.length+'</div><div class="gym-summary-label">运动次数</div></div>'
+    + '<div class="gym-summary-item"><div class="gym-summary-value">'+week.days+'</div><div class="gym-summary-label">运动天数</div></div>'
+    + '<div class="gym-summary-item"><div class="gym-summary-value">'+week.minutes+'</div><div class="gym-summary-label">总分钟</div></div></div>'
+    + '<div class="section-title">🗂️ 本周项目</div><div class="card">'
     + (projectLines||'<div class="empty-state">还没有运动项目</div>')+'</div>'
     + '<div class="section-title">🗓️ 每天练了什么</div><div class="card">'
     + (dailyHtml||'<div class="empty-state">本周还没有运动记录</div>')+'</div>';
 }
 function renderGymProjectManager() {
-  var entries = gymProjectEntries();
+  var entries = gymProjectEntries('course');
   var cards = entries.map(function(e) {
     var key = e.key, t = e.item, stats = gymCourseStats(key);
-    var content = '';
-    if (t.kind === 'course') {
-      var total = gymEpisodeNumber(t.totalEpisodes);
-      var pct = total>0?Math.min(100,Math.round(stats.completedEpisodes/total*100)):0;
-      content = '<div style="font-size:12px;color:var(--muted);margin-top:6px;">课程进度 '+stats.completedEpisodes+(total>0?'/'+total:'')+' 集 · 实际练习 '+stats.totalSessions+' 次</div>'
-        + (total>0?'<div class="progress-bar" style="margin:6px 0;"><div class="progress-fill" style="width:'+pct+'%;"></div></div>':'')
-        + (stats.unspecified?'<div style="font-size:11px;color:var(--danger);margin-top:6px;">'+stats.unspecified+' 条记录未指定集数，不计入完成集数；可在记录详情中补充。</div>':'');
-      var episodes = [];
-      if (total>0) for (var i=1;i<=total;i++) episodes.push(i);
-      else episodes = Object.keys(stats.episodeCounts).map(Number).sort(function(a,b){return a-b;});
-      if (episodes.length) {
-        content += '<div class="gym-episode-grid">'+episodes.map(function(ep) {
-          var count = stats.episodeCounts[ep]||0;
-          return '<button class="gym-episode'+(count?' done':'')+'" title="第'+ep+'集 · 已练'+count+'次；点击再记录一次" onclick="openAddWorkoutModal(\''+key+'\','+ep+')">'+ep+(count>1?'×'+count:'')+'</button>';
-        }).join('')+'</div><div style="font-size:11px;color:var(--muted);margin-top:6px;">点击集数可跳集或重复练习；重复练习不重复增加完成集数。</div>';
-      }
-    } else {
-      content = '<div style="font-size:12px;color:var(--muted);margin-top:6px;">单项活动 · 累计 '+stats.totalSessions+' 次 · '+stats.days+' 天 · '+stats.minutes+' 分钟</div>';
+    var total = gymEpisodeNumber(t.totalEpisodes);
+    var pct = total>0?Math.min(100,Math.round(stats.completedEpisodes/total*100)):0;
+    var content = '<div style="font-size:12px;color:var(--muted);margin-top:6px;">课程进度 '+stats.completedEpisodes+(total>0?'/'+total:'')+' 集 · 实际练习 '+stats.totalSessions+' 次</div>'
+      + (total>0?'<div class="progress-bar" style="margin:6px 0;"><div class="progress-fill" style="width:'+pct+'%;"></div></div>':'')
+      + (stats.unspecified?'<div style="font-size:11px;color:var(--danger);margin-top:6px;">'+stats.unspecified+' 条记录未指定集数，不计入完成集数；可在记录详情中补充。</div>':'');
+    var episodes = [];
+    if (total>0) for (var i=1;i<=total;i++) episodes.push(i);
+    else episodes = Object.keys(stats.episodeCounts).map(Number).sort(function(a,b){return a-b;});
+    if (episodes.length) {
+      content += '<div class="gym-episode-grid">'+episodes.map(function(ep) {
+        var count = stats.episodeCounts[ep]||0;
+        return '<button class="gym-episode'+(count?' done':'')+'" title="第'+ep+'集 · 已练'+count+'次；点击再记录一次" onclick="openAddWorkoutModal(\''+key+'\','+ep+')">'+ep+(count>1?'×'+count:'')+'</button>';
+      }).join('')+'</div><div style="font-size:11px;color:var(--muted);margin-top:6px;">点击集数可跳集或重复练习；重复练习不重复增加完成集数。</div>';
     }
     return '<div class="card" style="margin-bottom:12px;"><div style="display:flex;align-items:center;gap:8px;">'
       + '<span style="font-size:22px;">'+(t.icon||'📌')+'</span><div style="flex:1;min-width:0;">'
-      + '<div style="font-weight:600;">'+escHtml(t.name||key)+' <span style="font-size:10px;color:var(--muted);font-weight:400;">'+(t.kind==='course'?'多集课程':'单项活动')+'</span></div>'
+      + '<div style="font-weight:600;">'+escHtml(t.name||key)+' <span style="font-size:10px;color:var(--muted);font-weight:400;">多集课程</span></div>'
       + (t.desc?'<div style="font-size:11px;color:var(--muted);">'+escHtml(t.desc)+'</div>':'')+'</div>'
       + '<button class="btn-sm" onclick="openEditWeeklyItemModal(\''+key+'\')">✏️</button></div>'+content
-      + '<div style="margin-top:10px;"><button class="btn-sm primary" onclick="openAddWorkoutModal(\''+key+'\')">+ 记录这个项目</button></div></div>';
+      + '<div style="margin-top:10px;display:flex;gap:6px;"><button class="btn-sm primary" onclick="openAddWorkoutModal(\''+key+'\')">+ 记录这个项目</button>'
+      + '<button class="btn-sm" onclick="goGymWorkoutProject(\''+key+'\')">全部记录</button></div></div>';
   }).join('');
-  return (cards||'<div class="empty-state">还没有运动项目</div>')
-    + '<div style="text-align:center;padding:8px 0 16px;"><button class="btn-sm primary" onclick="openAddWeeklyItemModal()">+ 新建运动项目</button></div>';
+  return (cards||'<div class="empty-state">还没有课程项目</div>')
+    + '<div style="text-align:center;padding:8px 0 16px;"><button class="btn-sm primary" onclick="openAddWeeklyItemModal(\'course\')">+ 新建课程</button></div>';
+}
+
+let activityPeriod = 'week';
+function setActivityPeriod(period) {
+  if (['week','month','all'].indexOf(period) < 0) period = 'week';
+  activityPeriod = period;
+  renderPage('gym');
+}
+function filterGymActivityPeriod(records) {
+  if (activityPeriod === 'all') return records.slice();
+  if (activityPeriod === 'month') {
+    var month = today().substring(0, 7);
+    return records.filter(function(w) { return (w.date || '').substring(0, 7) === month; });
+  }
+  var week = getGymWeekData();
+  return records.filter(function(w) { return w.date >= week.start && w.date <= week.end; });
+}
+function summarizeGymActivities(records) {
+  var days = {}, minutes = 0;
+  records.forEach(function(w) {
+    if (w.date) days[w.date] = true;
+    minutes += parseInt(w.duration, 10) || 0;
+  });
+  return {
+    count:records.length,
+    days:Object.keys(days).length,
+    minutes:minutes,
+    average:records.length ? Math.round(minutes/records.length) : 0
+  };
+}
+function renderGymActivityTrend(records) {
+  if (!records.length) return '';
+  var weeks = [];
+  for (var i=3;i>=0;i--) {
+    var startDate = new Date(getWeekStart()+'T12:00:00');
+    startDate.setDate(startDate.getDate()-7*i);
+    var endDate = new Date(startDate);
+    endDate.setDate(endDate.getDate()+6);
+    var start = fmtDate(startDate), end = fmtDate(endDate);
+    var stats = summarizeGymActivities(records.filter(function(w) { return w.date >= start && w.date <= end; }));
+    weeks.push({ start:start, stats:stats, current:i===0 });
+  }
+  var max = Math.max.apply(null, [1].concat(weeks.map(function(w) { return w.stats.count; })));
+  var rows = weeks.map(function(w) {
+    var pct = Math.round(w.stats.count/max*100);
+    return '<div style="display:flex;align-items:center;gap:8px;padding:7px 0;">'
+      + '<span style="flex:0 0 62px;font-size:11px;color:var(--muted);">'+(w.current?'本周':w.start.substring(5)+'起')+'</span>'
+      + '<div class="progress-bar" style="flex:1;margin:0;"><div class="progress-fill" style="width:'+pct+'%;"></div></div>'
+      + '<span style="flex:0 0 88px;text-align:right;font-size:11px;color:var(--muted);">'+w.stats.count+' 次 · '+w.stats.minutes+' 分钟</span></div>';
+  }).join('');
+  return '<div class="section-title">📈 近四周活动趋势</div><div class="card">'+rows+'</div>';
+}
+function renderGymActivityManager() {
+  var entries = gymProjectEntries('activity');
+  if (!entries.length) {
+    return '<div class="empty-state">还没有单次活动</div>'
+      + '<div style="text-align:center;padding:8px 0 16px;"><button class="btn-sm primary" onclick="openAddWeeklyItemModal(\'activity\')">+ 新建单次活动</button></div>';
+  }
+  var allRecords = (state.gym.workouts || []).filter(function(w) {
+    var project = getGymProject(w.projectId);
+    return project && project.kind !== 'course';
+  });
+  var periodStats = summarizeGymActivities(filterGymActivityPeriod(allRecords));
+  var periodLabel = activityPeriod === 'month' ? '本月' : (activityPeriod === 'all' ? '累计' : '本周');
+  var periodTabs = '<div class="gym-segmented">'
+    + '<button class="'+(activityPeriod==='week'?'active':'')+'" onclick="setActivityPeriod(\'week\')">本周</button>'
+    + '<button class="'+(activityPeriod==='month'?'active':'')+'" onclick="setActivityPeriod(\'month\')">本月</button>'
+    + '<button class="'+(activityPeriod==='all'?'active':'')+'" onclick="setActivityPeriod(\'all\')">累计</button></div>';
+  var summaryHtml = '<div class="gym-summary-grid gym-activity-stats">'
+    + '<div class="gym-summary-item"><div class="gym-summary-value">'+periodStats.count+'</div><div class="gym-summary-label">'+periodLabel+'次数</div></div>'
+    + '<div class="gym-summary-item"><div class="gym-summary-value">'+periodStats.days+'</div><div class="gym-summary-label">活动天数</div></div>'
+    + '<div class="gym-summary-item"><div class="gym-summary-value">'+periodStats.minutes+'</div><div class="gym-summary-label">总分钟</div></div>'
+    + '<div class="gym-summary-item"><div class="gym-summary-value">'+periodStats.average+'</div><div class="gym-summary-label">平均每次分钟</div></div></div>';
+  var week = getGymWeekData();
+  var cards = entries.map(function(e) {
+    var key = e.key, t = e.item;
+    var projectRecords = gymWorkoutsForProject(key);
+    var stats = summarizeGymActivities(filterGymActivityPeriod(projectRecords));
+    var weekCount = week.records.filter(function(w) { return w.projectId === key; }).length;
+    var target = parseInt(t.target, 10) || 0;
+    var targetPct = target > 0 ? Math.min(100, Math.round(weekCount/target*100)) : 0;
+    var sorted = projectRecords.slice().sort(function(a, b) {
+      return (b.date||'').localeCompare(a.date||'') || (b.time||'').localeCompare(a.time||'');
+    });
+    var recentHtml = sorted.slice(0, 3).map(function(w) {
+      return '<div class="gym-workout-line" onclick="openWorkoutDetail(\''+w.id+'\')">'
+        + '<span style="font-size:11px;color:var(--muted);flex:0 0 42px;">'+escHtml((w.date||'').substring(5))+'</span>'
+        + '<div style="flex:1;min-width:0;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+escHtml(w.note||'本次活动')+'</div>'
+        + '<span style="font-size:11px;color:var(--muted);white-space:nowrap;">'+(w.duration>0?w.duration+'分钟':'未记时长')+'</span></div>';
+    }).join('');
+    return '<div class="card" style="margin-bottom:12px;"><div style="display:flex;align-items:center;gap:8px;">'
+      + '<span style="font-size:22px;">'+(t.icon||'📌')+'</span><div style="flex:1;min-width:0;">'
+      + '<div style="font-weight:600;">'+escHtml(t.name||key)+' <span style="font-size:10px;color:var(--muted);font-weight:400;">单次活动</span></div>'
+      + (t.desc?'<div style="font-size:11px;color:var(--muted);">'+escHtml(t.desc)+'</div>':'')+'</div>'
+      + '<button class="btn-sm" onclick="openEditWeeklyItemModal(\''+key+'\')">✏️</button></div>'
+      + '<div style="font-size:12px;color:var(--muted);margin-top:6px;">'+periodLabel+' '+stats.count+' 次 · '+stats.days+' 天 · '+stats.minutes+' 分钟 · 平均 '+stats.average+' 分钟</div>'
+      + (target>0?'<div style="font-size:11px;color:var(--muted);margin-top:6px;">本周目标 '+weekCount+'/'+target+' 次</div><div class="progress-bar" style="margin:4px 0;"><div class="progress-fill" style="width:'+targetPct+'%;"></div></div>':'')
+      + '<div class="gym-day-title">最近记录</div>'
+      + (recentHtml||'<div style="font-size:12px;color:var(--muted);padding:6px 0;">暂无活动记录</div>')
+      + '<div style="margin-top:10px;display:flex;gap:6px;"><button class="btn-sm primary" onclick="openAddWorkoutModal(\''+key+'\')">+ 记录活动</button>'
+      + '<button class="btn-sm" onclick="goGymWorkoutProject(\''+key+'\')">全部记录</button></div></div>';
+  }).join('');
+  return periodTabs+summaryHtml
+    + '<div class="section-title">🗂️ 各活动总结</div>'+cards
+    + '<div style="text-align:center;padding:4px 0 12px;"><button class="btn-sm primary" onclick="openAddWeeklyItemModal(\'activity\')">+ 新建单次活动</button></div>'
+    + renderGymActivityTrend(allRecords);
 }
 
 function toggleWeeklyKindFields(prefix) {
   var kind = $(prefix+'Kind'), wrap = $(prefix+'TotalWrap');
   if (kind && wrap) wrap.style.display = kind.value === 'course' ? 'block' : 'none';
 }
-function openAddWeeklyItemModal() {
+function openAddWeeklyItemModal(defaultKind) {
+  defaultKind = defaultKind === 'activity' ? 'activity' : 'course';
   var m = document.createElement('div');
   m.className = 'modal-overlay show'; m.id = 'addWeeklyItemModal';
-  m.innerHTML = '<div class="modal-box" style="max-width:460px;"><h3>➕ 新建运动项目</h3>'
-    + '<label style="font-size:12px;color:var(--muted);display:block;margin:10px 0 4px;">项目名称</label>'
-    + '<input class="input-field" id="awiName" placeholder="如：瑜伽课、网球、游泳">'
+  m.innerHTML = '<div class="modal-box" style="max-width:460px;"><h3>➕ '+(defaultKind==='activity'?'新建单次活动':'新建课程项目')+'</h3>'
+    + '<label style="font-size:12px;color:var(--muted);display:block;margin:10px 0 4px;">名称</label>'
+    + '<input class="input-field" id="awiName" placeholder="'+(defaultKind==='activity'?'如：跑步、网球、拉伸':'如：瑜伽课、体态课')+'">'
     + '<div class="form-row" style="margin-top:8px;"><div style="flex:0 0 80px;"><label style="font-size:12px;color:var(--muted);">图标</label>'
     + '<input class="input-field" id="awiIcon" value="📌" style="text-align:center;"></div>'
     + '<div style="flex:1;"><label style="font-size:12px;color:var(--muted);">项目类型</label>'
-    + '<select class="input-field" id="awiKind" onchange="toggleWeeklyKindFields(\'awi\')"><option value="course">多集课程</option><option value="activity">单项活动</option></select></div></div>'
+    + '<select class="input-field" id="awiKind" onchange="toggleWeeklyKindFields(\'awi\')"><option value="course"'+(defaultKind==='course'?' selected':'')+'>多集课程</option><option value="activity"'+(defaultKind==='activity'?' selected':'')+'>单次活动</option></select></div></div>'
     + '<div class="form-row" style="margin-top:8px;"><div style="flex:1;"><label style="font-size:12px;color:var(--muted);">每周目标次数（0=不设目标）</label>'
     + '<input class="input-field" id="awiTarget" type="number" value="0" min="0"></div>'
     + '<div style="flex:1;" id="awiTotalWrap"><label style="font-size:12px;color:var(--muted);">课程总集数（0=未知）</label>'
@@ -6367,10 +6951,11 @@ function openAddWeeklyItemModal() {
     + '<button class="btn-sm primary" onclick="addWeeklyItem()">添加</button></div></div>';
   document.body.appendChild(m);
   m.addEventListener('click',function(e) { if (e.target === m) m.remove(); });
+  toggleWeeklyKindFields('awi');
 }
 function addWeeklyItem() {
   var name = $('awiName').value.trim();
-  if (!name) { toast('请输入项目名称'); return; }
+  if (!name) { toast('请输入名称'); return; }
   if (!state.gym.weeklyTracker) state.gym.weeklyTracker = {};
   var id = 'wi_'+Date.now(), kind = $('awiKind').value === 'activity' ? 'activity' : 'course';
   state.gym.weeklyTracker[id] = {
@@ -6381,9 +6966,9 @@ function addWeeklyItem() {
   };
   saveData();
   $('addWeeklyItemModal').remove();
-  weeklyView = 'projects';
+  gymView = kind === 'activity' ? 'activities' : 'projects';
   if (currentPage === 'gym') renderPage('gym');
-  toast('已添加，首页快捷记录已同步');
+  toast('已添加，首页与快捷记录已同步');
 }
 
 function openEditWeeklyItemModal(key) {
@@ -6397,7 +6982,7 @@ function openEditWeeklyItemModal(key) {
     + '<div class="form-row" style="margin-top:8px;"><div style="flex:0 0 80px;"><label style="font-size:12px;color:var(--muted);">图标</label>'
     + '<input class="input-field" id="ewiIcon" value="'+escHtml(t.icon||'📌')+'" style="text-align:center;"></div>'
     + '<div style="flex:1;"><label style="font-size:12px;color:var(--muted);">项目类型</label>'
-    + '<select class="input-field" id="ewiKind" onchange="toggleWeeklyKindFields(\'ewi\')"><option value="course"'+(t.kind==='course'?' selected':'')+'>多集课程</option><option value="activity"'+(t.kind!=='course'?' selected':'')+'>单项活动</option></select></div></div>'
+    + '<select class="input-field" id="ewiKind" onchange="toggleWeeklyKindFields(\'ewi\')"><option value="course"'+(t.kind==='course'?' selected':'')+'>多集课程</option><option value="activity"'+(t.kind!=='course'?' selected':'')+'>单次活动</option></select></div></div>'
     + '<div class="form-row" style="margin-top:8px;"><div style="flex:1;"><label style="font-size:12px;color:var(--muted);">每周目标次数</label>'
     + '<input class="input-field" id="ewiTarget" type="number" value="'+(t.target||0)+'" min="0"></div>'
     + '<div style="flex:1;display:'+(t.kind==='course'?'block':'none')+';" id="ewiTotalWrap"><label style="font-size:12px;color:var(--muted);">课程总集数</label>'
@@ -6425,7 +7010,7 @@ function saveWeeklyItem(key) {
   saveData();
   $('editWeeklyItemModal').remove();
   renderPage('gym');
-  toast('已保存，首页项目已同步');
+  toast('已保存，首页与记录入口已同步');
 }
 function deleteWeeklyItem(key) {
   var project = getGymProject(key);
@@ -6883,127 +7468,13 @@ function saveEditBodyData(id) {
   renderPage('gym'); toast('身体数据已更新');
 }
 
-// ─── CONDITION (身体状况与感受) ───
+// ─── 身体状态标签（每日日记与连续回顾共用） ───
 const PAIN_AREAS = ['颈部','肩部','腰部','髋部','膝盖','脚踝','手腕','其他'];
 function moodEmoji(m) { return { good:'😊', ok:'😐', bad:'😣' }[m] || '😐'; }
 function moodLabel(m) { return { good:'好', ok:'一般', bad:'差' }[m] || '一般'; }
 function energyEmoji(e) { return { high:'⚡', normal:'🙂', low:'😪' }[e] || '🙂'; }
 function energyLabel(e) { return { high:'充沛', normal:'正常', low:'疲惫' }[e] || '正常'; }
 function sorenessLabel(s) { return { none:'无', mild:'轻微', moderate:'中等', severe:'严重' }[s] || '无'; }
-let condSelAreas = [];
-
-function renderGymCondition(mod) {
-  const logs = (state.gym.conditionLogs || []).slice().reverse();
-  const todayStr = today();
-  const todayLog = (state.gym.conditionLogs || []).find(l => l.date === todayStr);
-  // 最近7天统计
-  const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate()-6);
-  const weekStr = fmtDate(weekAgo);
-  const weekLogs = (state.gym.conditionLogs || []).filter(l => l.date >= weekStr && l.date <= todayStr);
-  const painCount = {};
-  weekLogs.forEach(function(l) { (l.painAreas||[]).forEach(function(a){ painCount[a] = (painCount[a]||0)+1; }); });
-  const topPain = Object.keys(painCount).sort(function(a,b){ return painCount[b]-painCount[a]; })[0] || '无';
-
-  return `
-    <div class="page active">
-      <div class="detail-header">
-        <button class="btn-sm" onclick="setGymView('overview')">← 返回</button>
-        <span style="flex:1;text-align:center;font-weight:600;">🫀 身体状况与感受</span>
-      </div>
-
-      <div class="section-title">+ 记录今日状态${todayLog?' <span style="color:var(--muted);font-size:12px;font-weight:400;">（今日已记录，再次保存将更新）</span>':''}</div>
-      <div class="card">
-        <div class="form-row" style="margin-bottom:8px;">
-          <input class="input-field" id="condDate" type="date" value="${todayStr}" style="flex:0.5;">
-          <select class="input-field" id="condEnergy" style="flex:0.5;">
-            <option value="high">⚡ 精力充沛</option>
-            <option value="normal">🙂 精力正常</option>
-            <option value="low">😪 精力疲惫</option>
-          </select>
-          <select class="input-field" id="condMood" style="flex:0.5;">
-            <option value="good">😊 感受好</option>
-            <option value="ok">😐 感受一般</option>
-            <option value="bad">😣 感受差</option>
-          </select>
-        </div>
-        <div class="form-row" style="margin-bottom:8px;">
-          <select class="input-field" id="condSoreness" style="flex:0.5;">
-            <option value="none">肌肉酸痛：无</option>
-            <option value="mild">肌肉酸痛：轻微</option>
-            <option value="moderate">肌肉酸痛：中等</option>
-            <option value="severe">肌肉酸痛：严重</option>
-          </select>
-          <span style="font-size:12px;color:var(--muted);align-self:center;flex:0.5;">疼痛/不适部位：</span>
-        </div>
-        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;">
-          ${PAIN_AREAS.map(function(a){ return `<span class="tag-chip ${condSelAreas.indexOf(a)!==-1?'active':''}" data-tag="${a}" onclick="toggleCondArea('${a}')">${a}</span>`; }).join('')}
-        </div>
-        <textarea class="input-field" id="condNote" placeholder="备注：今天身体的感受、哪里不舒服、恢复情况等" rows="3" style="width:100%;margin-bottom:10px;font-size:13px;line-height:1.6;"></textarea>
-        <button class="btn-sm primary" style="width:100%;" onclick="addConditionLog()">${todayLog?'更新今日状态':'记录'}</button>
-      </div>
-
-      ${logs.length > 0 ? `
-      <div class="section-title">📈 近7天概览</div>
-      <div class="gym-stat-row">
-        <div class="stat-card"><div class="stat-val">${weekLogs.length}</div><div class="stat-lbl">记录天数</div></div>
-        <div class="stat-card"><div class="stat-val">${topPain}</div><div class="stat-lbl">高频不适部位</div></div>
-        <div class="stat-card"><div class="stat-val">${weekLogs.filter(l=>l.mood==='good').length}</div><div class="stat-lbl">感觉好天数</div></div>
-      </div>` : ''}
-
-      <div class="section-title">📋 历史记录 (${logs.length})</div>
-      ${logs.length === 0 ? '<div class="empty-state">暂无记录，从今天开始记录身体状态吧</div>' :
-        logs.map(function(l) {
-          return `
-          <div class="card" style="margin-bottom:6px;">
-            <div class="card-row">
-              <span class="card-content" style="flex:1;min-width:0;">
-                <strong style="font-size:13px;">${l.date}${l.date===todayStr?' <span style="font-size:10px;color:var(--accent);">今天</span>':''}</strong>
-                <span style="margin-left:8px;font-size:13px;">${energyEmoji(l.energy)} ${energyLabel(l.energy)}</span>
-                <span style="margin-left:8px;font-size:13px;">${moodEmoji(l.mood)} ${moodLabel(l.mood)}</span>
-              </span>
-              <button class="btn-sm danger" onclick="deleteConditionLog('${l.id}')">删</button>
-            </div>
-            <div style="font-size:12px;color:var(--muted);margin-top:5px;line-height:1.7;">
-              ${(l.soreness&&l.soreness!=='none')?`肌肉酸痛：${sorenessLabel(l.soreness)}`:'肌肉酸痛：无'}
-              ${(l.painAreas&&l.painAreas.length)?` · 不适部位：${l.painAreas.join('、')}`:''}
-              ${l.note?`<div style="margin-top:4px;">💬 ${escHtml(l.note)}</div>`:''}
-            </div>
-          </div>`;
-        }).join('')
-      }
-    </div>`;
-}
-
-function toggleCondArea(tag) {
-  const i = condSelAreas.indexOf(tag);
-  if (i === -1) condSelAreas.push(tag); else condSelAreas.splice(i, 1);
-  // 仅更新标签样式，保留其他表单输入值
-  document.querySelectorAll('[data-tag]').forEach(function(el) {
-    if (el.getAttribute('data-tag') === tag) el.classList.toggle('active', i === -1);
-  });
-}
-function addConditionLog() {
-  const d = $('condDate'), en = $('condEnergy'), so = $('condSoreness'), mo = $('condMood'), note = $('condNote');
-  if (!state.gym.conditionLogs) state.gym.conditionLogs = [];
-  const date = d.value || today();
-  const payload = {
-    energy: en.value, soreness: so.value, mood: mo.value,
-    painAreas: condSelAreas.slice(), note: note.value.trim()
-  };
-  const existing = state.gym.conditionLogs.find(l => l.date === date);
-  if (existing) {
-    existing.energy = payload.energy; existing.soreness = payload.soreness;
-    existing.mood = payload.mood; existing.painAreas = payload.painAreas; existing.note = payload.note;
-  } else {
-    state.gym.conditionLogs.push(Object.assign({ id:'c'+Date.now(), date:date }, payload));
-  }
-  condSelAreas = [];
-  saveData(); renderPage('gym'); toast(existing ? '今日状态已更新' : '身体状态已记录');
-}
-function deleteConditionLog(id) {
-  state.gym.conditionLogs = (state.gym.conditionLogs||[]).filter(function(l){ return l.id !== id; });
-  saveData(); renderPage('gym');
-}
 
 // ─── SLEEP (睡眠记录) ───
 // Sleep type: 'night' (夜间睡眠) | 'nap' (白天小憩)
@@ -8785,6 +9256,7 @@ function saveLibDetail(id) {
   item.year = gv('detYear');
   item.link = gv('detLink');
   item.status = gv('detStatus') || 'wish';
+  item.serialStatus = libSupportsSerial(item.type) ? gv('detLibSerialStatus') : '';
   var r = parseInt(gv('detRating'));
   item.rating = r>0 ? r : null;
   item.startDate = gv('detStartDate');
@@ -11609,7 +12081,8 @@ function renderBarPerfumes() {
         + '</div>'
         + '<div class="perfume-card-scent">'
         +   pillsHtml
-        +   (p.channel ? '<span style="font-size:11px;color:var(--muted);margin-left:auto;">'+escHtml(p.channel)+'</span>' : '')
+        +   (pScents.length > 1 ? '<span class="perfume-scent-more">+'+(pScents.length-1)+'</span>' : '')
+        +   (p.channel ? '<span class="perfume-card-channel">'+escHtml(p.channel)+'</span>' : '')
         + '</div>'
         + '<div class="perfume-card-notes">'+escHtml((p.notes||'').substring(0, 50))+'</div>'
         + '</div>';
