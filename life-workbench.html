@@ -2807,6 +2807,7 @@ function homeQuickTab(group, tab) {
   refreshHomeQuickPanel();
 }
 function homeQuickChoose(btn, inputId, prefKey) {
+  var summaryValue = prefKey === 'homeQuickSummaryField' && $('flashSumInp') ? $('flashSumInp').value : '';
   var inp = $(inputId);
   if (inp) inp.value = btn.dataset.value;
   var chips = btn.parentElement.querySelectorAll('.home-hq-chip');
@@ -2814,6 +2815,11 @@ function homeQuickChoose(btn, inputId, prefKey) {
   if (prefKey) {
     homeQuickPrefs()[prefKey] = btn.dataset.value;
     saveData();
+  }
+  if (prefKey === 'homeQuickSummaryField') {
+    refreshHomeQuickPanel();
+    var summaryInp = $('flashSumInp');
+    if (summaryInp) { summaryInp.value = summaryValue; summaryInp.focus(); }
   }
 }
 function homeQuickChip(inputId, value, label, icon, selected, prefKey) {
@@ -3029,10 +3035,38 @@ function homeQuickThinkBody(prefs) {
   var options = Object.keys(FLASH_SUM_META).map(function(key) {
     return '<option value="'+key+'"'+(key === field ? ' selected' : '')+'>'+FLASH_SUM_META[key].label+'</option>';
   }).join('');
+  var bodyFields = '';
+  if (field === 'body') {
+    var condition = ((state.gym && state.gym.conditionLogs) || []).find(function(c) { return c.date === today(); });
+    var selectedAreas = condition && Array.isArray(condition.painAreas) ? condition.painAreas : [];
+    bodyFields = '<div style="margin:2px 0 10px;">'
+      + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(92px,1fr));gap:6px;margin-bottom:10px;">'
+      + '<label class="home-hq-label">精力<select class="input-field" id="flashCondEnergy" style="width:100%;margin-top:4px;">'
+      + '<option value=""'+(!condition||!condition.energy?' selected':'')+'>未记录</option>'
+      + '<option value="high"'+(condition&&condition.energy==='high'?' selected':'')+'>⚡ 充沛</option>'
+      + '<option value="normal"'+(condition&&condition.energy==='normal'?' selected':'')+'>🙂 正常</option>'
+      + '<option value="low"'+(condition&&condition.energy==='low'?' selected':'')+'>😪 疲惫</option></select></label>'
+      + '<label class="home-hq-label">肌肉酸痛<select class="input-field" id="flashCondSoreness" style="width:100%;margin-top:4px;">'
+      + '<option value=""'+(!condition||!condition.soreness?' selected':'')+'>未记录</option>'
+      + '<option value="none"'+(condition&&condition.soreness==='none'?' selected':'')+'>无</option>'
+      + '<option value="mild"'+(condition&&condition.soreness==='mild'?' selected':'')+'>轻微</option>'
+      + '<option value="moderate"'+(condition&&condition.soreness==='moderate'?' selected':'')+'>中等</option>'
+      + '<option value="severe"'+(condition&&condition.soreness==='severe'?' selected':'')+'>严重</option></select></label>'
+      + '<label class="home-hq-label">身体感受<select class="input-field" id="flashCondMood" style="width:100%;margin-top:4px;">'
+      + '<option value=""'+(!condition||!condition.mood?' selected':'')+'>未记录</option>'
+      + '<option value="good"'+(condition&&condition.mood==='good'?' selected':'')+'>😊 好</option>'
+      + '<option value="ok"'+(condition&&condition.mood==='ok'?' selected':'')+'>😐 一般</option>'
+      + '<option value="bad"'+(condition&&condition.mood==='bad'?' selected':'')+'>😣 差</option></select></label></div>'
+      + '<div class="home-hq-label">疼痛 / 不适部位</div><div class="home-hq-chips" id="homeConditionAreas">'
+      + PAIN_AREAS.map(function(a) { return '<button type="button" class="home-hq-chip'+(selectedAreas.indexOf(a)!==-1?' active':'')+'" data-area="'+escHtml(a)+'" onclick="this.classList.toggle(\'active\')">'+escHtml(a)+'</button>'; }).join('')
+      + '</div></div>';
+  }
+  var placeholder = field === 'body' ? '补充身体备注（可选），回车保存…' : '写一句，回车存入选中的部分…';
+  var saveLabel = field === 'body' ? '+ 保存身体记录' : '+ 保存今日小结';
   return html + '<select id="flashSumSel" style="display:none;">'+options+'</select>'
-    + '<div class="home-hq-chips">'+chips+'</div>'
-    + '<input class="input-field home-hq-input" id="flashSumInp" placeholder="写一句，回车存入选中的部分…" onkeydown="if(event.key===\'Enter\')flashSummary(this)">'
-    + '<button class="btn-sm primary flash-record-btn" onclick="flashSummary(document.getElementById(\'flashSumInp\'))">+ 保存今日小结</button>';
+    + '<div class="home-hq-chips">'+chips+'</div>' + bodyFields
+    + '<input class="input-field home-hq-input" id="flashSumInp" placeholder="'+placeholder+'" onkeydown="if(event.key===\'Enter\')flashSummary(this)">'
+    + '<button class="btn-sm primary flash-record-btn" onclick="flashSummary(document.getElementById(\'flashSumInp\'))">'+saveLabel+'</button>';
 }
 var homeQuickHygieneUndo = null;
 var homeQuickHygieneUndoTimer = null;
@@ -3648,19 +3682,58 @@ var FLASH_SUM_META = {
   improve: { icon:'🌱', label:'做更好', sep:'\n' }
 };
 function flashSummary(inp) {
-  var v = inp.value.trim(); if (!v) return;
+  var v = inp.value.trim();
   var sel = document.getElementById('flashSumSel');
   var field = sel ? sel.value : 'joys';
   var meta = FLASH_SUM_META[field] || FLASH_SUM_META.joys;
   var t = today();
-  if (!state.gratitude.entries) state.gratitude.entries = [];
-  var entry = state.gratitude.entries.find(function(e){ return e.date === t; });
-  if (!entry) { entry = { id:'d'+Date.now(), date:t, mood:'', body:'', joys:'', improve:'', timeline:[] }; state.gratitude.entries.push(entry); }
-  entry[field] = entry[field] ? entry[field] + meta.sep + v : v;
+  var bodyConditionSaved = false;
+  if (field === 'body') {
+    var energyInp = $('flashCondEnergy');
+    var sorenessInp = $('flashCondSoreness');
+    var conditionMoodInp = $('flashCondMood');
+    var energy = energyInp ? energyInp.value : '';
+    var soreness = sorenessInp ? sorenessInp.value : '';
+    var conditionMood = conditionMoodInp ? conditionMoodInp.value : '';
+    var painAreas = [];
+    document.querySelectorAll('#homeConditionAreas .home-hq-chip.active').forEach(function(el) {
+      painAreas.push(el.getAttribute('data-area'));
+    });
+    if (!state.gym) state.gym = {};
+    if (!state.gym.conditionLogs) state.gym.conditionLogs = [];
+    var conditionLogs = state.gym.conditionLogs;
+    var conditionIndex = conditionLogs.findIndex(function(c) { return c.date === t; });
+    var condition = conditionIndex !== -1 ? conditionLogs[conditionIndex] : null;
+    if (energy || soreness || conditionMood || painAreas.length) {
+      if (condition) {
+        condition.energy = energy;
+        condition.soreness = soreness;
+        condition.mood = conditionMood;
+        condition.painAreas = painAreas;
+      } else {
+        conditionLogs.push({ id:'c'+Date.now(), date:t, energy:energy, soreness:soreness, mood:conditionMood, painAreas:painAreas, note:'' });
+      }
+      bodyConditionSaved = true;
+    } else if (condition) {
+      condition.energy = '';
+      condition.soreness = '';
+      condition.mood = '';
+      condition.painAreas = [];
+      if (!condition.note) conditionLogs.splice(conditionIndex, 1);
+      bodyConditionSaved = true;
+    }
+  }
+  if (!v && !bodyConditionSaved) return;
+  if (v) {
+    if (!state.gratitude.entries) state.gratitude.entries = [];
+    var entry = state.gratitude.entries.find(function(e){ return e.date === t; });
+    if (!entry) { entry = { id:'d'+Date.now(), date:t, mood:'', body:'', joys:'', improve:'', timeline:[] }; state.gratitude.entries.push(entry); }
+    entry[field] = entry[field] ? entry[field] + meta.sep + v : v;
+  }
   inp.value = '';
   saveData();
   refreshHomeQuickPanel('flashSumInp');
-  toast(meta.icon + ' 已存入' + meta.label);
+  toast(field === 'body' ? '💪 身体记录已保存' : meta.icon + ' 已存入' + meta.label);
 }
 
 function renderTodayTodos(todayStr, todayPlans, donePlans, checkedHabits, totalHabits) {
@@ -5500,12 +5573,8 @@ function renderDiaryDetail() {
     +     '<label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;color:var(--text);">😊 心情</label>'
     +     '<input class="input-field" id="detailMood" placeholder="今天心情如何..." style="width:100%;" value="'+escHtml(entry ? (entry.mood||'') : '')+'">'
     +   '</div>'
-    +   '<div style="margin-bottom:14px;">'
-    +     '<label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;color:var(--text);">💪 身体</label>'
-    +     '<textarea class="input-field" id="detailBody" placeholder="记录身体状态、特别反应或恢复情况..." rows="3" style="width:100%;resize:vertical;line-height:1.8;min-height:90px;">'+escHtml(entry ? (entry.body||'') : '')+'</textarea>'
-    +   '</div>'
     +   '<div style="margin-bottom:14px;padding:12px;border:1px solid var(--rule);border-radius:var(--radius-sm);background:var(--bg);">'
-    +     '<div style="font-size:13px;font-weight:600;margin-bottom:10px;">🫀 身体状态与感受</div>'
+    +     '<div style="font-size:13px;font-weight:600;margin-bottom:10px;">💪 身体状态与感受</div>'
     +     '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-bottom:10px;">'
     +       '<label style="font-size:12px;color:var(--muted);">精力<select class="input-field" id="detailCondEnergy" style="width:100%;margin-top:4px;">'
     +         '<option value=""'+(!condition||!condition.energy?' selected':'')+'>未记录</option>'
@@ -5531,6 +5600,8 @@ function renderDiaryDetail() {
     +     '<div id="diaryConditionAreas" style="display:flex;flex-wrap:wrap;gap:6px;">'
     +       PAIN_AREAS.map(function(a) { return '<span class="tag-chip'+(selectedAreas.indexOf(a)!==-1?' active':'')+'" data-area="'+a+'" onclick="toggleDiaryConditionArea(\''+a+'\')">'+a+'</span>'; }).join('')
     +     '</div>'
+    +     '<div style="font-size:12px;color:var(--muted);margin:12px 0 6px;">补充备注</div>'
+    +     '<textarea class="input-field" id="detailBody" placeholder="记录特别反应或恢复情况..." rows="3" style="width:100%;resize:vertical;line-height:1.8;min-height:90px;">'+escHtml(entry ? (entry.body||'') : '')+'</textarea>'
     +     (condition&&condition.note ? '<div style="margin-top:10px;font-size:12px;color:var(--muted);">旧身体备注（只读保留）</div><div style="margin-top:4px;font-size:13px;line-height:1.7;white-space:pre-wrap;">'+escHtml(condition.note)+'</div>' : '')
     +   '</div>'
     +   '<div style="margin-bottom:14px;">'
