@@ -2684,7 +2684,7 @@ function renderDashboard() {
   var q = QUOTES[Math.floor(Math.random() * QUOTES.length)];
   var hour = new Date().getHours();
   var greeting = hour < 5 ? '🌙 夜深了，好好休息' : hour < 11 ? '🌤️ 早上好' : hour < 14 ? '☀️ 中午好' : hour < 18 ? '🌿 下午好' : '🌙 晚上好';
-  var todayPlans = (state.plan.todos || []).filter(function(t) { return t.date === todayStr; });
+  var todayPlans = (state.plan.todos || []).filter(function(t) { return t.date === todayStr || (!t.done && t.date && t.date < todayStr); });
   var donePlans = todayPlans.filter(function(t) { return t.done; }).length;
   var totalHabits = (state.habit.habits || []).length;
   var checkedHabits = (state.habit.habits || []).filter(function(h) {
@@ -3756,9 +3756,11 @@ function renderTodayTodos(todayStr, todayPlans, donePlans, checkedHabits, totalH
   } else {
     sortedPlans.forEach(function(t) {
       var rp = ({ daily:'每日', weekly:'每周', monthly:'每月' })[t.repeat] || '';
+      var overdue = !t.done && t.date && t.date < todayStr;
       html += '<div class="tt-item' + (t.done ? ' done' : '') + '" onclick="toggleTodo(\'' + t.id + '\')">'
         + '<span class="tt-check">' + (t.done ? '✓' : '') + '</span>'
         + '<span class="tt-text">' + escHtml(t.text) + '</span>'
+        + (overdue ? '<span class="tt-tag" style="color:var(--danger);border-color:var(--danger);">' + escHtml(t.date.slice(5)) + ' 逾期</span>' : '')
         + (rp ? '<span class="tt-tag">' + rp + '</span>' : '')
         + '</div>';
     });
