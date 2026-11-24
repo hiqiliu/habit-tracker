@@ -3739,18 +3739,20 @@ function flashSummary(inp) {
 function renderTodayTodos(todayStr, todayPlans, donePlans, checkedHabits, totalHabits) {
   var habits = state.habit.habits || [];
   var html = '<div class="smart-tips-section">';
-  html += '<div class="smart-tips-title">📌 今日待办'
+  html += '<div class="smart-tips-title">📌 优先级'
     + '<span class="tt-count">' + donePlans + '/' + todayPlans.length + '</span>'
     + '<span class="tt-more" onclick="openJournalToday()">手账本 →</span>'
     + '</div>';
   html += '<div class="form-row" style="margin-bottom:8px;">'
-    + '<input class="input-field" id="dashTodoInp" placeholder="+ 记一件今天要做的事，回车添加…" onkeydown="if(event.key===\'Enter\')dashAddTodo(this)">'
+    + '<input class="input-field" id="dashTodoInp" placeholder="记录一件重要事项…" style="min-width:0;" onkeydown="if(event.key===\'Enter\')dashAddTodo(this)">'
+    + '<select class="input-field" id="dashTodoRepeat" aria-label="重要事项周期" style="width:86px;flex-shrink:0;">'
+    + '<option value="none">单次</option><option value="daily">每日</option><option value="weekly">每周</option><option value="monthly">每月</option></select>'
     + '<button class="btn-sm primary" onclick="dashAddTodo(document.getElementById(\'dashTodoInp\'))">+</button>'
     + '</div>';
 
   var sortedPlans = todayPlans.slice().sort(function(a, b) { return (a.done ? 1 : 0) - (b.done ? 1 : 0); });
   if (sortedPlans.length === 0) {
-    html += '<div class="tt-empty">今天还没有待办，上面输入即可快速添加</div>';
+    html += '<div class="tt-empty">今天还没有重要事项，可在上面添加</div>';
   } else {
     sortedPlans.forEach(function(t) {
       var rp = ({ daily:'每日', weekly:'每周', monthly:'每月' })[t.repeat] || '';
@@ -3798,9 +3800,12 @@ function dashAddTodo(inp) {
   if (!inp) return;
   var v = inp.value.trim();
   if (!v) return;
+  var repeatInp = $('dashTodoRepeat');
+  var repeat = repeatInp ? repeatInp.value : 'none';
+  if (['none','daily','weekly','monthly'].indexOf(repeat) < 0) repeat = 'none';
   if (!state.plan.todos) state.plan.todos = [];
-  state.plan.todos.push({ id:'t'+Date.now(), text:v, date:today(), done:false, cat:'生活', repeat:'none' });
-  saveData(); renderPage('dashboard'); toast('待办已添加');
+  state.plan.todos.push({ id:'t'+Date.now(), text:v, date:today(), done:false, cat:'生活', repeat:repeat });
+  saveData(); renderPage('dashboard'); toast('重要事项已添加');
 }
 
 function updateClock() {
