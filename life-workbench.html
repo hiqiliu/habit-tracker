@@ -6623,13 +6623,14 @@ function completeGymTodo(id) {
   if (project.kind === 'course' && !episode) { toast('请先编辑待办并填写课程集数'); return; }
   var total = gymEpisodeNumber(project.totalEpisodes);
   if (episode && total > 0 && episode > total) { toast('集数超过课程总集数，请先编辑待办'); return; }
+  var completedAt = nowHM();
   var w = createWorkoutRecord({
     projectId:t.projectId,
     episode:episode,
     date:today(),
     duration:duration,
     note:t.note || '',
-    time:nowHM()
+    time:addMin(completedAt, -duration)
   });
   t.done = true;
   t.doneDate = today();
