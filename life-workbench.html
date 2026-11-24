@@ -1180,22 +1180,25 @@ textarea.input-field { resize:vertical; min-height:60px; }
 .gym-segmented { display:flex; gap:6px; padding:4px; margin-bottom:14px; border-radius:10px; background:var(--bg2); }
 .gym-segmented button { flex:1; padding:7px 10px; border:0; border-radius:8px; background:transparent; color:var(--muted); font-family:inherit; font-size:13px; cursor:pointer; }
 .gym-segmented button.active { background:var(--bg); color:var(--accent); font-weight:600; box-shadow:var(--shadow); }
-.gym-todo-list { display:flex; flex-direction:column; gap:8px; }
-.gym-todo-item { display:flex; align-items:center; gap:10px; padding:10px; border:1px solid var(--rule); border-radius:10px; background:var(--bg); }
+.gym-todo-list { display:flex; flex-direction:column; gap:6px; }
+.gym-todo-item { display:flex; align-items:center; gap:8px; padding:8px 10px; border:1px solid var(--rule); border-radius:10px; background:var(--bg); }
 .gym-todo-item.done { background:var(--accent-soft); border-color:var(--accent); }
-.gym-todo-status { width:24px; height:24px; flex-shrink:0; display:flex; align-items:center; justify-content:center; border:1px solid var(--rule); border-radius:50%; color:#fff; font-size:13px; }
+.gym-todo-status { width:20px; height:20px; flex-shrink:0; display:flex; align-items:center; justify-content:center; border:1px solid var(--rule); border-radius:50%; color:#fff; font-size:11px; }
 .gym-todo-item.done .gym-todo-status { background:var(--accent); border-color:var(--accent); }
 .gym-todo-content { flex:1; min-width:0; }
-.gym-todo-name { font-size:13px; font-weight:600; line-height:1.5; overflow-wrap:anywhere; }
+.gym-todo-name { font-size:13px; font-weight:600; line-height:1.4; overflow-wrap:anywhere; }
 .gym-todo-item.done .gym-todo-name { color:var(--muted); text-decoration:line-through; }
-.gym-todo-meta, .gym-todo-note { margin-top:3px; color:var(--muted); font-size:11px; line-height:1.5; overflow-wrap:anywhere; }
+.gym-todo-meta, .gym-todo-note { margin-top:1px; color:var(--muted); font-size:11px; line-height:1.4; overflow-wrap:anywhere; }
 .gym-todo-overdue { color:var(--danger); font-weight:600; }
-.gym-todo-actions { flex-shrink:0; display:flex; align-items:center; justify-content:flex-end; gap:6px; flex-wrap:wrap; }
-.gym-todo-actions .btn-sm { white-space:nowrap; }
+.gym-todo-actions { flex-shrink:0; display:flex; align-items:center; justify-content:flex-end; gap:4px; flex-wrap:wrap; }
+.gym-todo-actions .btn-sm { padding:3px 10px; font-size:11px; line-height:1.4; white-space:nowrap; }
 @media (max-width:640px) {
   .gym-todo-item { align-items:flex-start; flex-wrap:wrap; }
-  .gym-todo-content { min-width:calc(100% - 40px); }
-  .gym-todo-actions { width:100%; padding-left:34px; }
+  .gym-todo-content { min-width:calc(100% - 28px); }
+  .gym-todo-actions { width:100%; padding-left:28px; }
+  .gym-todo-list-home .gym-todo-item { align-items:center; flex-wrap:nowrap; }
+  .gym-todo-list-home .gym-todo-content { min-width:0; }
+  .gym-todo-list-home .gym-todo-actions { width:auto; padding-left:0; }
 }
 .gym-summary-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:12px; }
 .gym-activity-stats { grid-template-columns:repeat(4,1fr); }
@@ -6705,7 +6708,7 @@ function renderGymTodoRows(items, mode) {
       + (t.note ? '<div class="gym-todo-note">'+escHtml(t.note)+'</div>' : '')+'</div>'
       + '<div class="gym-todo-actions">'+actions+'</div></div>';
   }).join('');
-  return '<div class="gym-todo-list">'+html+'</div>';
+  return '<div class="gym-todo-list gym-todo-list-'+mode+'">'+html+'</div>';
 }
 function renderGymTodos(mod) {
   var ds = today();
