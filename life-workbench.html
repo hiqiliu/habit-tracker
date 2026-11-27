@@ -1356,6 +1356,8 @@ textarea.input-field { resize:vertical; min-height:60px; }
 .dv-btn { background:none; border:none; cursor:pointer; font-size:11px; opacity:0.55; padding:0 2px; }
 .dv-btn:hover { opacity:1; }
 .dv-note { font-size:12px; color:var(--ink); margin-top:2px; word-break:break-word; }
+.dv-note a, .gym-todo-note a, .dv-untimed-chip a { color:var(--accent); text-decoration:underline; text-underline-offset:2px; word-break:break-all; }
+.dv-note a:hover, .gym-todo-note a:hover, .dv-untimed-chip a:hover { color:var(--accent2); }
 .dv-meta { font-size:11px; color:var(--muted); margin-top:2px; font-variant-numeric:tabular-nums; }
 .dv-untimed { margin-top:12px; }
 .dv-untimed-title { font-size:12px; color:var(--muted); margin-bottom:6px; }
@@ -3357,7 +3359,7 @@ function renderJournalDay(dateStr) {
       +       '<button class="dv-btn" onclick="openEventEdit(\''+e.src+'\',\''+e.id+'\')" title="编辑">✏️</button>'
       +       '<button class="dv-btn" onclick="deleteDayEvent(\''+e.src+'\',\''+e.id+'\')" title="删除">🗑️</button>'
       +     '</span>') + '</div>'
-      +   (e.note ? '<div class="dv-note">'+escHtml(e.note)+'</div>' : '')
+      +   (e.note ? '<div class="dv-note">'+linkify(e.note)+'</div>' : '')
       +   '<div class="dv-meta">'+meta+'</div>'
       + '</div>'
       + '</div>';
@@ -3365,7 +3367,7 @@ function renderJournalDay(dateStr) {
 
   var untimedHtml = untimed.length ? '<div class="dv-untimed"><div class="dv-untimed-title">未记录时间的记录</div>'
     + untimed.map(function(e) {
-        return '<span class="dv-untimed-chip"><span>'+e.icon+' '+escHtml(e.label)+(e.note?' · '+escHtml(e.note):'')+'</span>'
+        return '<span class="dv-untimed-chip"><span>'+e.icon+' '+escHtml(e.label)+(e.note?' · '+linkify(e.note):'')+'</span>'
           + (e.readonly ? '' : '<span class="dv-actions">'
           + '<button class="dv-btn" onclick="openEventEdit(\''+e.src+'\',\''+e.id+'\')" title="编辑">✏️</button>'
           + '<button class="dv-btn" onclick="deleteDayEvent(\''+e.src+'\',\''+e.id+'\')" title="删除">🗑️</button>'
@@ -6706,7 +6708,7 @@ function renderGymTodoRows(items, mode) {
       + '<div class="gym-todo-content"><div class="gym-todo-name">'+icon+' '+escHtml(name)
       + (overdue ? ' <span class="gym-todo-overdue">逾期 '+overdueDays+' 天</span>' : '')+'</div>'
       + '<div class="gym-todo-meta">'+escHtml(meta.join(' · '))+'</div>'
-      + (t.note ? '<div class="gym-todo-note">'+escHtml(t.note)+'</div>' : '')+'</div>'
+      + (t.note ? '<div class="gym-todo-note">'+linkify(t.note)+'</div>' : '')+'</div>'
       + '<div class="gym-todo-actions">'+actions+'</div></div>';
   }).join('');
   return '<div class="gym-todo-list gym-todo-list-'+mode+'">'+html+'</div>';
@@ -7166,7 +7168,7 @@ function renderGymWeekSummary() {
     dailyHtml += '<div class="gym-workout-line" onclick="openWorkoutDetail(\''+w.id+'\')">'
       + '<span>'+workoutDisplayIcon(w)+'</span><div style="flex:1;min-width:0;">'
       + '<div style="font-size:13px;">'+escHtml(workoutFullLabel(w))+'</div>'
-      + (w.note?'<div style="font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+escHtml(w.note)+'</div>':'')
+      + (w.note?'<div style="font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+linkify(w.note)+'</div>':'')
       + '</div><span style="font-size:11px;color:var(--muted);white-space:nowrap;">'+(w.duration>0?w.duration+'分钟':'未记时长')+'</span></div>';
   });
   return '<div style="font-size:12px;color:var(--muted);background:var(--bg2);padding:8px 12px;border-radius:8px;margin-bottom:12px;text-align:center;">本周：'+week.start.substring(5)+' ~ '+week.end.substring(5)+'（周一起算）</div>'
@@ -7293,7 +7295,7 @@ function renderGymActivityManager() {
     var recentHtml = sorted.slice(0, 3).map(function(w) {
       return '<div class="gym-workout-line" onclick="openWorkoutDetail(\''+w.id+'\')">'
         + '<span style="font-size:11px;color:var(--muted);flex:0 0 42px;">'+escHtml((w.date||'').substring(5))+'</span>'
-        + '<div style="flex:1;min-width:0;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+escHtml(w.note||'本次活动')+'</div>'
+        + '<div style="flex:1;min-width:0;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+linkify(w.note||'本次活动')+'</div>'
         + '<span style="font-size:11px;color:var(--muted);white-space:nowrap;">'+(w.duration>0?w.duration+'分钟':'未记时长')+'</span></div>';
     }).join('');
     return '<div class="card" style="margin-bottom:12px;"><div style="display:flex;align-items:center;gap:8px;">'
@@ -7977,7 +7979,7 @@ function renderBarSleep() {
               <button class="btn-sm" onclick="editSleep('${s.id}')">✏️</button>
               <button class="btn-sm danger" onclick="deleteSleep('${s.id}')">删</button>
             </div>
-            ${s.note?`<div style="font-size:12px;color:var(--muted);margin-top:4px;">💬 ${escHtml(s.note)}</div>`:''}
+            ${s.note?`<div style="font-size:12px;color:var(--muted);margin-top:4px;">💬 ${linkify(s.note)}</div>`:''}
           </div>`;
         }).join('')
       }
@@ -13524,6 +13526,14 @@ function escHtml(s) {
   const d = document.createElement('div');
   d.textContent = s;
   return d.innerHTML;
+}
+function linkify(text) {
+  if (!text) return '';
+  var escaped = escHtml(text);
+  return escaped.replace(/(https?:\/\/[^\s<>"')\]]+)/g, function(url) {
+    var clean = url.replace(/[.,;:!?)\]]+$/g, '');
+    return '<a href="' + clean + '" target="_blank" rel="noopener noreferrer">' + clean + '</a>';
+  });
 }
 
 function bindPageEvents() {
