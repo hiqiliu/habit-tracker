@@ -4507,7 +4507,7 @@ function renderTodayDiary(todayStr) {
       html += '<div style="font-size:13px;color:var(--ink);margin-bottom:4px;">😊 ' + escHtml(entry.mood) + '</div>';
     }
     if (entry && entry.body) {
-      html += '<div style="font-size:13px;color:var(--ink);margin-bottom:4px;">💪 ' + escHtml(entry.body) + '</div>';
+      html += '<div style="font-size:13px;color:var(--ink);margin-bottom:4px;">💪 ' + linkify(entry.body) + '</div>';
     }
     if (conditionText) {
       html += '<div style="font-size:13px;color:var(--ink);margin-bottom:4px;">🫀 ' + escHtml(conditionText.length > 100 ? conditionText.slice(0, 100) + '…' : conditionText) + '</div>';
@@ -4712,7 +4712,7 @@ function renderJournalWeek(weekDates, todayStr) {
           }
           return '<div class="journal-act cat-'+a.cat+(a.preview?' ja-preview':'')+'"'+(a.action?' onclick="'+a.action+'"':'')+'>'
             + '<span class="ja-icon">'+a.icon+'</span>'
-            + '<span class="ja-text">'+escHtml(a.text)+'</span>'
+            + '<span class="ja-text">'+linkify(a.text)+'</span>'
             + '<span class="ja-tag">'+a.tag+'</span>'
             + '</div>';
         }).join('');
@@ -10005,7 +10005,7 @@ function renderLibCalendar(mod) {
                     '<span class="ri-status">'+({wish:'想看',doing:'在看',done:'已看'}[item.status]||'')+'</span>'+
                     (item.serialStatus?'<span class="ri-status">'+(item.serialStatus==='complete'?'已完结':'连载中')+'</span>':'')+
                   '</div>'+
-                  (item.note?'<div class="report-item-note">💬 '+escHtml(item.note)+'</div>':'')+
+                  (item.note?'<div class="report-item-note">💬 '+linkify(item.note)+'</div>':'')+
                 '</div>';
               }).join('')+
             '</div>'+
@@ -10080,7 +10080,7 @@ function renderMeditate() {
           return '<div class="card card-row" style="padding:6px 10px;">'
             + '<span style="font-size:16px;">🧘</span>'
             + '<span class="card-content"><span style="font-size:12px;color:var(--muted);">'+s.date+'</span> · '+s.duration+'分钟'
-            + (s.note ? '<br><span style="font-size:12px;color:var(--muted);">'+escHtml(s.note)+'</span>' : '')
+            + (s.note ? '<br><span style="font-size:12px;color:var(--muted);">'+linkify(s.note)+'</span>' : '')
             + '</span>'
             + '<button class="btn-sm danger" style="font-size:10px;padding:2px 6px;" onclick="deleteMedSession(\''+s.id+'\')">删</button>'
             + '</div>';
@@ -11062,7 +11062,7 @@ function renderClosetItems() {
           +       (item.dimension ? '<span class="outfit-occasion-tag" style="background:var(--accent-soft);color:var(--accent);">📏 '+escHtml(item.dimension)+'</span>' : '')
           +       (item.channel ? '<span class="outfit-occasion-tag" style="background:var(--bg2);color:var(--muted);">'+(item.channel==='线上'?'🛒 线上':'🏪 线下')+'</span>' : '')
           +     '</div>' : '')
-          +     (item.note ? '<div style="font-size:12px;color:var(--muted);margin-bottom:8px;line-height:1.5;">📝 '+escHtml(item.note).replace(/\n/g,'<br>')+'</div>' : '')
+          +     (item.note ? '<div style="font-size:12px;color:var(--muted);margin-bottom:8px;line-height:1.5;">📝 '+linkify(item.note).replace(/\n/g,'<br>')+'</div>' : '')
           +     (item.pros || item.cons ? '<div class="item-pros-cons" style="margin-bottom:8px;">'+(item.pros?'<span class="item-pros">✓ '+escHtml(item.pros)+'</span>':'')+(item.cons?'<span class="item-cons">✗ '+escHtml(item.cons)+'</span>':'')+'</div>' : '')
           +     '<div>'
           +       '<button class="btn-sm" onclick="editWardrobeItem(\''+item.id+'\')">✏️ 编辑</button>'
@@ -11631,7 +11631,7 @@ function renderLookbook() {
           + (d.scene ? ' <span class="outfit-scene-tag">'+sceneIcon(d.scene)+' '+escHtml(d.scene)+'</span>' : '')
           + (d.rating?' <span class="rating-display">'+'★'.repeat(d.rating)+'</span>':'')+'</div>'
           + itemsBlock
-          + (d.note?'<div style="font-size:13px;">'+escHtml(d.note)+'</div>':'')
+          + (d.note?'<div style="font-size:13px;">'+linkify(d.note)+'</div>':'')
           + '<div style="margin-top:6px;">'
           + '<button class="btn-sm" onclick="editDailyOutfit(\''+d.id+'\')">✏️</button>'
           + ((!d.outfitId || extraItems.length > 0) && items.length > 0 ? '<button class="btn-sm" onclick="saveDailyAsOutfit(\''+d.id+'\')">⭐ 存为搭配</button>' : '')
@@ -12012,7 +12012,7 @@ function renderBarMeals() {
           + '<span class="meal-line-lb">'+t.label+'</span>'
           + '<span class="meal-line-tx" onclick="openMealModal(\''+m.id+'\')">'
           +   (m.content ? escHtml(m.content) : '<span style="color:var(--muted)">（未填写）</span>')
-          +   (m.note ? ' <span class="meal-note">· '+escHtml(m.note)+'</span>' : '')
+          +   (m.note ? ' <span class="meal-note">· '+linkify(m.note)+'</span>' : '')
           + '</span>'
           + '<button class="meal-line-del" onclick="deleteMeal(\''+m.id+'\')" title="删除">×</button>'
           + '</div>';
@@ -12953,7 +12953,7 @@ function renderFinanceOverview(mod) {
         + '<span>'+(r.type === 'income' ? '💰' : '💸')+'</span>'
         + '<span class="card-content"><span style="color:'+(r.type==='income'?'var(--accent)':'var(--danger)')+';font-weight:600;">'+(r.type==='income'?'+':'-')+'¥'+(r.amount||0).toFixed(2)+'</span>'
         +   (r.category ? ' · '+escHtml(r.category) : '')
-        +   (r.note ? ' · '+escHtml(r.note) : '')+'</span>'
+        +   (r.note ? ' · '+linkify(r.note) : '')+'</span>'
         + '<span style="font-size:11px;color:var(--muted);">'+r.date+'</span>'
         + '<button class="btn-sm" onclick="editFinanceRecord(\''+r.id+'\')">✏️</button>'
         + '<button class="btn-sm danger" onclick="deleteFinanceRecord(\''+r.id+'\')">删</button>'
