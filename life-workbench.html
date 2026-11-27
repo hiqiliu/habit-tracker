@@ -10828,7 +10828,8 @@ function saveEditTip(id) {
 // ═══════════════════════════════════════
 let closetSubView = 'overview'; // 'overview' | 'lookbook' | 'items' | 'outfits'
 var closetItemFilter = { kind:'', cat:'', brand:'', wear:'' };
-var closetOutfitFilter = { occasion:'' };
+var closetOutfitFilter = { occasion:'', kind:'' };
+var closetDailyFilter = { kind:'' };
 function renderCloset() {
   var mod = state.modules.find(function(m) { return m.id === 'closet'; });
   var toggleHtml = '<div class="journal-view-toggle" style="margin-bottom:14px;">'
@@ -10938,6 +10939,19 @@ function renderClosetOverview() {
   }).join('') + (sleeping.length > 5 ? '<div style="font-size:11px;color:var(--muted);">等 '+sleeping.length+' 件</div>' : '')
     : '<div style="font-size:12px;color:var(--muted);">都穿过，没有闲置 👍</div>';
 
+  // 穿搭记录按大类统计（全部 + 近 30 天），用于日常/运动分开看
+  var thirtyAgo = new Date(Date.now() - 29 * 86400000).toISOString().slice(0, 10);
+  var outfitKindHtml = '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">👗 穿搭大类统计</div>'
+    + KIND_DEFS.map(function(k) {
+      var list = daily.filter(function(d) { return dailyKindOf(d) === k.key; });
+      var r30 = list.filter(function(d) { return (d.date || '') >= thirtyAgo; }).length;
+      return '<div style="display:flex;align-items:center;gap:8px;font-size:12px;margin-bottom:6px;cursor:pointer;" '
+        + 'onclick="closetSubView=\'lookbook\';setClosetDailyKind(\''+k.key+'\')">'
+        + '<span style="flex:0 0 62px;">'+k.icon+' '+k.label+'</span>'
+        + '<span style="flex:1;color:var(--muted);">近30天 '+r30+' 次</span>'
+        + '<span class="outfit-wear-badge worn">共 '+list.length+' 次</span></div>';
+    }).join('');
+
   // 最近穿搭
   var recent = daily.slice().reverse().slice(0, 3);
   var recentHtml = recent.length ? recent.map(function(d) {
@@ -10947,7 +10961,9 @@ function renderClosetOverview() {
     })();
     var names = sortClosetItems(ids.map(function(id) { return wardrobe.find(function(w) { return w.id === id; }); }).filter(Boolean))
       .map(function(p) { return p.name; }).slice(0, 3).join(' · ');
+    var dk = dailyKindOf(d);
     return '<div style="font-size:12px;margin-bottom:4px;cursor:pointer;" onclick="setClosetSubView(\'lookbook\')">'
+      + '<span class="outfit-occasion-tag" style="background:var(--accent-soft);color:var(--accent);font-size:10px;">'+kindIcon(dk)+' '+kindLabel(dk)+'</span> '
       + '<span style="color:var(--muted);">'+d.date+'</span>'
       + (d.scene ? ' '+sceneIcon(d.scene) : '')
       + ' <span>'+escHtml(names || '（无单品）')+'</span></div>';
@@ -10963,6 +10979,9 @@ function renderClosetOverview() {
     + '<div class="card" style="margin-bottom:12px;">'
     +   '<div style="font-size:13px;">👚 '+wardrobe.length+' 件单品 · 👗 '+outfits.length+' 套搭配 · 📅 穿搭 '+daily.length+' 次</div>'
     +   '<div style="font-size:12px;color:var(--muted);margin-top:2px;">'
+    +     KIND_DEFS.map(function(k){ return k.icon+' '+k.label+' '+daily.filter(function(d){ return dailyKindOf(d)===k.key; }).length+' 次'; }).join(' · ')
+    +   '</div>'
+    +   '<div style="font-size:12px;color:var(--muted);margin-top:2px;">'
     +     (totalPrice > 0 ? '💰 衣橱总值 ¥'+totalPrice+(noPrice ? ' · '+noPrice+' 件未填价' : '') : '💰 填写单品价格后可统计衣橱总值')
     +   '</div>'
     +   '<div style="display:flex;gap:6px;margin-top:10px;">'
@@ -10976,6 +10995,7 @@ function renderClosetOverview() {
     +   '<div class="card"><div style="font-size:13px;font-weight:600;margin-bottom:8px;">🔥 常穿 TOP5</div>'+topHtml+'</div>'
     +   '<div class="card" style="cursor:pointer;" onclick="closetSubView=\'items\';setClosetItemFilter(\'wear\',\'never\')"><div style="font-size:13px;font-weight:600;margin-bottom:8px;">💤 沉睡单品</div>'+sleepHtml+'</div>'
     + '</div>'
+    + '<div class="card" style="margin-bottom:12px;">'+outfitKindHtml+'</div>'
     + '<div class="card" style="margin-bottom:12px;"><div style="font-size:13px;font-weight:600;margin-bottom:8px;">🕒 最近穿搭</div>'+recentHtml+'</div>'
     + (fixParts.length ? '<div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;"><span style="font-size:12px;color:var(--muted);">待补信息：</span>'+fixParts.join('')+'</div>' : '');
 }
@@ -11012,6 +11032,22 @@ function getClosetBrands() {
 }
 function setClosetItemFilter(key, val) { closetItemFilter[key] = val; renderPage('closet'); }
 function setClosetOutfitFilter(val) { closetOutfitFilter.occasion = val; renderPage('closet'); }
+function setClosetOutfitKind(val) { closetOutfitFilter.kind = val; renderPage('closet'); }
+function setClosetDailyKind(val) { closetDailyFilter.kind = val; renderPage('closet'); }
+// 通用大类 tab（counts 需含 __total 与各类别数量）
+function kindTabsHtml(current, counts, setterFn) {
+  return '<div class="journal-view-toggle" style="margin-bottom:10px;">'
+    + '<button class="jvt-btn'+(current===''?' active':'')+'" onclick="'+setterFn+'(\'\')">📦 全部 ('+(counts.__total||0)+')</button>'
+    + KIND_DEFS.map(function(k) {
+        return '<button class="jvt-btn'+(current===k.key?' active':'')+'" onclick="'+setterFn+'(\''+k.key+'\')">'+k.icon+' '+k.label+' ('+(counts[k.key]||0)+')</button>';
+      }).join('')
+    + '</div>';
+}
+function countByKind(list, kindFn) {
+  var counts = { __total: list.length };
+  list.forEach(function(x) { var k = kindFn(x); counts[k] = (counts[k] || 0) + 1; });
+  return counts;
+}
 // 持物单价 = 购入价 ÷ 穿着次数；未穿过时只显示购入价，穿过一次后自动计算
 function costPerWearTag(item, wc) {
   var price = item.price || 0;
@@ -11125,7 +11161,11 @@ function renderClosetOutfits() {
     if (a === '未分类') return -1; if (b === '未分类') return 1; return a.localeCompare(b);
   });
   var filterOccasion = closetOutfitFilter.occasion;
-  var outfits = filterOccasion ? allOutfits.filter(function(o) { return (o.occasion || '未分类') === filterOccasion; }) : allOutfits;
+  var filterKind = closetOutfitFilter.kind;
+  var kindCounts = countByKind(allOutfits, outfitKindOf);
+  var byKind = filterKind ? allOutfits.filter(function(o) { return outfitKindOf(o) === filterKind; }) : allOutfits;
+  var outfits = filterOccasion ? byKind.filter(function(o) { return (o.occasion || '未分类') === filterOccasion; }) : byKind;
+  var kindTab = kindTabsHtml(filterKind, kindCounts, 'setClosetOutfitKind');
   var filterBar = '<div class="closet-filter-bar" style="margin-bottom:10px;">'
     + '<div class="picker-cats" style="margin-bottom:0;">'
     + '<span class="picker-cat-btn'+(filterOccasion===''?' active':'')+'" onclick="setClosetOutfitFilter(\'\')">全部场合</span>'
@@ -11136,6 +11176,7 @@ function renderClosetOutfits() {
     + '</div></div>';
   return `
     <div class="section-title">👗 搭配</div>
+    ${kindTab}
     <div class="picker-collapse-toggle" onclick="togglePickerCollapse('outfitPickerWrap')">
       <span style="font-size:13px;">＋ 新建搭配</span>
       <span style="font-size:12px;color:var(--muted);">点击展开 ▼</span>
@@ -11143,6 +11184,9 @@ function renderClosetOutfits() {
     <div class="picker-collapse-body" id="outfitPickerWrap">
       ${wardrobe.length > 0 ? buildOutfitPickerHtml(wardrobe, 'outfitPicker', []) : '<div class="empty-state">先新增单品，再组合搭配</div>'}
     <div class="form-row">
+      <select class="input-field" id="outfitKind" style="flex:0.5;">
+        ${KIND_DEFS.map(k => '<option value="'+k.key+'"'+(closetOutfitFilter.kind===k.key?' selected':'')+'>'+k.icon+' '+k.label+'</option>').join('')}
+      </select>
       <input class="input-field" id="outfitDesc" placeholder="搭配描述（可选）...">
       <input class="input-field" id="outfitOccasion" placeholder="场合（如：上班/约会/居家）" style="flex:0.7;">
       <button class="btn-sm primary" onclick="addOutfit()">记录</button>
@@ -11165,11 +11209,13 @@ function renderClosetOutfits() {
             }
             var itemSummary = picked.map(function(p) { return closetCatIcon(p.cat)+' '+p.name; }).join(' · ');
             var occTag = o.occasion || '未分类 · 待补充';
+            var ok = outfitKindOf(o);
             return '<div class="outfit-compact-card">'
               + '<div class="outfit-compact-summary" onclick="toggleOutfitExpand(\''+o.id+'\')">'
               +   '<div class="outfit-compact-info">'
               +     '<div class="outfit-compact-desc">'+escHtml(o.desc||'搭配')+'</div>'
               +     '<div class="outfit-compact-meta">'
+              +       '<span class="outfit-occasion-tag" style="background:var(--accent-soft);color:var(--accent);">'+kindIcon(ok)+' '+kindLabel(ok)+'</span>'
               +       '<span class="outfit-occasion-tag">'+escHtml(occTag)+'</span>'
               +       (wc > 0 ? '<span class="outfit-wear-badge worn">'+wc+'次</span>' : '<span class="outfit-wear-badge unworn">0次</span>')
               +       (itemSummary ? '<span class="outfit-compact-items">'+escHtml(itemSummary)+'</span>' : '')
@@ -11529,9 +11575,10 @@ function addOutfit() {
   const desc = $('outfitDesc'), occasion = $('outfitOccasion');
   const items = sortWardrobeIds(getSelectedOutfitItems());
   const rating = getRating('outfitRating');
+  const kindEl = $('outfitKind');
   if (!desc.value.trim() && items.length === 0) { toast('请选择单品或填写描述'); return; }
   if (!state.closet.outfits) state.closet.outfits = [];
-  state.closet.outfits.push({ id:'o'+Date.now(), date:today(), desc:desc.value.trim(), occasion:occasion.value.trim(), items:items, rating:rating });
+  state.closet.outfits.push({ id:'o'+Date.now(), date:today(), desc:desc.value.trim(), occasion:occasion.value.trim(), kind:(kindEl && kindEl.value) || deriveKindFromItems(items), items:items, rating:rating });
   saveData(); renderPage('closet'); toast('搭配已记录');
 }
 function deleteOutfit(id) {
@@ -11559,6 +11606,9 @@ function editOutfit(id) {
       ${buildOutfitPickerHtml(wardrobe, 'editOutfitPicker', selectedIds)}
       <input class="input-field" id="editOutfitDate" type="date" value="${o.date||today()}" style="display:block;width:100%;margin-bottom:8px;">
       <input class="input-field" id="editOutfitDesc" value="${escHtml(o.desc)}" placeholder="搭配描述（可选）" style="display:block;width:100%;margin-bottom:8px;">
+      <select class="input-field" id="editOutfitKind" style="display:block;width:100%;margin-bottom:8px;">
+        ${KIND_DEFS.map(function(k){ return '<option value="'+k.key+'"'+(outfitKindOf(o)===k.key?' selected':'')+'>'+k.icon+' '+k.label+'</option>'; }).join('')}
+      </select>
       <input class="input-field" id="editOutfitOccasion" value="${escHtml(o.occasion||'')}" placeholder="场合（可选）" style="display:block;width:100%;margin-bottom:8px;">
       <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">
         <span style="font-size:12px;color:var(--muted);">喜爱度：</span>
@@ -11584,6 +11634,7 @@ function saveEditOutfit(id) {
   if (!desc && items.length === 0) { toast('请选择单品或填写描述'); return; }
   o.date = $('editOutfitDate').value;
   o.desc = desc;
+  o.kind = ($('editOutfitKind') && $('editOutfitKind').value) || deriveKindFromItems(items);
   o.occasion = $('editOutfitOccasion').value.trim();
   o.items = items;
   o.rating = getRating('editOutfitRating');
@@ -11595,6 +11646,10 @@ function renderLookbook() {
   var wardrobe = state.closet.wardrobe || [];
   var outfits = state.closet.outfits || [];
   var daily = (state.closet.dailyOutfits || []).slice().sort(function(a,b) { return b.date.localeCompare(a.date); });
+  var dailyKindCounts = countByKind(daily, dailyKindOf);
+  var filterKind = closetDailyFilter.kind;
+  var shownDaily = filterKind ? daily.filter(function(d) { return dailyKindOf(d) === filterKind; }) : daily;
+  var defaultKind = filterKind || state.closet.lastKind || 'daily';
   return `
     <div class="picker-collapse-toggle" onclick="togglePickerCollapse('dailyOutfitFormWrap')">
       <span style="font-size:13px;">＋ 记录今日穿搭</span>
@@ -11604,6 +11659,7 @@ function renderLookbook() {
     <div class="section-title" style="margin-top:8px;">📅 记录今日穿搭</div>
     <input class="input-field" id="lookbookDate" type="date" value="${today()}" style="display:block;width:100%;margin-bottom:8px;">
     <div class="lookbook-scene-row">
+      <select class="input-field" id="lookbookKind" onchange="filterLookbookOutfits(this.value)">${KIND_DEFS.map(function(k){ return '<option value="'+k.key+'"'+(defaultKind===k.key?' selected':'')+'>'+k.icon+' '+k.label+'</option>'; }).join('')}</select>
       <select class="input-field" id="lookbookScene">${sceneOptionsHtml(state.closet.lastScene || '日常')}</select>
       <button class="btn-sm" onclick="addClosetScene()" title="新增场景">＋ 场景</button>
     </div>
@@ -11612,12 +11668,15 @@ function renderLookbook() {
       <button class="lookbook-mode-btn" id="modeItem" onclick="setLookbookMode('item')">👕 选单品</button>
     </div>
     <div id="lookbookOutfitMode">
-      <div style="font-size:12px;color:var(--muted);margin-bottom:6px;">选搭配会自动带出其单品，可再切到「👕 选单品」继续加 / 减</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:6px;">选搭配会自动带出其单品，可再切到「👕 选单品」继续加 / 减；列表只显示上方所选大类</div>
       ${outfits.length === 0 ? '<div class="empty-state">暂无搭配记录，请先在「搭配」页创建</div>' :
         outfits.map(o => {
           var picked = sortClosetItems((o.items||[]).map(id => wardrobe.find(w => w.id === id)).filter(Boolean));
-          return '<div class="outfit-select-card" data-outfit-id="'+o.id+'" onclick="toggleLookbookOutfit(this)">'
-            + '<div style="font-size:12px;color:var(--muted);">'+escHtml(o.desc||'搭配')+' '+(o.occasion?'· '+escHtml(o.occasion):'')+(o.rating?' <span class="rating-display">'+'★'.repeat(o.rating)+'</span>':'')+'</div>'
+          var ok = outfitKindOf(o);
+          return '<div class="outfit-select-card" data-outfit-id="'+o.id+'" data-kind="'+ok+'"'+(ok!==defaultKind?' style="display:none;"':'')+' onclick="toggleLookbookOutfit(this)">'
+            + '<div style="font-size:12px;color:var(--muted);">'
+            + '<span class="outfit-occasion-tag" style="background:var(--accent-soft);color:var(--accent);">'+kindIcon(outfitKindOf(o))+' '+kindLabel(outfitKindOf(o))+'</span> '
+            + escHtml(o.desc||'搭配')+' '+(o.occasion?'· '+escHtml(o.occasion):'')+(o.rating?' <span class="rating-display">'+'★'.repeat(o.rating)+'</span>':'')+'</div>'
             + (picked.length>0?'<div class="outfit-picked" style="margin-top:4px;">'+picked.map(p=>'<span class="outfit-picked-tag">'+closetCatIcon(p.cat)+' '+escHtml(p.name)+'</span>').join('')+'</div>':'')
             + '</div>';
         }).join('')
@@ -11646,8 +11705,9 @@ function renderLookbook() {
     </div>
     </div>
     <div class="section-title">📋 穿搭记录 (${daily.length})</div>
-    ${daily.length === 0 ? '<div class="empty-state">暂无穿搭记录</div>' :
-      daily.map(d => {
+    ${kindTabsHtml(filterKind, dailyKindCounts, 'setClosetDailyKind')}
+    ${shownDaily.length === 0 ? '<div class="empty-state">'+(daily.length === 0 ? '暂无穿搭记录' : '该大类下暂无穿搭记录')+'</div>' :
+      shownDaily.map(d => {
         var items = [];
         // 优先取记录实际穿的单品（选搭配后仍可加减）；旧数据回退到搭配引用
         if (d.items && d.items.length > 0) {
@@ -11682,8 +11742,11 @@ function renderLookbook() {
         } else if (items.length > 0) {
           itemsBlock = '<div class="outfit-picked" style="margin-bottom:6px;">'+items.map(chipOf).join('')+'</div>';
         }
+        var dk = dailyKindOf(d);
         return '<div class="card lookbook-card">'
-          + '<div style="font-size:12px;color:var(--muted);margin-bottom:4px;">'+d.date+typeLabel
+          + '<div style="font-size:12px;color:var(--muted);margin-bottom:4px;">'
+          + '<span class="outfit-occasion-tag" style="background:var(--accent-soft);color:var(--accent);">'+kindIcon(dk)+' '+kindLabel(dk)+'</span> '
+          + d.date+typeLabel
           + (d.scene ? ' <span class="outfit-scene-tag">'+sceneIcon(d.scene)+' '+escHtml(d.scene)+'</span>' : '')
           + (d.rating?' <span class="rating-display">'+'★'.repeat(d.rating)+'</span>':'')+'</div>'
           + itemsBlock
@@ -11696,6 +11759,29 @@ function renderLookbook() {
       }).join('')
     }
   `;
+}
+// 按大类过滤「选搭配」列表，避免日常/运动搭配混在一起
+function filterLookbookOutfits(kind) {
+  var picker = document.getElementById('lookbookItemPicker');
+  var removed = false;
+  document.querySelectorAll('#lookbookOutfitMode .outfit-select-card').forEach(function(c) {
+    var match = !kind || c.getAttribute('data-kind') === kind;
+    c.style.display = match ? '' : 'none';
+    // 切换大类时取消被隐藏的已选搭配，避免把另一大类的单品带进本次记录
+    if (!match && c.classList.contains('selected')) {
+      c.classList.remove('selected');
+      removed = true;
+      var o = (state.closet.outfits || []).find(function(x) { return x.id === c.getAttribute('data-outfit-id'); });
+      ((o && o.items) || []).forEach(function(id) {
+        var chip = picker ? picker.querySelector('.outfit-chip[data-id="'+id+'"]') : null;
+        if (chip) chip.classList.remove('selected');
+      });
+    }
+  });
+  if (removed && picker) {
+    var countEl = document.getElementById('lookbookItemPickerCount');
+    if (countEl) countEl.textContent = '已选 ' + picker.querySelectorAll('.outfit-chip.selected').length;
+  }
 }
 function setLookbookMode(m) {
   var btnO = document.getElementById('modeOutfit');
@@ -11742,9 +11828,12 @@ function addDailyOutfit() {
   }
   if (!outfitId && items.length === 0 && !note) { toast('请选择搭配/单品或填写备注'); return; }
   items = sortWardrobeIds(items);
+  var kindEl = document.getElementById('lookbookKind');
+  var kind = (kindEl && kindEl.value) || deriveKindFromItems(items);
   if (!state.closet.dailyOutfits) state.closet.dailyOutfits = [];
-  state.closet.dailyOutfits.push({ id:'do'+Date.now(), date:date, outfitId:outfitId, items:items, note:note, rating:rating, scene:scene });
+  state.closet.dailyOutfits.push({ id:'do'+Date.now(), date:date, outfitId:outfitId, items:items, note:note, rating:rating, scene:scene, kind:kind });
   state.closet.lastScene = scene;
+  state.closet.lastKind = kind;
   saveData(); renderPage('closet'); toast('穿搭已记录' + (scene ? ' · ' + scene : ''));
 }
 function addClosetScene() {
@@ -11769,7 +11858,7 @@ function quickAddItem() {
   var brand = document.getElementById('quickItemBrand');
   if (!name || !name.value.trim()) { toast('请输入单品名'); return; }
   if (!state.closet.wardrobe) state.closet.wardrobe = [];
-  var newItem = { id:'wi'+Date.now(), name:name.value.trim(), brand:(brand && brand.value.trim())||'', cat:cat.value, color:'', season:'', note:'', dimension:'', channel:'' };
+  var newItem = { id:'wi'+Date.now(), name:name.value.trim(), brand:(brand && brand.value.trim())||'', cat:cat.value, kind:(function(){ var k=document.getElementById('lookbookKind'); return (k && k.value) || 'daily'; })(), color:'', season:'', note:'', dimension:'', channel:'' };
   state.closet.wardrobe.push(newItem);
   saveData(); renderPage('closet'); toast('单品已添加，请勾选');
   setTimeout(function() {
@@ -11784,7 +11873,7 @@ function saveDailyAsOutfit(id) {
   if (!d || !d.items || d.items.length === 0) { toast('该记录无单品可保存'); return; }
   if (!state.closet.outfits) state.closet.outfits = [];
   var desc = d.note || ('穿搭 ' + (d.date || ''));
-  state.closet.outfits.push({ id:'o'+Date.now(), date:d.date||today(), desc:desc, occasion:'', items:sortWardrobeIds(d.items), rating:d.rating||0 });
+  state.closet.outfits.push({ id:'o'+Date.now(), date:d.date||today(), desc:desc, occasion:'', kind:dailyKindOf(d), items:sortWardrobeIds(d.items), rating:d.rating||0 });
   d.outfitId = state.closet.outfits[state.closet.outfits.length-1].id;
   d.items = [];
   saveData(); renderPage('closet'); toast('已保存为搭配');
@@ -11807,6 +11896,7 @@ function editDailyOutfit(id) {
       <h3>✏️ 编辑穿搭</h3>
       <input class="input-field" id="editLookbookDate" type="date" value="${d.date||today()}" style="display:block;width:100%;margin-bottom:8px;">
       <div class="lookbook-scene-row">
+        <select class="input-field" id="editLookbookKind">${KIND_DEFS.map(function(k){ return '<option value="'+k.key+'"'+(dailyKindOf(d)===k.key?' selected':'')+'>'+k.icon+' '+k.label+'</option>'; }).join('')}</select>
         <select class="input-field" id="editLookbookScene">${sceneOptionsHtml(d.scene || '日常')}</select>
       </div>
       <div class="lookbook-mode-toggle">
@@ -11867,6 +11957,8 @@ function saveEditDailyOutfit(id) {
   d.rating = getRating('editLookbookRating');
   var sceneEl = document.getElementById('editLookbookScene');
   if (sceneEl) d.scene = sceneEl.value;
+  var kindEl = document.getElementById('editLookbookKind');
+  if (kindEl) d.kind = kindEl.value;
   var selectedOutfit = document.querySelector('#editLookbookOutfitMode .outfit-select-card.selected');
   // 单品始终可叠加：以单品勾选区为准（选搭配时已自动带出其单品）
   d.outfitId = selectedOutfit ? selectedOutfit.getAttribute('data-outfit-id') : '';
@@ -11935,21 +12027,50 @@ if (!state.bar.perfumeScents) { state.bar.perfumeScents = PERFUME_SCENTS.slice()
 var CLOSET_CATS = state.closet.cats || ['上装','下装','连衣裙','外套','鞋子','配饰'];
 var DEFAULT_SCENES = ['日常','网球','健身','瑜伽','跑步'];
 if (!state.closet.scenes) { state.closet.scenes = DEFAULT_SCENES.slice(); }
-// 大类（方案A）：单品顶部 tab 分组
+// 大类：单品 / 搭配 / 每日穿搭共用，用于展示与统计分流
 const KIND_DEFS = [
   { key:'daily', label:'日常', icon:'👚', hint:'通勤、居家、逛街' },
-  { key:'sport', label:'健身', icon:'🏋️', hint:'运动、瑜伽、跑步' },
-  { key:'hanfu', label:'汉服', icon:'🧧', hint:'传统服饰' },
+  { key:'sport', label:'运动', icon:'🏃', hint:'健身、瑜伽、跑步' },
   { key:'other', label:'其他', icon:'📦', hint:'特殊场合、礼服等' }
 ];
 function kindLabel(k) { return (KIND_DEFS.find(function(x){return x.key===k;}) || KIND_DEFS[0]).label; }
 function kindIcon(k) { return (KIND_DEFS.find(function(x){return x.key===k;}) || KIND_DEFS[0]).icon; }
-// 首次加载：旧单品默认归为日常；sport occasion 的搭配自动标记 sport
+// 由单品集合推断大类（取数量最多的一类）；无单品时回退日常
+function deriveKindFromItems(ids) {
+  var counts = {};
+  (ids || []).forEach(function(id) {
+    var it = (state.closet.wardrobe || []).find(function(w) { return w.id === id; });
+    if (!it) return;
+    var k = it.kind || 'daily';
+    counts[k] = (counts[k] || 0) + 1;
+  });
+  var best = '', bestN = 0;
+  Object.keys(counts).forEach(function(k) { if (counts[k] > bestN) { bestN = counts[k]; best = k; } });
+  return best || 'daily';
+}
+// 记录的大类：优先显式字段，旧数据按单品推断
+function outfitKindOf(o) { return o.kind || deriveKindFromItems(o.items || []); }
+function dailyKindOf(d) {
+  if (d.kind) return d.kind;
+  if (d.items && d.items.length) return deriveKindFromItems(d.items);
+  if (d.outfitId) {
+    var o = (state.closet.outfits || []).find(function(x) { return x.id === d.outfitId; });
+    if (o) return outfitKindOf(o);
+  }
+  return 'daily';
+}
+// 迁移：旧单品默认日常；已废弃的「汉服」归入「其他」；旧搭配/穿搭记录补大类
 function migrateClosetKinds() {
-  var wardrobe = state.closet.wardrobe || [];
   var changed = false;
-  wardrobe.forEach(function(w) {
+  (state.closet.wardrobe || []).forEach(function(w) {
     if (!w.kind) { w.kind = 'daily'; changed = true; }
+    else if (w.kind === 'hanfu') { w.kind = 'other'; changed = true; }
+  });
+  (state.closet.outfits || []).forEach(function(o) {
+    if (!o.kind) { o.kind = deriveKindFromItems(o.items || []); changed = true; }
+  });
+  (state.closet.dailyOutfits || []).forEach(function(d) {
+    if (!d.kind) { d.kind = dailyKindOf(d); changed = true; }
   });
   if (changed) { saveData(); }
 }
